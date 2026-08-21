@@ -2,7 +2,7 @@
 
 Cập nhật: 2026-08-21
 
-Đây là tài liệu domain (miền nghiệp vụ), **không phải Prisma schema**. Đối chiếu với `gastrocare_core_v0.1.prisma` (DRAFT/REFERENCE) — điểm khác biệt giữa domain model và schema hiện tại được ghi rõ trong từng mục.
+Đây là tài liệu domain (miền nghiệp vụ), **không phải Prisma schema**. Không có Prisma schema, database, hay backend nào tồn tại trong repository hiện tại (xem `PROJECT_STATE.md`). Toàn bộ nội dung dưới đây là DOMAIN CANDIDATE — thiết kế đề xuất cho implementation tương lai, chưa phải APPROVED BASELINE cho từng chi tiết trừ khi nêu rõ.
 
 ## Sơ đồ domain
 
@@ -41,10 +41,9 @@ AuditEvent — append-only, cắt ngang mọi entity
 - **Purpose:** gom nhóm các Encounter/CarePlan liên quan thành một "câu chuyện chăm sóc" (vd theo dõi GERD, theo dõi polyp) — đúng nguyên tắc P-05: độ phức tạp nằm ở hệ thống, không đẩy sang UI bác sĩ.
 - **Identity:** `CareEpisode.id`, thuộc về một Patient.
 - **Creator:** hệ thống tự tạo/gợi ý khi Encounter đầu tiên của một vấn đề mới được lưu — KHÔNG bắt bác sĩ tự quản lý CareEpisode bằng tay ở v0.1.
-- **Lifecycle:** `ACTIVE` → `CLOSED`. Đóng khi bác sĩ đánh dấu vấn đề đã giải quyết, hoặc không có Encounter mới liên quan trong khoảng thời gian dài (ngưỡng cụ thể: để ngỏ, xác định khi có dữ liệu thật — không đóng băng ở Pass 2 theo P-09).
+- **Lifecycle:** `ACTIVE` → `CLOSED`. Đóng lâm sàng (`CLOSED`) chỉ xảy ra qua hành động tường minh của bác sĩ đánh dấu vấn đề đã giải quyết. Không có Encounter mới trong khoảng thời gian dài **không tự động đóng CareEpisode** — chỉ có thể gợi ý review (vd hiển thị trong danh sách "cần xem lại"). Ngưỡng thời gian gợi ý cụ thể: để ngỏ, xác định khi có dữ liệu thật (P-09).
 - **Relationships:** 1 Patient có nhiều CareEpisode; 1 CareEpisode có nhiều Encounter.
 - **Downstream use:** Patient Timeline dùng CareEpisode để nhóm hiển thị; sau này Clinical Intelligence (nếu triển khai) dùng để truy vấn theo đợt bệnh.
-- **Ghi chú đối chiếu schema:** `gastrocare_core_v0.1.prisma` đã có model này đúng như mô tả.
 
 ## Encounter
 
@@ -53,9 +52,10 @@ AuditEvent — append-only, cắt ngang mọi entity
 - **Creator:** bác sĩ, tại thời điểm khám.
 - **Lifecycle:** tạo một lần khi khám, sau khi lưu KHÔNG chỉnh sửa tự do (xem invariant Amendment bên dưới).
 - **Relationships:** thuộc về 1 Patient, thuộc về 0-1 CareEpisode (backend gán), có 0-1 CarePlan.
-- **Chứa (khái niệm ClinicalNote):** reason for visit, clinical note (text), assessment. Ở v0.1, đây là field trực tiếp trên Encounter (đúng schema hiện có), KHÔNG phải bảng riêng — tách bảng riêng chỉ cần thiết khi có nhiều "phiên bản" ghi chú (vd AI draft vs bác sĩ sửa), hiện chưa cần vì DEC-001 là manual-only.
+- **Chứa (khái niệm ClinicalNote):** reason for visit, clinical note (text), assessment. Ở v0.1 (DOMAIN CANDIDATE), đây là field trực tiếp trên Encounter, KHÔNG phải bảng riêng — tách bảng riêng chỉ cần thiết khi có nhiều "phiên bản" ghi chú (vd AI draft vs bác sĩ sửa), hiện chưa cần vì DEC-001 là manual-only.
+- **ClinicalNote lifecycle (tường minh):** ở v0.1, ClinicalNote KHÔNG được ký (sign) độc lập với Encounter — nó là field nội dung của Encounter, và tính bất biến/immutability chỉ được áp dụng ở mức CarePlan khi Sign (xem invariant Amendment bên dưới). Encounter/ClinicalNote sau khi lưu không có quy trình chỉnh sửa tự do ở UI, nhưng chưa có cơ chế Amendment/versioning riêng cho ClinicalNote ở v0.1 — đây là UNKNOWN / OPEN ITEM cần quyết định trước khi bootstrap kỹ thuật nếu yêu cầu lâm sàng đòi hỏi.
 - **Downstream use:** Patient Timeline hiển thị theo thời gian; CareEpisode dùng để nhóm.
-- **Lineage field (`source`):** mặc định `MANUAL`, đã có sẵn trong schema để không cần migration khi mở AI sau này (P-02).
+- **Lineage field (`source`) — DOMAIN CANDIDATE:** đề xuất mặc định `MANUAL`, để tránh migration khi mở AI sau này (P-02). Chưa tồn tại trong bất kỳ schema thật nào vì chưa có schema.
 
 ## CarePlan
 
@@ -72,8 +72,9 @@ AuditEvent — append-only, cắt ngang mọi entity
 - **Purpose:** nhiệm vụ vận hành cụ thể (vd tái khám ngày X) — nguồn cho Follow-up Queue.
 - **Identity:** `CareTask.id`.
 - **Creator:** hệ thống, tự động khi CarePlan được Sign (không phải bác sĩ tạo tay).
-- **Lifecycle:** `OPEN` → `OVERDUE` (tự động khi quá `dueDate`) → `COMPLETED` (khi có Encounter mới liên quan, hoặc đánh dấu tay).
-- **Downstream use:** màn hình "Today"/Follow-up Queue lọc theo `status` + `dueDate`.
+- **Lifecycle (stored status):** `OPEN` → `COMPLETED` (khi có Encounter mới liên quan, hoặc đánh dấu tay) hoặc `OPEN` → `CANCELLED`.
+- **OVERDUE là derived state, không phải stored status:** `OVERDUE` = `status == OPEN AND dueDate < thời điểm hiện tại`, tính tại thời điểm truy vấn/hiển thị. Không lưu `OVERDUE` như một giá trị status riêng trừ khi có yêu cầu downstream cụ thể được ghi lại tại đây (hiện chưa có).
+- **Downstream use:** màn hình "Today"/Follow-up Queue lọc theo `status` + `dueDate` (tính `OVERDUE` khi query).
 
 ## Patient Timeline
 
@@ -83,8 +84,8 @@ AuditEvent — append-only, cắt ngang mọi entity
 ## AuditEvent
 
 - **Purpose:** biết ai làm gì, khi nào, trên entity nào.
-- **Lifecycle:** append-only, không sửa/xóa.
-- **Ghi chú đối chiếu schema:** `gastrocare_core_v0.1.prisma` hiện đặt tên `AuditLog` — cần thống nhất tên gọi (`AuditEvent` domain vs `AuditLog` schema) trước khi implement, không phải vấn đề domain, chỉ là naming cần khóa ở Pass 3.
+- **Lifecycle:** append-only, không sửa/xóa (xem architectural invariant tại `05_ARCHITECTURE_BASELINE.md`).
+- **Naming:** `AuditEvent` là tên domain chuẩn dùng trong toàn bộ Documentation Baseline. Tên gọi tương ứng ở tầng schema/implementation (khi tạo) phải khớp hoặc mapping rõ ràng — quyết định cụ thể thuộc bootstrap kỹ thuật, không phải quyết định domain.
 
 ---
 
@@ -92,8 +93,9 @@ AuditEvent — append-only, cắt ngang mọi entity
 
 Theo Anti-Scope tại `01_PRODUCT_VISION_AND_SCOPE.md`: không có entity cho AI Draft/Prompt versioning (chưa cần vì DEC-001 manual-only), không có entity Communication/ZBS (Phase 2 — Continuous Care), không có Insurance/Billing entity.
 
-## Việc cần khóa ở Pass 3 (Architecture Baseline)
+## Việc cần khóa trước khi bootstrap kỹ thuật (xem 05_ARCHITECTURE_BASELINE.md)
 
-- Thống nhất tên `AuditEvent` vs `AuditLog`.
-- Ngưỡng thời gian để CareEpisode tự động gợi ý đóng.
+- Naming domain-to-schema cho `AuditEvent`.
+- Ngưỡng thời gian để CareEpisode gợi ý review (không phải tự động đóng).
 - Cơ chế kỹ thuật cụ thể cho Amendment (bảng version riêng hay field version trên CarePlan).
+- Cơ chế Amendment/versioning cho ClinicalNote nếu yêu cầu lâm sàng đòi hỏi (xem Encounter — ClinicalNote lifecycle ở trên).

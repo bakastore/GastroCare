@@ -1,6 +1,6 @@
 # GastroCare
 
-Status: GREENFIELD / DOCUMENTATION BASELINE
+Status: GREENFIELD / DOCUMENTATION BASELINE v1.0 — RELEASE CANDIDATE (10/10 documents, Owner review required)
 
 GastroCare is currently in product and architecture definition.
 

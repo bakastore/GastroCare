@@ -6,7 +6,7 @@ Cập nhật: 2026-08-21
 STATUS: ASSUMED BASELINE FOR BUILD
 ```
 
-Toàn bộ nội dung dưới đây là **Working Product Hypothesis**, đúc kết từ Synthetic Discovery Baseline v0.1 (xem `00_PROJECT_OVERVIEW.md` — Existing Project Assets). Không giả vờ đã được BS Thái xác nhận. Sẽ được thay bằng evidence thật qua Discovery Round 1 (`DISCOVERY_ROUND1_GUIDE.md`) sau khi có sản phẩm để quan sát (P-06, Build → Observe → Correct).
+Toàn bộ nội dung dưới đây là **Working Product Hypothesis**, đúc kết từ Synthetic Discovery Baseline v0.1 (xem `00_PROJECT_OVERVIEW.md` — Existing Project Assets). Không giả vờ đã được BS Thái xác nhận. Sẽ được thay bằng evidence thật qua Discovery Round 1 với BS Thái sau khi có sản phẩm để quan sát (P-06, Build → Observe → Correct); hướng dẫn thực hiện Discovery Round 1 cụ thể chưa tồn tại trong repository hiện tại và sẽ được bổ sung khi cần, không phải điều kiện để bắt đầu build.
 
 ## Tình huống vận hành giả định
 
@@ -48,7 +48,7 @@ Follow-up phụ thuộc: trí nhớ / giấy / lịch hẹn / Zalo / bệnh nhâ
 |---|---|---:|---|
 | Lịch sử bệnh nhân phân tán | đầu lượt khám | Cao | cần Patient Timeline |
 | Không nhìn ngay lần trước đã điều trị gì | tái khám | Cao | cần Encounter + CarePlan |
-| Follow-up phụ thuộc trí nhớ | sau khám | Cao | cần FollowUpPlan + CareTask |
+| Follow-up phụ thuộc trí nhớ | sau khám | Cao | cần CarePlan.followUpDate → CareTask |
 | Bệnh nhân cần tái khám nhưng không quay lại | sau khám | Cao | cần Overdue Queue |
 | Phải hỏi lại thông tin đã có | đầu lượt khám | Vừa/Cao | dữ liệu phải tái sử dụng |
 | Ghi quá nhiều làm chậm khám | trong khám | Cao | form phải rất ngắn |
@@ -62,7 +62,7 @@ Nguyên tắc P-04: field chỉ vào form nếu biết ai tạo, lúc nào, vì 
 
 | Thông tin | Phân loại | Ai tạo | Khi nào | Ai dùng lại |
 |---|---|---|---|---|
-| Họ tên, năm sinh, giới tính, SĐT | MUST | lễ tân | đăng ký | toàn hệ thống + matching signal (A-004) |
+| Họ tên, năm sinh, giới tính, SĐT | MUST | lễ tân | đăng ký | toàn hệ thống + matching signal (xem `04_CORE_DOMAIN_MODEL.md` — Patient) |
 | Lý do khám, triệu chứng chính | MUST | bác sĩ | Encounter | lần khám hiện tại/sau |
 | Tiền sử quan trọng, dị ứng | MUST | bác sĩ | khi biết | mọi lần khám sau |
 | Assessment, Clinical Note | MUST | bác sĩ | cuối khám | Timeline/CarePlan |
@@ -78,9 +78,9 @@ Nguyên tắc P-04: field chỉ vào form nếu biết ai tạo, lúc nào, vì 
 
 | Sự kiện | Hiện tại giả định | Có thể bỏ sót? | GastroCare v0.1 |
 |---|---|---:|---|
-| Tái khám sau N ngày | bác sĩ dặn bệnh nhân | Cao | tạo FollowUpPlan → CareTask |
+| Tái khám sau N ngày | bác sĩ dặn bệnh nhân | Cao | tạo CarePlan.followUpDate → CareTask |
 | Theo dõi sau điều trị | không có queue tập trung | Cao | Follow-up Queue |
-| Bệnh nhân quá hạn | khó nhận biết | Cao | Overdue status |
+| Bệnh nhân quá hạn | khó nhận biết | Cao | OVERDUE (derived state trên CareTask, xem `04_CORE_DOMAIN_MODEL.md`) |
 | Dấu hiệu cảnh báo | dặn miệng | Vừa | lưu trong CarePlan |
 
 ## Synthetic Case — dùng xuyên suốt mọi tài liệu và schema
@@ -99,4 +99,4 @@ Nguyên tắc P-04: field chỉ vào form nếu biết ai tạo, lúc nào, vì 
   → Timeline: 21/08 Initial Visit → 05/09 Follow-up
 ```
 
-Case này là input trực tiếp cho `04_CORE_DOMAIN_MODEL.md` và đối chiếu với `gastrocare_core_v0.1.prisma`.
+Case này là input trực tiếp cho `04_CORE_DOMAIN_MODEL.md` (DOMAIN CANDIDATE).

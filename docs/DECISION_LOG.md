@@ -1,33 +1,53 @@
 # GastroCare — Decision Log
 
 Cập nhật: 2026-08-21
-**Thay thế bản `/mnt/user-data/outputs/DECISION_LOG.md` trước đó — đây là bản hợp nhất, duy nhất còn hiệu lực (P-10).**
+
+Đây là Decision Log hiện hành và là nguồn chuẩn cho Owner Decisions
+và Working Assumptions của GastroCare.
 
 ---
 
-## OWNER DECISION (Owner đã phát biểu trực tiếp)
+## OWNER DECISIONS
 
 | ID | Quyết định | Ngày | Rationale |
 |---|---|---|---|
-| DEC-001 | Pilot đầu tiên với BS Thái: manual entry only, không AI | 2026-08-21 | Cô lập rủi ro workflow khỏi rủi ro chất lượng AI |
-| DEC-002 | AI = Value-Added Layer, dài hạn, không quyết định kiến trúc lõi | 2026-08-21 | Đi kèm DEC-001 |
-| DEC-003 | Owner sẵn sàng đầu tư runway đủ dài (~1 năm) để ưu tiên kiến trúc đúng hơn tốc độ triển khai vội — đây là ngân sách/mức chấp nhận rủi ro thời gian đã xác nhận, KHÔNG phải cam kết tiến độ cố định 12 tháng (không mâu thuẫn với nguyên tắc không time-box vì AI có thể làm nhanh hơn) | (trước đó, cùng phiên) | Owner phát biểu trực tiếp: "giai đoạn đầu anh sẵn sàng bỏ ra 1 năm để hoàn thành ứng dụng" |
-| DEC-004 | BS Thái = first pilot user | 2026-08-21 | Owner phát biểu trực tiếp: "trong thử nghiệm ứng dụng bác sĩ Thái sẽ sử dụng thủ công" |
-| DEC-005 | Tạm dừng implementation, tập trung 100% hợp nhất Documentation Baseline v1.0 trước | 2026-08-21 | Owner xác nhận trực tiếp qua câu hỏi trắc nghiệm rõ ràng ("Trong lúc hợp nhất 10 file tài liệu, anh muốn xử lý phần schema/Claude Code thế nào?"), chọn đúng phương án "Dừng hẳn code, tập trung 100% vào tài liệu trước" — bằng chứng trực tiếp, không phải suy diễn từ ngôn ngữ mơ hồ |
-
-## ASSUMPTION (kế thừa hoặc đề xuất — CHƯA được Owner xác nhận trực tiếp)
-
-| ID | Nội dung | Nguồn gốc | Cần xác nhận trước khi khóa? |
-|---|---|---|---|
-| A-001 | Chuyên khoa đầu tiên: tiêu hóa (gastroenterology) | Nền tảng GastroCare v0.1 trước đây | Nên hỏi lại — chưa từng được xác nhận trong luồng Core-first hiện tại |
-| A-002 | BS Thái đóng vai trò "Design Partner" (không chỉ pilot user) | Đề xuất lặp lại nhiều lần bởi GPT | Có — đây là diễn giải vai trò, khác với DEC-004 (chỉ xác nhận BS Thái = pilot user) |
-| A-003 | Domain model candidate: Patient / CareEpisode / Encounter / ClinicalNote / CarePlan / CareTask / AuditEvent | Đề xuất kỹ thuật qua nhiều vòng review Claude/GPT | Không cần Owner duyệt từng entity — đây thuộc phạm vi kỹ thuật trong ranh giới Owner đã đặt (P-04, P-09); chỉ cần Owner biết là candidate, chưa final |
-| A-004 | Patient matching: dùng tên + năm sinh + SĐT làm matching signal, KHÔNG làm identity; không tự động merge hồ sơ nghi trùng | Đề xuất kỹ thuật (Claude + GPT, đã thống nhất) | Không cần — là technical invariant trong ranh giới kỹ thuật |
-
-## SUPERSEDED
-
-Không có mục nào bị thay thế tính đến thời điểm này.
+| DEC-001 | Pilot đầu tiên với BS Thái sử dụng manual entry only; không phụ thuộc AI. | 2026-08-21 | Tách kiểm chứng workflow khỏi rủi ro chất lượng AI. |
+| DEC-002 | AI là Future Value-Added Layer; AI không định nghĩa hoặc quyết định Core architecture. | 2026-08-21 | Core phải tạo giá trị độc lập với AI. |
+| DEC-003 | Owner chấp nhận runway khoảng 1 năm nếu cần để ưu tiên kiến trúc và chất lượng; đây không phải deadline hoặc time-box cố định. | 2026-08-21 | Tránh tối ưu tốc độ ngắn hạn dẫn đến chi phí kiến trúc lớn về sau. |
+| DEC-004 | BS Thái là first pilot user. | 2026-08-21 | Pilot thực tế đầu tiên của GastroCare. |
+| DEC-005 | Documentation Baseline v1.0 phải hoàn tất và được Owner review trước khi technical implementation bắt đầu. | 2026-08-21 | Có SSOT rõ ràng trước khi AI-assisted implementation bắt đầu. |
 
 ---
 
-*Nguyên tắc cập nhật file này: chỉ thêm dòng mới khi có DECISION hoặc ASSUMPTION mới thật sự phát sinh. Không tự động nâng ASSUMPTION lên DECISION — xem Conflict Resolution Hierarchy tại `02_PRODUCT_PRINCIPLES.md`.*
+## WORKING ASSUMPTIONS
+
+| ID | Nội dung | Nguồn gốc | Trạng thái |
+|---|---|---|---|
+| A-001 | Chuyên khoa đầu tiên: tiêu hóa (gastroenterology). | Working Product Hypothesis từ giai đoạn thiết kế ban đầu. | ACTIVE — chưa Owner-confirmed. |
+| A-002 | BS Thái có thể đóng vai trò Design Partner ngoài vai trò first pilot user. | AI recommendation / product working hypothesis. | ACTIVE — chưa Owner-confirmed. |
+
+---
+
+## RECLASSIFIED / MOVED TO NORMATIVE HOME
+
+- A-003 — Domain model candidate được quản lý tại
+  `04_CORE_DOMAIN_MODEL.md`.
+
+- A-004 — Patient identity/matching invariant được quản lý tại
+  `04_CORE_DOMAIN_MODEL.md` và `05_ARCHITECTURE_BASELINE.md`.
+
+Các mục trên không bị hủy; chúng chỉ không còn thuộc Decision Log.
+
+---
+
+## SUPERSEDED
+
+None.
+
+---
+
+Nguyên tắc:
+- Chỉ Owner có thể tạo Owner Decision.
+- Không tự nâng Working Assumption thành Owner Decision.
+- Technical/domain invariants phải nằm tại normative home tương ứng,
+  không dùng Decision Log làm task tracker hoặc design specification.
