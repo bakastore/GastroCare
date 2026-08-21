@@ -1,7 +1,7 @@
 # GastroCare — Project Overview
 
 Cập nhật: 2026-08-21
-Trạng thái: DOCUMENTATION BASELINE v1.0 — RELEASE CANDIDATE
+Trạng thái: DOCUMENTATION BASELINE v1.0 — OWNER ACCEPTED · GATE 1 CLOSED · FOUNDATION PHASE — GATE 2 TECHNICAL FOUNDATION IN PROGRESS
 
 ## GastroCare là gì?
 
@@ -26,10 +26,14 @@ Xem lý do đầy đủ tại `01_PRODUCT_VISION_AND_SCOPE.md` và các nguyên 
 
 ```
 PROJECT TYPE: GREENFIELD
-IMPLEMENTATION: NOT STARTED
-DOCUMENTATION BASELINE v1.0: RELEASE CANDIDATE (10/10 documents)
-NEXT GATE: DOCUMENTATION BASELINE v1.0 — OWNER REVIEW
+IMPLEMENTATION: TECHNICAL FOUNDATION STARTED
+DOCUMENTATION BASELINE v1.0: OWNER ACCEPTED (10/10 documents)
+GATE 1 (DOCUMENTATION ACCEPTANCE): CLOSED
+CURRENT GATE: GATE 2 — TECHNICAL FOUNDATION
+GASTROCARE CORE: NOT AUTHORIZED
 ```
+
+Xem trạng thái đầy đủ, cập nhật liên tục tại `PROJECT_STATE.md`.
 
 ## Existing Project Assets
 
@@ -44,4 +48,4 @@ Một schema Prisma nháp (`gastrocare_core_v0.1.prisma`) từng được dùng 
 
 ## Bước tiếp theo
 
-Sau khi Owner review Documentation Baseline v1.0 (10 tài liệu), bước tiếp theo là Phase FOUNDATION tại `07_ROADMAP_AND_GATES.md`.
+Documentation Baseline v1.0 đã Owner-accepted (Gate 1 CLOSED). Phase FOUNDATION hiện đang thực hiện Gate 2 — Technical Foundation (auth, tenant isolation, migration review process) theo `07_ROADMAP_AND_GATES.md`. GastroCare Core chưa được authorize cho đến khi Gate 2 đạt.

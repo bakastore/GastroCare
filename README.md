@@ -1,12 +1,10 @@
 # GastroCare
 
-Status: GREENFIELD / DOCUMENTATION BASELINE v1.0 — RELEASE CANDIDATE (10/10 documents, Owner review required)
+Status: GREENFIELD / Documentation Baseline v1.0 — OWNER ACCEPTED (Gate 1 CLOSED). Phase FOUNDATION — COMPLETE (Gate 2 Technical Foundation OWNER ACCEPTED, CLOSED). Awaiting Owner authorization to begin Phase GASTROCARE CORE.
 
-GastroCare is currently in product and architecture definition.
+No production application, database, or deployment exists yet. A minimal technical foundation (NestJS + Prisma — auth, tenant isolation, migration review process) exists under `backend/` for Gate 2 verification only — this is not GastroCare Core and contains no clinical domain entities.
 
-No production application, backend, database, Prisma schema, API, or deployment exists yet.
-
-Current authoritative material is under `docs/`.
+Current authoritative material is under `docs/`. See `CONTRIBUTING.md` for the migration review process.
 
 See first:
 

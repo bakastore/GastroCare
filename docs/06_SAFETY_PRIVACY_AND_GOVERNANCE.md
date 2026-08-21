@@ -5,9 +5,9 @@ Cập nhật: 2026-08-21
 Đây là nguồn sự thật duy nhất (normative home) cho toàn bộ yêu cầu về an toàn, quyền riêng tư, và governance của GastroCare. [05_ARCHITECTURE_BASELINE.md](05_ARCHITECTURE_BASELINE.md) chỉ tham chiếu tài liệu này, không lặp lại chi tiết (P-10).
 
 ```
-STATUS: PROPOSED BASELINE — RELEASE CANDIDATE
-OWNER APPROVAL REQUIRED
-NO AUTHENTICATION, AUTHORIZATION, OR DATABASE SYSTEM EXISTS TODAY
+STATUS: APPROVED BASELINE (Owner-accepted via Documentation Baseline v1.0)
+GATE 2 (TECHNICAL FOUNDATION) IN PROGRESS: AUTHENTICATION + TENANT ISOLATION BOOTSTRAP UNDERWAY — SEE PROJECT_STATE.md
+REAL-PATIENT-DATA GATE (below) REMAINS BLOCKING REGARDLESS OF GATE 2 OUTCOME
 ```
 
 ## Authentication

@@ -1,0 +1,62 @@
+// GastroCare — Prisma schema — GATE 2 TECHNICAL FOUNDATION ONLY.
+//
+// This schema contains ONLY the minimal Foundation models required to prove
+// authentication and tenant isolation (Gate 2 — see docs/07_ROADMAP_AND_GATES.md).
+//
+// It intentionally contains NO GastroCare Core clinical domain entities
+// (Patient, Encounter, CareEpisode, CarePlan, CareTask, PatientTimeline,
+// clinical AuditEvent). Those belong to Phase GASTROCARE CORE, which is
+// NOT AUTHORIZED until Gate 2 passes Owner review.
+//
+// FoundationProbeRecord exists only to prove tenant isolation technically
+// and will be removed via an explicit, reviewed migration when Phase CORE
+// begins (see docs/07_ROADMAP_AND_GATES.md and CONTRIBUTING.md).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Tenant — the isolation boundary for all GastroCare data.
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  authUsers            AuthUser[]
+  foundationProbeItems FoundationProbeRecord[]
+
+  @@map("tenants")
+}
+
+/// AuthUser — infrastructure authentication identity.
+/// This is NOT Patient and is NOT a clinical domain entity.
+model AuthUser {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId])
+  @@map("auth_users")
+}
+
+/// FoundationProbeRecord — neutral, temporary model used only to prove
+/// tenant isolation during Gate 2. Not GastroCare Core. Removable via a
+/// reviewed migration when Phase CORE begins.
+model FoundationProbeRecord {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  label     String
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@map("foundation_probe_records")
+}

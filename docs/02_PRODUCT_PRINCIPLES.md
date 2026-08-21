@@ -69,3 +69,19 @@ Quy tắc bắt buộc:
 - Không bao giờ tự động nâng một AI Recommendation hoặc Working Assumption thành Owner Decision. Chỉ Owner phát biểu trực tiếp mới tạo ra Owner Decision (xem [DECISION_LOG.md](DECISION_LOG.md)).
 - Verified Repository / Project State (thực trạng repo — xem [PROJECT_STATE.md](PROJECT_STATE.md)) luôn override wording cũ trong bất kỳ tài liệu draft nào nếu có mâu thuẫn về sự tồn tại của code/schema/hạ tầng.
 - Mỗi assertion quan trọng trong bộ tài liệu nên được gắn nhãn rõ một trong các loại: FACT, OWNER DECISION, APPROVED BASELINE, WORKING ASSUMPTION, FUTURE OPTION, hoặc UNKNOWN / OPEN ITEM.
+
+---
+
+## Canonical Assertion-Label Mapping
+
+Các tài liệu trong bộ Documentation Baseline dùng một số nhãn chuyên biệt (specialized labels) ngoài 6 lớp canonical ở trên. Bảng dưới đây map từng nhãn chuyên biệt vào đúng lớp canonical để giữ authority hierarchy nhất quán xuyên suốt bộ tài liệu. Nhãn chuyên biệt không bị xóa — chúng vẫn hữu ích để chỉ rõ ngữ cảnh xuất xứ; mapping này chỉ xác định lớp authority áp dụng.
+
+| Nhãn chuyên biệt | Map vào lớp canonical | Ghi chú |
+|---|---|---|
+| DOMAIN CANDIDATE | WORKING ASSUMPTION | Trừ khi một invariant cụ thể đã được Owner-accept tường minh hoặc là một phần của baseline normative đã được chấp nhận — khi đó invariant đó (không phải toàn bộ domain candidate) map vào APPROVED BASELINE. |
+| PROPOSED BASELINE — RELEASE CANDIDATE | APPROVED BASELINE | Áp dụng sau khi Documentation Baseline v1.0 đã được Owner acceptance (xem `PROJECT_STATE.md`). Trước khi Owner acceptance, nhãn này vẫn ở mức WORKING ASSUMPTION. |
+| LEGAL REVIEW REQUIRED | UNKNOWN / OPEN ITEM | Mang thêm qualifier BLOCKING legal-resolution ở bất kỳ gate nào yêu cầu giải quyết dứt điểm trước khi tiến hành (vd Real-Patient-Data Gate tại `06_SAFETY_PRIVACY_AND_GOVERNANCE.md`). |
+| UNKNOWN / OPEN ITEM | UNKNOWN / OPEN ITEM | Không đổi — đã là canonical. |
+| REQUIREMENT (bên trong một baseline normative đã được Owner-accept) | APPROVED BASELINE requirement | Một REQUIREMENT nằm trong tài liệu normative đã Owner-accept có authority của APPROVED BASELINE, không phải WORKING ASSUMPTION. |
+
+Mapping này chỉ diễn giải authority hiện có; nó không tạo Owner Decision mới và không thay đổi nội dung domain/kiến trúc.

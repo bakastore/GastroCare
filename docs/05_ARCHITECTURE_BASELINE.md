@@ -3,12 +3,11 @@
 Cập nhật: 2026-08-21
 
 ```
-STATUS: PROPOSED BASELINE — RELEASE CANDIDATE
-OWNER APPROVAL REQUIRED
-NOT EXISTING SOFTWARE — NO CODE, SCHEMA, OR DATABASE EXISTS TODAY
+STATUS: APPROVED BASELINE (Owner-accepted via Documentation Baseline v1.0)
+TECHNICAL FOUNDATION (GATE 2) IN PROGRESS — SEE PROJECT_STATE.md FOR CURRENT SOURCE-OF-TRUTH ON WHAT ACTUALLY EXISTS
 ```
 
-Tài liệu này mô tả kiến trúc **đề xuất** để hiện thực hóa [04_CORE_DOMAIN_MODEL.md](04_CORE_DOMAIN_MODEL.md) trong tương lai. Đây là PROPOSED BASELINE — RELEASE CANDIDATE, chưa phải APPROVED, chờ Owner phê duyệt qua Documentation Baseline v1.0 Owner Review — không phải mô tả hệ thống đang chạy. GastroCare hiện chưa có backend, schema, hay database nào được tạo (xem [PROJECT_STATE.md](PROJECT_STATE.md)).
+Tài liệu này mô tả kiến trúc để hiện thực hóa [04_CORE_DOMAIN_MODEL.md](04_CORE_DOMAIN_MODEL.md). Đây là APPROVED BASELINE (Owner-accepted qua Documentation Baseline v1.0 Owner Review) — vẫn là kiến trúc chuẩn để implement theo, không phải mô tả đầy đủ hệ thống đang chạy: Gate 2 mới đang bootstrap phần Foundation tối thiểu (auth, tenant isolation, migration review). GastroCare Core domain layer chưa được implement (xem [PROJECT_STATE.md](PROJECT_STATE.md)).
 
 ## Layer Model (đề xuất)
 
@@ -28,7 +27,7 @@ Domain layer không phụ thuộc vào Experience hay bất kỳ AI provider nà
 
 ## Architectural Invariants
 
-Các bất biến sau là PROPOSED BASELINE — RELEASE CANDIDATE (chờ Owner phê duyệt), dự kiến giữ nguyên qua mọi lựa chọn công nghệ cụ thể một khi được duyệt:
+Các bất biến sau là APPROVED BASELINE (Owner-accepted), giữ nguyên qua mọi lựa chọn công nghệ cụ thể:
 
 - **Tenant isolation:** mọi truy vấn dữ liệu phải bị giới hạn trong phạm vi một Tenant; không có truy vấn cross-tenant ngầm định. Chi tiết cơ chế enforcement thuộc [06_SAFETY_PRIVACY_AND_GOVERNANCE.md](06_SAFETY_PRIVACY_AND_GOVERNANCE.md).
 - **Patient identity:** `Patient.id` là định danh nội bộ bất biến; matching signals (tên, năm sinh, SĐT) không bao giờ được dùng làm identity, và hệ thống không tự động merge hồ sơ nghi trùng (xem 04_CORE_DOMAIN_MODEL.md — Patient).
@@ -43,17 +42,18 @@ Các bất biến sau là PROPOSED BASELINE — RELEASE CANDIDATE (chờ Owner p
 ## Proposed Technology Baseline
 
 ```
-STATUS: PROPOSED TECHNOLOGY BASELINE — CHƯA CÓ CODE NÀO ĐƯỢC TẠO
+STATUS: APPROVED TECHNOLOGY BASELINE
+GATE 2 (TECHNICAL FOUNDATION) SCAFFOLD IN PROGRESS — SEE PROJECT_STATE.md
 ```
 
-Đề xuất công nghệ (chưa triển khai, không phải "existing backend"):
+Công nghệ (APPROVED BASELINE):
 
 - **NestJS** — application/API layer.
-- **Prisma** — data access/ORM (chưa có `schema.prisma` nào tồn tại trong repo hiện tại).
+- **Prisma** — data access/ORM.
 - **PostgreSQL** — persistence.
 - **REST API** — giao tiếp Experience ↔ Application.
 
-Không có bất kỳ "existing NestJS backend", "current Prisma schema", hay "existing database" nào trong repository này. Nếu tài liệu khác từng dùng các cụm từ đó, chúng đã được reconcile (xem [00_PROJECT_OVERVIEW.md](00_PROJECT_OVERVIEW.md) và [04_CORE_DOMAIN_MODEL.md](04_CORE_DOMAIN_MODEL.md)).
+Gate 2 đang bootstrap Foundation scaffold tối thiểu trên nền công nghệ này (auth + tenant isolation probe) — chưa implement GastroCare Core domain layer. Trạng thái chính xác của những gì thực sự tồn tại trong repository luôn ở [PROJECT_STATE.md](PROJECT_STATE.md) (Verified Repository / Project State override wording ở đây theo Authority Hierarchy — [02_PRODUCT_PRINCIPLES.md](02_PRODUCT_PRINCIPLES.md)).
 
 ## Việc cần khóa trước khi bootstrap kỹ thuật
 

@@ -1,0 +1,13 @@
+services:
+  gastrocare-test-db:
+    image: postgres:16-alpine
+    container_name: gastrocare_foundation_test_db
+    restart: "no"
+    environment:
+      POSTGRES_USER: gastrocare_test
+      POSTGRES_PASSWORD: gastrocare_test
+      POSTGRES_DB: gastrocare_foundation_test
+    ports:
+      - "55432:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
