@@ -1,16 +1,19 @@
-// GastroCare — Prisma schema — GATE 2 TECHNICAL FOUNDATION ONLY.
+// GastroCare — Prisma schema.
 //
-// This schema contains ONLY the minimal Foundation models required to prove
-// authentication and tenant isolation (Gate 2 — see docs/07_ROADMAP_AND_GATES.md).
+// Foundation models (Gate 2 — see docs/07_ROADMAP_AND_GATES.md): Tenant,
+// AuthUser, FoundationProbeRecord. FoundationProbeRecord is kept temporarily
+// per CONTRIBUTING.md ("FoundationProbeRecord lifecycle note") — CORE-01 adds
+// equivalent tenant-isolation regression coverage using real Core models
+// (see backend/test/core01-clinical-walking-skeleton.e2e-spec.ts), but the
+// probe model itself is left in place; its removal is deferred to its own
+// explicit, reviewed migration rather than bundled into this one.
 //
-// It intentionally contains NO GastroCare Core clinical domain entities
-// (Patient, Encounter, CareEpisode, CarePlan, CareTask, PatientTimeline,
-// clinical AuditEvent). Those belong to Phase GASTROCARE CORE, which is
-// NOT AUTHORIZED until Gate 2 passes Owner review.
-//
-// FoundationProbeRecord exists only to prove tenant isolation technically
-// and will be removed via an explicit, reviewed migration when Phase CORE
-// begins (see docs/07_ROADMAP_AND_GATES.md and CONTRIBUTING.md).
+// GastroCare Core clinical domain (CORE-01 — CLINICAL CORE WALKING SKELETON):
+// Patient, Encounter, CarePlan/CarePlanVersion, CareTask, AuditEvent.
+// PatientTimeline is intentionally NOT a model — it is a read projection
+// composed from Encounter/CarePlan/CareTask (see docs/04_CORE_DOMAIN_MODEL.md).
+// CareEpisode is intentionally NOT implemented in CORE-01 (deferred domain,
+// see Owner Execution Contract CORE-01 section 5.1).
 
 generator client {
   provider = "prisma-client-js"
@@ -29,8 +32,22 @@ model Tenant {
 
   authUsers            AuthUser[]
   foundationProbeItems FoundationProbeRecord[]
+  patients             Patient[]
+  encounters           Encounter[]
+  carePlans            CarePlan[]
+  carePlanVersions     CarePlanVersion[]
+  careTasks            CareTask[]
+  auditEvents          AuditEvent[]
 
   @@map("tenants")
+}
+
+/// Minimal Core clinical authorization role (CORE-01 section 12).
+/// DOCTOR: full clinical access within their tenant.
+/// RECEPTIONIST: patient registration/lookup only, no detailed clinical content.
+enum AuthRole {
+  DOCTOR
+  RECEPTIONIST
 }
 
 /// AuthUser — infrastructure authentication identity.
@@ -39,6 +56,7 @@ model AuthUser {
   id           String   @id @default(uuid())
   email        String   @unique
   passwordHash String
+  role         AuthRole @default(DOCTOR)
   tenantId     String
   tenant       Tenant   @relation(fields: [tenantId], references: [id])
   createdAt    DateTime @default(now())
@@ -49,7 +67,8 @@ model AuthUser {
 
 /// FoundationProbeRecord — neutral, temporary model used only to prove
 /// tenant isolation during Gate 2. Not GastroCare Core. Removable via a
-/// reviewed migration when Phase CORE begins.
+/// reviewed migration (see CONTRIBUTING.md "FoundationProbeRecord lifecycle
+/// note" — not removed in CORE-01).
 model FoundationProbeRecord {
   id        String   @id @default(uuid())
   tenantId  String
@@ -59,4 +78,176 @@ model FoundationProbeRecord {
 
   @@index([tenantId])
   @@map("foundation_probe_records")
+}
+
+enum PatientGender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+/// Patient — root of all clinical data. Patient.id is the immutable internal
+/// identity. fullName/dateOfBirth/phone are matching SIGNALS only, never
+/// identity — see docs/04_CORE_DOMAIN_MODEL.md. GastroCare never auto-merges
+/// patients on matching signals.
+model Patient {
+  id                 String   @id @default(uuid())
+  tenantId           String
+  tenant             Tenant   @relation(fields: [tenantId], references: [id])
+  fullName           String
+  normalizedFullName String
+  dateOfBirth        DateTime @db.Date
+  gender             PatientGender
+  phone              String
+  normalizedPhone    String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  encounters Encounter[]
+  carePlans  CarePlan[]
+  careTasks  CareTask[]
+
+  @@index([tenantId])
+  @@index([tenantId, normalizedFullName])
+  @@index([tenantId, normalizedPhone])
+  @@map("patients")
+}
+
+/// Encounter — one manual clinical visit. ClinicalNote in CORE-01 is content
+/// belonging to Encounter (reasonForVisit/clinicalNote/assessment fields),
+/// not an independent entity — see docs/04_CORE_DOMAIN_MODEL.md. There is
+/// intentionally no update/PATCH endpoint for Encounter in CORE-01: the
+/// absence of a write path is the simplest safe lifecycle satisfying "no
+/// free unrestricted overwrite of finalized clinical content".
+model Encounter {
+  id             String   @id @default(uuid())
+  tenantId       String
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  patientId      String
+  patient        Patient  @relation(fields: [patientId], references: [id])
+  doctorId       String
+  reasonForVisit String
+  clinicalNote   String
+  assessment     String
+  source         String   @default("MANUAL")
+  createdAt      DateTime @default(now())
+
+  carePlan CarePlan?
+
+  @@index([tenantId])
+  @@index([tenantId, patientId])
+  @@map("encounters")
+}
+
+enum CarePlanStatus {
+  DRAFT
+  SIGNED
+}
+
+/// CarePlan — bridge from Encounter to follow-up. DRAFT is mutable; once
+/// SIGNED the signed content is immutable and lives in CarePlanVersion rows
+/// (append-only). Amendment creates a new CarePlanVersion preserving lineage
+/// to the previous version — see docs/04_CORE_DOMAIN_MODEL.md and
+/// docs/05_ARCHITECTURE_BASELINE.md ("Signed-record immutability").
+model CarePlan {
+  id              String          @id @default(uuid())
+  tenantId        String
+  tenant          Tenant          @relation(fields: [tenantId], references: [id])
+  encounterId     String          @unique
+  encounter       Encounter       @relation(fields: [encounterId], references: [id])
+  patientId       String
+  patient         Patient         @relation(fields: [patientId], references: [id])
+  status          CarePlanStatus  @default(DRAFT)
+  instructions    String
+  followUpDate    DateTime?
+  currentVersionId String?        @unique
+  currentVersion  CarePlanVersion? @relation("CurrentVersion", fields: [currentVersionId], references: [id])
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  versions  CarePlanVersion[] @relation("PlanVersions")
+  careTasks CareTask[]
+
+  @@index([tenantId])
+  @@index([tenantId, patientId])
+  @@map("care_plans")
+}
+
+/// CarePlanVersion — append-only signed snapshot. Row is never updated once
+/// created. versionNumber 1 is created on DRAFT -> SIGNED; each amendment
+/// creates versionNumber N+1 with previousVersionId pointing at the prior
+/// signed version, actorId + reason + signedAt recording the amendment.
+model CarePlanVersion {
+  id                 String   @id @default(uuid())
+  tenantId           String
+  tenant             Tenant   @relation(fields: [tenantId], references: [id])
+  carePlanId         String
+  carePlan           CarePlan @relation("PlanVersions", fields: [carePlanId], references: [id])
+  versionNumber      Int
+  instructions       String
+  followUpDate       DateTime?
+  actorId            String
+  reason             String?
+  previousVersionId  String?
+  previousVersion    CarePlanVersion?  @relation("VersionLineage", fields: [previousVersionId], references: [id])
+  nextVersions       CarePlanVersion[] @relation("VersionLineage")
+  signedAt           DateTime @default(now())
+
+  currentForPlan CarePlan? @relation("CurrentVersion")
+
+  @@index([tenantId])
+  @@index([carePlanId])
+  @@map("care_plan_versions")
+}
+
+enum CareTaskType {
+  FOLLOW_UP
+}
+
+/// CareTask — operational follow-up work. Stored statuses are OPEN,
+/// COMPLETED, CANCELLED only. OVERDUE is a DERIVED state (status == OPEN AND
+/// dueDate < now), never persisted — see docs/04_CORE_DOMAIN_MODEL.md.
+model CareTask {
+  id          String         @id @default(uuid())
+  tenantId    String
+  tenant      Tenant         @relation(fields: [tenantId], references: [id])
+  patientId   String
+  patient     Patient        @relation(fields: [patientId], references: [id])
+  carePlanId  String
+  carePlan    CarePlan       @relation(fields: [carePlanId], references: [id])
+  type        CareTaskType   @default(FOLLOW_UP)
+  status      CareTaskStatus @default(OPEN)
+  dueDate     DateTime
+  completedAt DateTime?
+  cancelledAt DateTime?
+  createdAt   DateTime       @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, status, dueDate])
+  @@map("care_tasks")
+}
+
+enum CareTaskStatus {
+  OPEN
+  COMPLETED
+  CANCELLED
+}
+
+/// AuditEvent — append-only Core audit mechanism. Application boundary never
+/// exposes an update/delete route for this model (see docs/05_ARCHITECTURE_BASELINE.md
+/// "Append-only audit").
+model AuditEvent {
+  id         String   @id @default(uuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  actorId    String
+  action     String
+  entityType String
+  entityId   String
+  createdAt  DateTime @default(now())
+  metadata   Json?
+
+  @@index([tenantId])
+  @@index([tenantId, entityType, entityId])
+  @@map("audit_events")
 }

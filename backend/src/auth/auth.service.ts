@@ -25,6 +25,7 @@ export class AuthService {
       sub: user.id,
       tenantId: user.tenantId,
       email: user.email,
+      role: user.role,
     });
 
     return { accessToken };
