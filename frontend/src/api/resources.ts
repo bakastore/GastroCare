@@ -2,6 +2,7 @@ import { api } from './client';
 import type {
   CarePlan,
   CareTask,
+  ClinicalFormSubmission,
   CreatePatientResult,
   Encounter,
   Patient,
@@ -52,4 +53,19 @@ export const careTasksApi = {
   list: () => api.get<CareTask[]>('/care-tasks'),
   complete: (id: string) => api.post<CareTask>(`/care-tasks/${id}/complete`),
   cancel: (id: string) => api.post<CareTask>(`/care-tasks/${id}/cancel`),
+};
+
+export const clinicalFormsApi = {
+  create: (dto: {
+    encounterId: string;
+    templateKey: string;
+    responses: Record<string, number | string>;
+  }) => api.post<ClinicalFormSubmission>('/clinical-forms', dto),
+  getById: (id: string) => api.get<ClinicalFormSubmission>(`/clinical-forms/${id}`),
+  listByPatient: (patientId: string) =>
+    api.get<ClinicalFormSubmission[]>(`/clinical-forms?patientId=${patientId}`),
+  updateDraft: (id: string, dto: { responses: Record<string, number | string> }) =>
+    api.patch<ClinicalFormSubmission>(`/clinical-forms/${id}/draft`, dto),
+  complete: (id: string) =>
+    api.post<ClinicalFormSubmission>(`/clinical-forms/${id}/complete`),
 };

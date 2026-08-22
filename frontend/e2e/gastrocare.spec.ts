@@ -135,3 +135,135 @@ test.describe('CORE-02 — Receptionist boundary', () => {
     expect(response.status()).toBe(403);
   });
 });
+
+// CORE-03 real-world clinical form alignment browser E2E — synthetic data
+// only (design/REAL_WORLD_FORM_ALIGNMENT.md). Covers the HEMORRHOID_LONGO_FOLLOWUP
+// v1 template: fill, live score, complete, reopen, and a second longitudinal
+// follow-up submission.
+const CLINICAL_FORM_PATIENT_NAME = 'Nguyễn Thị Longo';
+const clinicalFormPatientPhone = `08${Date.now().toString().slice(-8)}`;
+
+test.describe('CORE-03 — Clinical Forms (HEMORRHOID_LONGO_FOLLOWUP) golden path', () => {
+  test('doctor fills, completes, reopens, and submits a second longitudinal follow-up', async ({
+    page,
+  }) => {
+    await page.goto('/login');
+    await page.getByLabel('Email').fill(DOCTOR_EMAIL);
+    await page.getByLabel('Mật khẩu').fill(DOCTOR_PASSWORD);
+    await page.getByRole('button', { name: 'Đăng nhập' }).click();
+    await expect(page).toHaveURL(/\/today$/);
+
+    await page.getByRole('link', { name: 'Bệnh nhân' }).click();
+    await page.getByRole('button', { name: '+ Bệnh nhân mới' }).click();
+    await page.getByLabel('Họ tên').fill(CLINICAL_FORM_PATIENT_NAME);
+    await page.getByLabel('Ngày sinh').fill('1978-05-20');
+    await page.getByLabel('Điện thoại').fill(clinicalFormPatientPhone);
+    await page.getByRole('button', { name: 'Tạo bệnh nhân mới' }).click();
+    await expect(page).toHaveURL(/\/patients\/[^/]+$/);
+    const patientId = page.url().match(/patients\/([^/]+)$/)?.[1];
+    expect(patientId).toBeTruthy();
+
+    await page.getByRole('link', { name: '+ Lượt khám mới' }).click();
+    await page.getByLabel('Lý do khám').fill('Khám lại sau phẫu thuật Longo 1 tháng');
+    await page.getByLabel('Ghi chú lâm sàng').fill('Vết mổ liền tốt.');
+    await page.getByLabel('Đánh giá').fill('Theo dõi sau mổ trĩ Longo');
+    await page.getByRole('button', { name: 'Lưu và tạo kế hoạch chăm sóc' }).click();
+    await expect(page).toHaveURL(/\/care-plan\/new/);
+    const encounterId = new URL(page.url()).searchParams.get('encounterId');
+    expect(encounterId).toBeTruthy();
+
+    await page.goto(
+      `/patients/${patientId}/encounters/${encounterId}/clinical-forms/hemorrhoid-longo-followup`,
+    );
+    await page.getByRole('button', { name: 'Bắt đầu phiếu khám lại' }).click();
+    await expect(page.getByRole('heading', { name: 'Khám lại sau phẫu thuật Longo (trĩ)' })).toBeVisible();
+
+    await page.getByLabel('Lần khám lại thứ').fill('1');
+    await page.getByLabel('Số tháng sau phẫu thuật').fill('1');
+    await page.getByLabel('Đau (thang điểm VAS, 0-10)').fill('2');
+    await page.getByLabel('Đại tiện không tự chủ với phân rắn').selectOption('0');
+    await page.getByLabel('Đại tiện không tự chủ với phân lỏng').selectOption('1');
+    await page.getByLabel('Không tự chủ với hơi').selectOption('1');
+    await page.getByLabel('Phải mang băng vệ sinh/tã').selectOption('0');
+    await page.getByLabel('Thay đổi lối sống do rối loạn tự chủ').selectOption('0');
+    await expect(page.getByText('Tổng điểm Wexner (tạm tính): 2 / 20')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Hoàn tất phiếu khám lại' }).click();
+    await expect(page.getByText('Đã hoàn tất', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('Đau (thang điểm VAS, 0-10)')).toBeDisabled();
+
+    // Reopen — verify persistence.
+    await page.reload();
+    await expect(page.getByText('Đã hoàn tất', { exact: true })).toBeVisible();
+    await expect(page.getByText('Tổng điểm Wexner (tạm tính): 2 / 20')).toBeVisible();
+
+    // Timeline shows the completed submission with its computed score.
+    await page.goto(`/patients/${patientId}`);
+    await expect(page.getByText('Tổng điểm Wexner: 2 / 20')).toBeVisible();
+
+    // Second longitudinal follow-up encounter + submission.
+    await page.getByRole('link', { name: '+ Lượt khám mới' }).click();
+    await page.getByLabel('Lý do khám').fill('Khám lại sau phẫu thuật Longo 3 tháng');
+    await page.getByLabel('Ghi chú lâm sàng').fill('Ổn định.');
+    await page.getByLabel('Đánh giá').fill('Theo dõi định kỳ');
+    await page.getByRole('button', { name: 'Lưu và tạo kế hoạch chăm sóc' }).click();
+    await expect(page).toHaveURL(/\/care-plan\/new/);
+    const secondEncounterId = new URL(page.url()).searchParams.get('encounterId');
+    expect(secondEncounterId).toBeTruthy();
+    expect(secondEncounterId).not.toBe(encounterId);
+
+    await page.goto(
+      `/patients/${patientId}/encounters/${secondEncounterId}/clinical-forms/hemorrhoid-longo-followup`,
+    );
+    await page.getByRole('button', { name: 'Bắt đầu phiếu khám lại' }).click();
+    await page.getByLabel('Lần khám lại thứ').fill('2');
+    await page.getByLabel('Số tháng sau phẫu thuật').fill('3');
+    await page.getByLabel('Đau (thang điểm VAS, 0-10)').fill('0');
+    for (const label of [
+      'Đại tiện không tự chủ với phân rắn',
+      'Đại tiện không tự chủ với phân lỏng',
+      'Không tự chủ với hơi',
+      'Phải mang băng vệ sinh/tã',
+      'Thay đổi lối sống do rối loạn tự chủ',
+    ]) {
+      await page.getByLabel(label).selectOption('0');
+    }
+    await page.getByRole('button', { name: 'Hoàn tất phiếu khám lại' }).click();
+    await expect(page.getByText('Đã hoàn tất', { exact: true })).toBeVisible();
+
+    // Longitudinal history: Timeline now shows two completed submissions.
+    await page.goto(`/patients/${patientId}`);
+    await expect(page.getByText('Phiếu khám lại đã hoàn tất')).toHaveCount(2);
+  });
+});
+
+test.describe('CORE-03 — Clinical Forms receptionist boundary', () => {
+  test('receptionist backend access to clinical form data remains rejected with 403', async ({
+    page,
+    request,
+  }) => {
+    await page.goto('/login');
+    await page.getByLabel('Email').fill(RECEPTIONIST_EMAIL);
+    await page.getByLabel('Mật khẩu').fill(RECEPTIONIST_PASSWORD);
+    await page.getByRole('button', { name: 'Đăng nhập' }).click();
+    await expect(page).toHaveURL(/\/patients$/);
+
+    const token = await page.evaluate(() => window.localStorage.getItem('gastrocare.accessToken'));
+    expect(token).toBeTruthy();
+
+    const listResponse = await request.get(`${API_URL}/clinical-forms?patientId=irrelevant`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(listResponse.status()).toBe(403);
+
+    const createResponse = await request.post(`${API_URL}/clinical-forms`, {
+      headers: { Authorization: `Bearer ${token}` },
+      data: {
+        encounterId: '00000000-0000-0000-0000-000000000000',
+        templateKey: 'HEMORRHOID_LONGO_FOLLOWUP',
+        responses: {},
+      },
+    });
+    expect(createResponse.status()).toBe(403);
+  });
+});

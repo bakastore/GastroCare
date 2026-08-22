@@ -12,6 +12,7 @@ import { PatientsModule } from './patients/patients.module';
 import { EncountersModule } from './encounters/encounters.module';
 import { CarePlansModule } from './care-plans/care-plans.module';
 import { CareTasksModule } from './care-tasks/care-tasks.module';
+import { ClinicalFormsModule } from './clinical-forms/clinical-forms.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { CareTasksModule } from './care-tasks/care-tasks.module';
     EncountersModule,
     CarePlansModule,
     CareTasksModule,
+    ClinicalFormsModule,
   ],
   providers: [
     {

@@ -36,36 +36,38 @@ export function TodayPage() {
       )}
 
       {!isLoading && !error && openTasks.length > 0 && (
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Bệnh nhân</th>
-              <th>Ngày hẹn</th>
-              <th>Trạng thái</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {openTasks.map((task) => (
-              <tr key={task.id}>
-                <td>{patientNameById.get(task.patientId) ?? '—'}</td>
-                <td>{formatDate(task.dueDate)}</td>
-                <td>
-                  {task.overdue ? (
-                    <span className="badge badge-overdue">Quá hạn</span>
-                  ) : (
-                    <span className="badge badge-open">Đang chờ</span>
-                  )}
-                </td>
-                <td>
-                  <Link className="btn btn-ghost" to={`/patients/${task.patientId}`}>
-                    Mở bệnh nhân
-                  </Link>
-                </td>
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Bệnh nhân</th>
+                <th>Ngày hẹn</th>
+                <th>Trạng thái</th>
+                <th></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {openTasks.map((task) => (
+                <tr key={task.id}>
+                  <td>{patientNameById.get(task.patientId) ?? '—'}</td>
+                  <td>{formatDate(task.dueDate)}</td>
+                  <td>
+                    {task.overdue ? (
+                      <span className="badge badge-overdue">Quá hạn</span>
+                    ) : (
+                      <span className="badge badge-open">Đang chờ</span>
+                    )}
+                  </td>
+                  <td>
+                    <Link className="btn btn-ghost" to={`/patients/${task.patientId}`}>
+                      Mở bệnh nhân
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

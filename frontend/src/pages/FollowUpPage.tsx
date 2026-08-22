@@ -90,57 +90,59 @@ export function FollowUpPage() {
       )}
 
       {!isLoading && !error && visibleTasks.length > 0 && (
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Bệnh nhân</th>
-              <th>Ngày hẹn</th>
-              <th>Trạng thái</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {visibleTasks.map((task) => (
-              <tr key={task.id}>
-                <td>
-                  <Link to={`/patients/${task.patientId}`}>
-                    {patientNameById.get(task.patientId) ?? '—'}
-                  </Link>
-                </td>
-                <td>{formatDate(task.dueDate)}</td>
-                <td>
-                  {task.overdue ? (
-                    <span className="badge badge-overdue">Quá hạn</span>
-                  ) : (
-                    <span className="badge badge-open">{task.status}</span>
-                  )}
-                </td>
-                <td>
-                  {task.status === 'OPEN' && (
-                    <div className="row-actions">
-                      <button
-                        type="button"
-                        className="btn btn-primary"
-                        disabled={pendingTaskId === task.id}
-                        onClick={() => completeTask(task.id)}
-                      >
-                        Hoàn thành
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-ghost"
-                        disabled={pendingTaskId === task.id}
-                        onClick={() => cancelTask(task.id)}
-                      >
-                        Hủy
-                      </button>
-                    </div>
-                  )}
-                </td>
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Bệnh nhân</th>
+                <th>Ngày hẹn</th>
+                <th>Trạng thái</th>
+                <th></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {visibleTasks.map((task) => (
+                <tr key={task.id}>
+                  <td>
+                    <Link to={`/patients/${task.patientId}`}>
+                      {patientNameById.get(task.patientId) ?? '—'}
+                    </Link>
+                  </td>
+                  <td>{formatDate(task.dueDate)}</td>
+                  <td>
+                    {task.overdue ? (
+                      <span className="badge badge-overdue">Quá hạn</span>
+                    ) : (
+                      <span className="badge badge-open">{task.status}</span>
+                    )}
+                  </td>
+                  <td>
+                    {task.status === 'OPEN' && (
+                      <div className="row-actions">
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          disabled={pendingTaskId === task.id}
+                          onClick={() => completeTask(task.id)}
+                        >
+                          Hoàn thành
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          disabled={pendingTaskId === task.id}
+                          onClick={() => cancelTask(task.id)}
+                        >
+                          Hủy
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

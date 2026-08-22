@@ -14,6 +14,16 @@
 // composed from Encounter/CarePlan/CareTask (see docs/04_CORE_DOMAIN_MODEL.md).
 // CareEpisode is intentionally NOT implemented in CORE-01 (deferred domain,
 // see Owner Execution Contract CORE-01 section 5.1).
+//
+// Clinical Forms (CORE-03 — real-world clinical form alignment, see
+// design/REAL_WORLD_FORM_ALIGNMENT.md): ClinicalFormSubmission only. Template
+// field/section/score definitions (which fields exist, their types, and how
+// derived scores are computed) are code-configuration in
+// backend/src/clinical-forms/templates — deliberately NOT modeled in the
+// database, to avoid a generic low-code form-builder. Only the (templateKey,
+// templateVersion) identity is persisted per submission, so a historical
+// submission always resolves against the exact template version it was
+// captured under, even after a newer version is introduced.
 
 generator client {
   provider = "prisma-client-js"
@@ -32,12 +42,13 @@ model Tenant {
 
   authUsers            AuthUser[]
   foundationProbeItems FoundationProbeRecord[]
-  patients             Patient[]
-  encounters           Encounter[]
-  carePlans            CarePlan[]
-  carePlanVersions     CarePlanVersion[]
-  careTasks            CareTask[]
-  auditEvents          AuditEvent[]
+  patients                Patient[]
+  encounters              Encounter[]
+  carePlans               CarePlan[]
+  carePlanVersions        CarePlanVersion[]
+  careTasks               CareTask[]
+  auditEvents             AuditEvent[]
+  clinicalFormSubmissions ClinicalFormSubmission[]
 
   @@map("tenants")
 }
@@ -103,9 +114,10 @@ model Patient {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  encounters Encounter[]
-  carePlans  CarePlan[]
-  careTasks  CareTask[]
+  encounters              Encounter[]
+  carePlans               CarePlan[]
+  careTasks               CareTask[]
+  clinicalFormSubmissions ClinicalFormSubmission[]
 
   @@index([tenantId])
   @@index([tenantId, normalizedFullName])
@@ -132,7 +144,8 @@ model Encounter {
   source         String   @default("MANUAL")
   createdAt      DateTime @default(now())
 
-  carePlan CarePlan?
+  carePlan                CarePlan?
+  clinicalFormSubmissions ClinicalFormSubmission[]
 
   @@index([tenantId])
   @@index([tenantId, patientId])
@@ -250,4 +263,42 @@ model AuditEvent {
   @@index([tenantId])
   @@index([tenantId, entityType, entityId])
   @@map("audit_events")
+}
+
+enum ClinicalFormStatus {
+  DRAFT
+  COMPLETED
+}
+
+/// ClinicalFormSubmission — structured clinical form capture, one row per
+/// (Encounter, templateKey). DRAFT is mutable; COMPLETED is immutable (no
+/// amendment lineage in this first version — see Owner Execution Contract
+/// section 36, "do not invent a complex document lifecycle unnecessarily").
+/// `responses` holds the raw item-level answers; `computedScores` holds
+/// derived instrument totals (e.g. Wexner) recomputed deterministically from
+/// `responses` at completion time — it is a convenience cache, not the
+/// source of truth. See backend/src/clinical-forms/templates for the
+/// code-defined field schema this validates against.
+model ClinicalFormSubmission {
+  id              String             @id @default(uuid())
+  tenantId        String
+  tenant          Tenant             @relation(fields: [tenantId], references: [id])
+  patientId       String
+  patient         Patient            @relation(fields: [patientId], references: [id])
+  encounterId     String
+  encounter       Encounter          @relation(fields: [encounterId], references: [id])
+  templateKey     String
+  templateVersion Int
+  status          ClinicalFormStatus @default(DRAFT)
+  responses       Json
+  computedScores  Json?
+  actorId         String
+  submittedAt     DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@unique([encounterId, templateKey])
+  @@index([tenantId])
+  @@index([tenantId, patientId])
+  @@map("clinical_form_submissions")
 }

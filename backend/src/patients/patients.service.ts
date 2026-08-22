@@ -133,8 +133,17 @@ export class PatientsService {
       orderBy: { createdAt: 'asc' },
     });
 
+    const completedClinicalForms =
+      await this.prisma.clinicalFormSubmission.findMany({
+        where: { tenantId, patientId, status: 'COMPLETED' },
+      });
+
     type TimelineEvent = {
-      type: 'ENCOUNTER' | 'CARE_PLAN_SIGNED' | 'CARE_TASK';
+      type:
+        | 'ENCOUNTER'
+        | 'CARE_PLAN_SIGNED'
+        | 'CARE_TASK'
+        | 'CLINICAL_FORM_SUBMITTED';
       timestamp: Date;
       data: unknown;
     };
@@ -180,6 +189,19 @@ export class PatientsService {
           });
         }
       }
+    }
+
+    for (const submission of completedClinicalForms) {
+      events.push({
+        type: 'CLINICAL_FORM_SUBMITTED',
+        timestamp: submission.submittedAt ?? submission.createdAt,
+        data: {
+          id: submission.id,
+          templateKey: submission.templateKey,
+          templateVersion: submission.templateVersion,
+          computedScores: submission.computedScores,
+        },
+      });
     }
 
     events.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());

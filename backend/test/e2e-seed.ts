@@ -15,6 +15,7 @@ export const E2E_RECEPTIONIST_PASSWORD = 'CoreReceptionE2E-Pass1!';
 export async function seedE2eDatabase(): Promise<void> {
   const prisma = new PrismaClient();
   try {
+    await prisma.clinicalFormSubmission.deleteMany();
     await prisma.auditEvent.deleteMany();
     await prisma.careTask.deleteMany();
     await prisma.carePlanVersion.deleteMany();

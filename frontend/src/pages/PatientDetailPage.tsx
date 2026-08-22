@@ -63,7 +63,7 @@ function DoctorClinicalWorkspace({ patientId }: { patientId: string }) {
           {(timelineQuery.data ?? []).map((event, index) => (
             <li key={`${event.type}-${index}`} className={`timeline-item timeline-${event.type}`}>
               <span className="timeline-time">{formatDateTime(event.timestamp)}</span>
-              <TimelineEventBody event={event} />
+              <TimelineEventBody event={event} patientId={patientId} />
             </li>
           ))}
         </ul>
@@ -74,14 +74,31 @@ function DoctorClinicalWorkspace({ patientId }: { patientId: string }) {
 
 function TimelineEventBody({
   event,
+  patientId,
 }: {
   event: { type: string; data: Record<string, unknown> };
+  patientId: string;
 }) {
   if (event.type === 'ENCOUNTER') {
+    const encounterId = String(event.data.id);
     return (
       <div>
         <strong>Lượt khám</strong> — {String(event.data.reasonForVisit)}
         <p>{String(event.data.assessment)}</p>
+        <Link to={`/patients/${patientId}/encounters/${encounterId}/clinical-forms/hemorrhoid-longo-followup`}>
+          Phiếu khám lại (Longo)
+        </Link>
+      </div>
+    );
+  }
+  if (event.type === 'CLINICAL_FORM_SUBMITTED') {
+    const scores = event.data.computedScores as Record<string, number | null> | null;
+    return (
+      <div>
+        <strong>Phiếu khám lại đã hoàn tất</strong> — {String(event.data.templateKey)}
+        {scores?.wexner !== undefined && scores?.wexner !== null && (
+          <p>Tổng điểm Wexner: {scores.wexner} / 20</p>
+        )}
       </div>
     );
   }

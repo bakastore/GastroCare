@@ -53,10 +53,30 @@ export interface CareTask {
   overdue: boolean;
 }
 
-export type TimelineEventType = 'ENCOUNTER' | 'CARE_PLAN_SIGNED' | 'CARE_TASK';
+export type TimelineEventType =
+  | 'ENCOUNTER'
+  | 'CARE_PLAN_SIGNED'
+  | 'CARE_TASK'
+  | 'CLINICAL_FORM_SUBMITTED';
 
 export interface TimelineEvent {
   type: TimelineEventType;
   timestamp: string;
   data: Record<string, unknown>;
+}
+
+export type ClinicalFormStatus = 'DRAFT' | 'COMPLETED';
+
+export interface ClinicalFormSubmission {
+  id: string;
+  patientId: string;
+  encounterId: string;
+  templateKey: string;
+  templateVersion: number;
+  status: ClinicalFormStatus;
+  responses: Record<string, number | string>;
+  computedScores: Record<string, number | null> | null;
+  submittedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 }

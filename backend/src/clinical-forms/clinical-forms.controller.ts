@@ -1,0 +1,66 @@
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
+import { AuthRole } from '@prisma/client';
+import { ClinicalFormsService } from './clinical-forms.service';
+import { CreateClinicalFormSubmissionDto } from './dto/create-submission.dto';
+import { UpdateDraftClinicalFormSubmissionDto } from './dto/update-draft-submission.dto';
+import { CurrentUser } from '../auth/current-user.decorator';
+import type { AuthenticatedUser } from '../auth/current-user.decorator';
+import { Roles } from '../auth/roles.decorator';
+
+/**
+ * Clinical Forms carry detailed clinical content — DOCTOR-only for the
+ * entire controller (RECEPTIONIST must not gain access to clinical form
+ * responses, see Owner Execution Contract section 38).
+ */
+@Roles(AuthRole.DOCTOR)
+@Controller('clinical-forms')
+export class ClinicalFormsController {
+  constructor(private readonly clinicalFormsService: ClinicalFormsService) {}
+
+  @Post()
+  create(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateClinicalFormSubmissionDto,
+  ) {
+    return this.clinicalFormsService.create(user.tenantId, user.userId, dto);
+  }
+
+  @Get()
+  listByPatient(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('patientId') patientId?: string,
+  ) {
+    if (!patientId) {
+      throw new BadRequestException('patientId query parameter is required');
+    }
+    return this.clinicalFormsService.listByPatient(user.tenantId, patientId);
+  }
+
+  @Get(':id')
+  getById(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.clinicalFormsService.getById(user.tenantId, id);
+  }
+
+  @Patch(':id/draft')
+  updateDraft(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateDraftClinicalFormSubmissionDto,
+  ) {
+    return this.clinicalFormsService.updateDraft(user.tenantId, id, dto);
+  }
+
+  @Post(':id/complete')
+  complete(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.clinicalFormsService.complete(user.tenantId, user.userId, id);
+  }
+}

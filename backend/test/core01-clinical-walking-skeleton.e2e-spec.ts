@@ -50,6 +50,7 @@ describe('CORE-01 — Clinical Core Walking Skeleton (e2e)', () => {
     prisma = app.get(PrismaService);
 
     // Reset all Core + Foundation tables (disposable test DB only).
+    await prisma.clinicalFormSubmission.deleteMany();
     await prisma.auditEvent.deleteMany();
     await prisma.careTask.deleteMany();
     await prisma.carePlanVersion.deleteMany();
@@ -107,6 +108,7 @@ describe('CORE-01 — Clinical Core Walking Skeleton (e2e)', () => {
   });
 
   afterAll(async () => {
+    await prisma.clinicalFormSubmission.deleteMany();
     await prisma.auditEvent.deleteMany();
     await prisma.careTask.deleteMany();
     await prisma.carePlanVersion.deleteMany();

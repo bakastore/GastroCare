@@ -3,6 +3,7 @@ import { AppShell } from './components/AppShell';
 import { RequireAuth, RequireRole } from './components/RouteGuards';
 import { LoginPage } from './pages/LoginPage';
 import { NotAuthorizedPage } from './pages/NotAuthorizedPage';
+import { NotFoundPage } from './pages/NotFoundPage';
 import { HomeRedirect } from './pages/HomeRedirect';
 import { TodayPage } from './pages/TodayPage';
 import { PatientsPage } from './pages/PatientsPage';
@@ -11,6 +12,7 @@ import { NewEncounterPage } from './pages/NewEncounterPage';
 import { NewCarePlanPage } from './pages/NewCarePlanPage';
 import { CarePlanPage } from './pages/CarePlanPage';
 import { FollowUpPage } from './pages/FollowUpPage';
+import { ClinicalFormPage } from './pages/ClinicalFormPage';
 
 export default function App() {
   return (
@@ -28,13 +30,21 @@ export default function App() {
             <Route path="/patients/:patientId/encounters/new" element={<NewEncounterPage />} />
             <Route path="/patients/:patientId/care-plan/new" element={<NewCarePlanPage />} />
             <Route path="/care-plans/:carePlanId" element={<CarePlanPage />} />
+            <Route
+              path="/patients/:patientId/encounters/:encounterId/clinical-forms/hemorrhoid-longo-followup"
+              element={<ClinicalFormPage />}
+            />
           </Route>
 
           <Route element={<RequireRole allowed={['DOCTOR', 'RECEPTIONIST']} />}>
             <Route path="/patients" element={<PatientsPage />} />
             <Route path="/patients/:patientId" element={<PatientDetailPage />} />
           </Route>
+
+          <Route path="*" element={<NotFoundPage />} />
         </Route>
+
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
   );

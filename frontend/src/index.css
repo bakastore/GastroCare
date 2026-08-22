@@ -273,6 +273,11 @@ form textarea {
 }
 
 /* Table */
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
 .data-table {
   width: 100%;
   border-collapse: collapse;

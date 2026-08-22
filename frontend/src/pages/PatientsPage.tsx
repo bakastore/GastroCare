@@ -60,32 +60,34 @@ export function PatientsPage() {
       )}
 
       {!patientsQuery.isLoading && !patientsQuery.error && filtered.length > 0 && (
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Họ tên</th>
-              <th>Ngày sinh</th>
-              <th>Giới tính</th>
-              <th>Điện thoại</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((patient) => (
-              <tr key={patient.id}>
-                <td>{patient.fullName}</td>
-                <td>{formatDate(patient.dateOfBirth)}</td>
-                <td>{genderLabel[patient.gender]}</td>
-                <td>{patient.phone}</td>
-                <td>
-                  <Link className="btn btn-ghost" to={`/patients/${patient.id}`}>
-                    Mở hồ sơ
-                  </Link>
-                </td>
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Họ tên</th>
+                <th>Ngày sinh</th>
+                <th>Giới tính</th>
+                <th>Điện thoại</th>
+                <th></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filtered.map((patient) => (
+                <tr key={patient.id}>
+                  <td>{patient.fullName}</td>
+                  <td>{formatDate(patient.dateOfBirth)}</td>
+                  <td>{genderLabel[patient.gender]}</td>
+                  <td>{patient.phone}</td>
+                  <td>
+                    <Link className="btn btn-ghost" to={`/patients/${patient.id}`}>
+                      Mở hồ sơ
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {isCreating && (
