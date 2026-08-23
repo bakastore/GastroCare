@@ -2,11 +2,13 @@
 
 Cập nhật: 2026-08-21
 
+> **Ghi chú thẩm quyền và trạng thái hiện hành (23/08/2026):** Nội dung workflow tổng quát bên dưới được giữ như baseline/giả thuyết lịch sử. Foundation và Technical Core đã `CLOSED`; GastroCare Core tổng thể đang `IN PROGRESS`. Longo Clinical Workflow v1.0 đã `OWNER LOCKED` và [`08_LONGO_CLINICAL_WORKFLOW_v1.0.md`](08_LONGO_CLINICAL_WORKFLOW_v1.0.md) là SSOT có thẩm quyền cho quy trình Longo. Triển khai Real-world Clinical Core chưa bắt đầu; real-patient runtime chưa được phép. A-001 về tiêu hóa vẫn là Working Assumption, chưa được Owner xác nhận thành quyết định mới.
+
 ```
-STATUS: ASSUMED BASELINE FOR BUILD
+STATUS: HISTORICAL GENERAL WORKFLOW BASELINE
 ```
 
-Toàn bộ nội dung dưới đây là **Working Product Hypothesis**, đúc kết từ Synthetic Discovery Baseline v0.1 (xem `00_PROJECT_OVERVIEW.md` — Existing Project Assets). Không giả vờ đã được BS Thái xác nhận. Sẽ được thay bằng evidence thật qua Discovery Round 1 với BS Thái sau khi có sản phẩm để quan sát (P-06, Build → Observe → Correct); hướng dẫn thực hiện Discovery Round 1 cụ thể chưa tồn tại trong repository hiện tại và sẽ được bổ sung khi cần, không phải điều kiện để bắt đầu build.
+Đây là baseline tổng quát ban đầu và toàn bộ nội dung dưới đây là **Working Product Hypothesis**, đúc kết từ Synthetic Discovery Baseline v0.1 (xem `00_PROJECT_OVERVIEW.md` — Existing Project Assets). Tài liệu này không phải SSOT hiện hành cho Longo; đối với quy trình Longo, [`08_LONGO_CLINICAL_WORKFLOW_v1.0.md`](08_LONGO_CLINICAL_WORKFLOW_v1.0.md) có thẩm quyền cao hơn. Nội dung lịch sử bên dưới không giả vờ đã được BS Thái xác nhận. Sẽ được thay bằng evidence thật qua Discovery Round 1 với BS Thái sau khi có sản phẩm để quan sát (P-06, Build → Observe → Correct); hướng dẫn thực hiện Discovery Round 1 cụ thể chưa tồn tại trong repository hiện tại và sẽ được bổ sung khi cần, không phải điều kiện để bắt đầu build.
 
 ## Tình huống vận hành giả định
 

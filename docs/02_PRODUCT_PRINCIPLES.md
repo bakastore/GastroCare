@@ -2,6 +2,8 @@
 
 Cập nhật: 2026-08-21
 
+> **Ghi chú trạng thái hiện hành (23/08/2026):** Technical Core đã `CLOSED`; GastroCare Core tổng thể đang `IN PROGRESS`; Longo Clinical Workflow v1.0 đã `OWNER LOCKED`; triển khai Real-world Clinical Core chưa bắt đầu; real-patient runtime chưa được phép. Trạng thái chi tiết nằm tại [`PROJECT_STATE.md`](PROJECT_STATE.md).
+
 Đây là "hiến pháp" sản phẩm (normative product constitution) — mọi tài liệu, thiết kế, và quyết định kỹ thuật khác trong Documentation Baseline phải nhất quán với các nguyên tắc dưới đây. Khi có mâu thuẫn, xem Authority Hierarchy ở cuối file.
 
 ## P-01 — Core phải có giá trị mà không cần AI
@@ -78,6 +80,7 @@ Các tài liệu trong bộ Documentation Baseline dùng một số nhãn chuyê
 
 | Nhãn chuyên biệt | Map vào lớp canonical | Ghi chú |
 |---|---|---|
+| OWNER LOCKED | OWNER DECISION | Quyết định Owner có ngữ nghĩa được đóng băng trong version/phạm vi đã nêu cho đến khi một Owner Decision mới hơn thay đổi rõ ràng. Nhãn này không tạo cấp thẩm quyền mới cao hơn Owner Decision. |
 | DOMAIN CANDIDATE | WORKING ASSUMPTION | Trừ khi một invariant cụ thể đã được Owner-accept tường minh hoặc là một phần của baseline normative đã được chấp nhận — khi đó invariant đó (không phải toàn bộ domain candidate) map vào APPROVED BASELINE. |
 | PROPOSED BASELINE — RELEASE CANDIDATE | APPROVED BASELINE | Áp dụng sau khi Documentation Baseline v1.0 đã được Owner acceptance (xem `PROJECT_STATE.md`). Trước khi Owner acceptance, nhãn này vẫn ở mức WORKING ASSUMPTION. |
 | LEGAL REVIEW REQUIRED | UNKNOWN / OPEN ITEM | Mang thêm qualifier BLOCKING legal-resolution ở bất kỳ gate nào yêu cầu giải quyết dứt điểm trước khi tiến hành (vd Real-Patient-Data Gate tại `06_SAFETY_PRIVACY_AND_GOVERNANCE.md`). |

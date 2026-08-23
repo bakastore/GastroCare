@@ -4,10 +4,15 @@ Cập nhật: 2026-08-21
 
 ```
 STATUS: APPROVED BASELINE (Owner-accepted via Documentation Baseline v1.0)
-TECHNICAL FOUNDATION (GATE 2) IN PROGRESS — SEE PROJECT_STATE.md FOR CURRENT SOURCE-OF-TRUTH ON WHAT ACTUALLY EXISTS
+FOUNDATION: CLOSED
+TECHNICAL FOUNDATION (GATE 2): CLOSED
+CORE-01 / CORE-02 / CORE-03 / TECHNICAL CORE: CLOSED
+GASTROCARE CORE: IN PROGRESS
+REAL-WORLD CLINICAL CORE IMPLEMENTATION: NOT STARTED
+REAL-PATIENT RUNTIME: NOT AUTHORIZED
 ```
 
-Tài liệu này mô tả kiến trúc để hiện thực hóa [04_CORE_DOMAIN_MODEL.md](04_CORE_DOMAIN_MODEL.md). Đây là APPROVED BASELINE (Owner-accepted qua Documentation Baseline v1.0 Owner Review) — vẫn là kiến trúc chuẩn để implement theo, không phải mô tả đầy đủ hệ thống đang chạy: Gate 2 mới đang bootstrap phần Foundation tối thiểu (auth, tenant isolation, migration review). GastroCare Core domain layer chưa được implement (xem [PROJECT_STATE.md](PROJECT_STATE.md)).
+Tài liệu này mô tả kiến trúc để hiện thực hóa [04_CORE_DOMAIN_MODEL.md](04_CORE_DOMAIN_MODEL.md). Đây là APPROVED BASELINE (Owner-accepted qua Documentation Baseline v1.0 Owner Review), không phải mô tả đầy đủ hệ thống đang chạy. Technical Core hiện đã đóng; GastroCare Core tổng thể vẫn đang triển khai (xem [PROJECT_STATE.md](PROJECT_STATE.md)).
 
 ## Layer Model (đề xuất)
 
@@ -36,14 +41,14 @@ Các bất biến sau là APPROVED BASELINE (Owner-accepted), giữ nguyên qua 
 - **Append-only audit:** AuditEvent chỉ được thêm (insert), không bao giờ update hoặc delete.
 - **Patient Timeline projection:** Timeline luôn là read model dựng từ Encounter/CarePlan/CareTask; không bao giờ là write target độc lập.
 - **Domain independence from AI providers:** Domain layer không import, gọi trực tiếp, hoặc phụ thuộc runtime vào bất kỳ AI provider nào. Tích hợp AI (khi triển khai) phải nằm ở một layer riêng, giao tiếp với Domain qua interface ổn định.
-- **Migration review before application:** không migration nào (khi bắt đầu có database) được áp dụng vào môi trường có dữ liệu thật mà không qua review — chi tiết governance ở [06_SAFETY_PRIVACY_AND_GOVERNANCE.md](06_SAFETY_PRIVACY_AND_GOVERNANCE.md).
+- **Migration review before application:** không migration nào được áp dụng mà không qua review theo governance tại [06_SAFETY_PRIVACY_AND_GOVERNANCE.md](06_SAFETY_PRIVACY_AND_GOVERNANCE.md). Clinical Form amendment lineage (chuỗi sửa đổi biểu mẫu lâm sàng) phải tuân thủ bất biến này. Thiết kế lại unique constraint (ràng buộc duy nhất) hiện tại trên cặp (`encounterId`, `templateKey`) là breaking schema change (thay đổi lược đồ phá vỡ tương thích) và bắt buộc được migration review trước khi áp dụng. Tài liệu này không cho phép hoặc triển khai migration đó.
 - **Separation of domain core from future AI layers:** cấu trúc thư mục/module (khi implement) phải phản ánh rõ ranh giới Core vs AI Value-Added Layer, để việc bật/tắt AI không đòi hỏi thay đổi Domain.
 
 ## Proposed Technology Baseline
 
 ```
 STATUS: APPROVED TECHNOLOGY BASELINE
-GATE 2 (TECHNICAL FOUNDATION) SCAFFOLD IN PROGRESS — SEE PROJECT_STATE.md
+GATE 2 (TECHNICAL FOUNDATION): CLOSED — SEE PROJECT_STATE.md
 ```
 
 Công nghệ (APPROVED BASELINE):
@@ -53,9 +58,11 @@ Công nghệ (APPROVED BASELINE):
 - **PostgreSQL** — persistence.
 - **REST API** — giao tiếp Experience ↔ Application.
 
-Gate 2 đang bootstrap Foundation scaffold tối thiểu trên nền công nghệ này (auth + tenant isolation probe) — chưa implement GastroCare Core domain layer. Trạng thái chính xác của những gì thực sự tồn tại trong repository luôn ở [PROJECT_STATE.md](PROJECT_STATE.md) (Verified Repository / Project State override wording ở đây theo Authority Hierarchy — [02_PRODUCT_PRINCIPLES.md](02_PRODUCT_PRINCIPLES.md)).
+Đoạn mô tả Gate 2 đang bootstrap trong baseline ban đầu nay là bối cảnh lịch sử. Gate 2 và Technical Core đã đóng. Trạng thái chính xác của những gì thực sự tồn tại trong repository luôn ở [PROJECT_STATE.md](PROJECT_STATE.md) (Verified Repository / Project State override wording ở đây theo Authority Hierarchy — [02_PRODUCT_PRINCIPLES.md](02_PRODUCT_PRINCIPLES.md)).
 
-## Việc cần khóa trước khi bootstrap kỹ thuật
+## Các điểm từng để mở trong baseline ban đầu
+
+Danh sách dưới đây được giữ làm bối cảnh lịch sử. Technical Core đã được bootstrap và đã đóng; mọi thay đổi tiếp theo phải đối chiếu implementation hiện hành, `PROJECT_STATE.md` và các Owner Decision mới hơn.
 
 - Thống nhất tên gọi domain-to-schema cho AuditEvent (naming, không phải quyết định domain — xem 04_CORE_DOMAIN_MODEL.md).
 - Cơ chế kỹ thuật cụ thể cho Amendment lineage (bảng version riêng hay field version).

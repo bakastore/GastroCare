@@ -1,208 +1,125 @@
-PROJECT:
-GastroCare
+# GastroCare — Trạng thái dự án
 
-DATE:
-2026-08-21
+**Cập nhật:** 23/08/2026
 
-PROJECT TYPE:
-GREENFIELD
+**Loại dự án:** GREENFIELD
 
-STATUS:
-GASTROCARE CORE IN PROGRESS — CORE-01 CLINICAL CORE WALKING SKELETON OWNER ACCEPTED, CLOSED. CORE-02 DOCTOR EXPERIENCE / WEB UI v0.1 OWNER ACCEPTED, CLOSED. CORE-03 PILOT READINESS & OPERATIONAL HARDENING OWNER ACCEPTED, CLOSED. CORE-03 REAL-WORLD CLINICAL FORM ALIGNMENT v0.1 (Clinical Forms backend + frontend + backup/restore regression + browser E2E) OWNER ACCEPTED — FINAL INDEPENDENT TECHNICAL AUDIT PASSED: BACKEND 99/99, FRONTEND 20/20, BROWSER 4/4 (stable across two consecutive full-suite runs), BACKUP/RESTORE PASS INCLUDING ClinicalFormSubmission, PRIVACY/GIT FINAL SCAN PASS. One real defect (frontend completion flow did not persist unsaved form edits before finalizing) was found and fixed during verification — see design/REAL_WORLD_FORM_ALIGNMENT.md §10, preserved as historical record. TECHNICAL CORE IMPLEMENTATION: COMPLETE, FINAL TECHNICAL AUDIT PASSED. REAL PATIENT DATA REMAINS NOT AUTHORIZED.
+**Định hướng sản phẩm:** CORE-FIRST
 
-PRODUCT DIRECTION:
-CORE-FIRST
+**Phương thức nhập liệu ban đầu:** MANUAL
 
-INITIAL INPUT:
-MANUAL
+**AI:** DEFERRED — lớp giá trị gia tăng trong tương lai
 
-AI:
-DEFERRED
+Tài liệu này chỉ ghi nhận trạng thái đã được xác minh. Thứ bậc thẩm quyền:
 
-AI ROLE:
-FUTURE VALUE-ADDED LAYER
+```text
+Quyết định Owner rõ ràng mới nhất
+> Quyết định Owner trước đó
+> Trạng thái dự án đã xác minh
+> Baseline đã phê duyệt
+> Giả định đang làm việc
+> Khuyến nghị của AI
+```
 
-FIRST PILOT USER:
-BS THÁI
-OWNER CONFIRMED
+## 1. Trạng thái tổng thể
 
-FIRST SPECIALTY:
-GASTROENTEROLOGY
-CARRIED-FORWARD ASSUMPTION
-NOT YET OWNER-CONFIRMED IN CURRENT BASELINE
+| Hạng mục | Trạng thái |
+|---|---|
+| FOUNDATION | CLOSED |
+| Technical Foundation (nền tảng kỹ thuật) | CLOSED |
+| CORE-01 | CLOSED — OWNER ACCEPTED |
+| CORE-02 | CLOSED — OWNER ACCEPTED |
+| CORE-03 / Technical Core (lõi kỹ thuật) | CLOSED — OWNER ACCEPTED |
+| GastroCare Core tổng thể | IN PROGRESS |
+| Real-world Clinical Core implementation (triển khai lõi lâm sàng theo thực tế) | NOT STARTED |
+| Owner Synthetic Clinical Acceptance | Chưa thực hiện; chỉ xác nhận mức sẵn sàng triển khai Clinical Core, không đóng GastroCare Core |
+| AUTHORIZED REAL-WORLD PILOT ACCEPTANCE | FUTURE GATE — chưa được phép mở |
+| Continuous Care (chăm sóc liên tục) | NOT COMPLETE |
+| Product Refinement / UI-UX (tinh chỉnh sản phẩm/giao diện-trải nghiệm) | DEFERRED đến khi Clinical Core được chấp nhận |
+| AI Value-Added Layer | DEFERRED |
 
-IMPLEMENTATION:
-TECHNICAL FOUNDATION COMPLETE
-CORE-01 CLINICAL CORE WALKING SKELETON IMPLEMENTED — SYNTHETIC DATA ONLY
+Không được diễn giải việc Technical Core đã đóng là toàn bộ GastroCare Core đã đóng.
 
-SOURCE CODE:
-TECHNICAL FOUNDATION + CORE-01 BACKEND + CORE-02 WEB FRONTEND + CORE-03
-HARDENING (backend/test/core03-hardening.e2e-spec.ts,
-backend/test/pilot-seed.ts, scripts/verify-backup-restore.sh, frontend
-404/logout/401 hardening) + CORE-03 REAL-WORLD CLINICAL FORM ALIGNMENT
-(backend/src/clinical-forms, backend/test/clinical-forms.e2e-spec.ts,
-frontend/src/pages/ClinicalFormPage.tsx, design/REAL_WORLD_FORM_ALIGNMENT.md)
+### Bối cảnh pilot và chuyên khoa
 
-BACKEND:
-FOUNDATION (auth + tenant isolation) + CORE-01 CLINICAL CORE
-(Patient, Encounter, CarePlan/CarePlanVersion, CareTask, AuditEvent,
-minimal DOCTOR/RECEPTIONIST RBAC) + CORE-03 CLINICAL FORMS
-(ClinicalFormSubmission, DOCTOR-only, code-configured templates —
-HEMORRHOID_LONGO_FOLLOWUP v1) — NO AI, NO REAL PATIENT DATA
+| Hạng mục | Trạng thái |
+|---|---|
+| First pilot user | BS Thái — OWNER CONFIRMED |
+| First specialty | Gastroenterology (tiêu hóa) — WORKING ASSUMPTION, chưa được Owner xác nhận thành quyết định mới |
 
-FRONTEND:
-CORE-02 WEB UI IMPLEMENTED
-OWNER ACCEPTED
-CLOSED
-(React + TypeScript + Vite, React Router). Login, role-aware app shell,
-Doctor "Hôm nay", Patient search/registration with duplicate-warning (no
-auto-merge), Doctor patient detail + timeline, Encounter creation, CarePlan
-draft/sign/amend, Follow-up queue with derived overdue, Receptionist
-boundary (backend-enforced RBAC + frontend access-denied presentation).
-SYNTHETIC DATA ONLY, NO AI.
+Giả định về chuyên khoa đầu tiên không phải Owner Decision.
 
-DATABASE:
-TEST/DISPOSABLE POSTGRESQL ONLY — NO PRODUCTION DATABASE
+## 2. Baseline kỹ thuật
 
-PRISMA SCHEMA:
-FOUNDATION SCHEMA (Tenant, AuthUser + role, FoundationProbeRecord) +
-CORE-01 CLINICAL CORE ENTITIES (Patient, Encounter, CarePlan,
-CarePlanVersion, CareTask, AuditEvent) + CORE-03 CLINICAL FORMS ENTITY
-(ClinicalFormSubmission — template field/score definitions are code
-configuration, not database rows; see design/REAL_WORLD_FORM_ALIGNMENT.md).
-CareEpisode and PatientTimeline table intentionally NOT implemented
-(Timeline is a read projection; see docs/04_CORE_DOMAIN_MODEL.md).
+| Thuộc tính | Giá trị |
+|---|---|
+| Nhánh | `core/core-03-technical-core-completion` |
+| SHA | `1a95f57f0b19bddbfcd817101d5c0c1135d90686` |
+| Tag | `technical-core-v0.1` |
+| Technical Core | CLOSED |
+| Kiểm toán kỹ thuật cuối | PASSED |
+| Backend | 99/99 |
+| Frontend | 20/20 |
+| Browser E2E | 4/4, ổn định qua hai lần chạy toàn bộ liên tiếp |
+| Sao lưu/khôi phục | PASSED, gồm `ClinicalFormSubmission` |
+| Quét privacy/Git cuối | PASSED |
 
-MIGRATIONS:
-FOUNDATION MIGRATION(S) + CORE-01 MIGRATION
-(20260821081250_core01_clinical_walking_skeleton) + CORE-03 CLINICAL FORMS
-MIGRATION (20260822141912_clinical_forms) — SEE prisma/migrations.
-FoundationProbeRecord retained (not removed in CORE-01, see CONTRIBUTING.md).
+Technical Core hiện có các primitive (thành phần nền tảng) như `Patient`, `Encounter`, `CarePlan`, `CarePlanVersion`, `CareTask`, `AuditEvent`, Timeline dạng read projection (hình chiếu chỉ đọc) và `ClinicalFormSubmission`. Việc có `CareTask` không đồng nghĩa Continuous Care đã hoàn tất.
 
-DEPLOYMENT:
-NONE
+## 3. Đồng bộ bằng chứng thực tế
 
-CURRENT REPOSITORY CONTENT:
-DOCUMENTATION + TECHNICAL FOUNDATION + CORE-01 CLINICAL CORE + CORE-02 WEB UI
-+ CORE-03 PILOT READINESS & OPERATIONAL HARDENING (OPERATIONS.md,
-scripts/verify-backup-restore.sh, backend hardening/pilot-seed tests,
-frontend hardening)
+| Hạng mục | Trạng thái |
+|---|---|
+| Real-world evidence alignment (đồng bộ bằng chứng thực tế) | COMPLETE |
+| Kiểm toán toàn bộ corpus | 270/270 DOCX đã xử lý |
+| CareEpisode/domain architecture (kiến trúc miền) | LOCKED |
+| Atomic Field Dictionary | 118/118 khái niệm đã được tính đến; 0 unmapped |
+| Clinician Review | LOCKED FOR v1 SCOPE |
+| Longo Clinical Workflow v1.0 | OWNER LOCKED |
 
-CURRENT DOCUMENTS PRESENT (10/10):
-- 00_PROJECT_OVERVIEW.md
-- 01_PRODUCT_VISION_AND_SCOPE.md
-- 02_PRODUCT_PRINCIPLES.md
-- 03_CLINICAL_WORKFLOW_BASELINE.md
-- 04_CORE_DOMAIN_MODEL.md
-- 05_ARCHITECTURE_BASELINE.md
-- 06_SAFETY_PRIVACY_AND_GOVERNANCE.md
-- 07_ROADMAP_AND_GATES.md
-- DECISION_LOG.md
-- PROJECT_STATE.md
+`118/118 accounted for` chỉ có nghĩa mọi khái niệm đều được tính đến, không có nghĩa mọi khái niệm đã sẵn sàng triển khai hoặc phải trở thành trường nhập liệu thường ngày.
 
-DOCUMENTATION BASELINE TARGET:
-10 DOCUMENTS
+### Ranh giới bằng chứng lịch sử của các thang đo
 
-DOCUMENTATION BASELINE v1.0:
-OWNER ACCEPTED
+| Thang đo | Dữ liệu lịch sử thực tế đã xác minh |
+|---|---|
+| Wexner | UNDETERMINED |
+| HDSS | UNDETERMINED |
+| SHS-HD | UNDETERMINED |
 
-OWNER REVIEW:
-COMPLETE
+Không được biến các trạng thái `UNDETERMINED` thành dữ kiện đã xác nhận. Định nghĩa/chấm điểm HDSS và SHS-HD thường quy vẫn chờ xác nhận lâm sàng.
 
-OWNER ACCEPTANCE:
-GRANTED
+## 4. SSOT quy trình Longo
 
-GATE 1:
-CLOSED
+[`08_LONGO_CLINICAL_WORKFLOW_v1.0.md`](08_LONGO_CLINICAL_WORKFLOW_v1.0.md) là authoritative SSOT (nguồn sự thật duy nhất có thẩm quyền) cho triển khai Longo Clinical Core theo thực tế.
 
-GATE 2:
-OWNER ACCEPTED
-CLOSED
+```text
+Status: OWNER LOCKED
+Version: 1.0
+Implementation status: NOT STARTED
+Real-patient runtime: NOT AUTHORIZED
+```
 
-TECHNICAL FOUNDATION:
-COMPLETE
+## 5. Giai đoạn và work package tiếp theo
 
-PHASE FOUNDATION:
-COMPLETE
+**Giai đoạn hiện tại:** GASTROCARE CORE — IN PROGRESS
 
-CURRENT PHASE:
-GASTROCARE CORE
+**Giai đoạn tiếp theo:** REAL-WORLD CLINICAL CORE IMPLEMENTATION
 
-CURRENT WORK PACKAGE:
-CORE-03 — PILOT READINESS & OPERATIONAL HARDENING (OWNER ACCEPTED, CLOSED)
-+ CORE-03 REAL-WORLD CLINICAL FORM ALIGNMENT v0.1 (OWNER ACCEPTED — FINAL
-INDEPENDENT TECHNICAL AUDIT PASSED)
+**Dữ liệu dùng để triển khai/kiểm thử/chấp nhận hiện tại:** chỉ dùng synthetic data (dữ liệu giả lập) — REQUIRED
 
-DOCUMENTATION BUILD:
-COMPLETE
+Clinical Core tiếp theo phải triển khai theo SSOT Longo v1.0 và vượt các acceptance gate (cổng chấp nhận) đã khóa trước khi Product Refinement/UI-UX bắt đầu.
 
-CURRENT MODE:
-CORE-03 (INCLUDING REAL-WORLD CLINICAL FORM ALIGNMENT v0.1) OWNER
-ACCEPTED, CLOSED — AWAITING NEW OWNER AUTHORIZATION FOR NEXT WORK PACKAGE
+## 6. Ranh giới vận hành và an toàn
 
-CURRENT IMPLEMENTATION SCOPE:
-TECHNICAL FOUNDATION (AUTH + TENANT ISOLATION + MIGRATION REVIEW PROCESS) +
-CORE-01 CLINICAL CORE WALKING SKELETON (Patient, Encounter, CarePlan,
-CareTask, AuditEvent, minimal RBAC) + CORE-02 DOCTOR EXPERIENCE / WEB UI v0.1
-(React + TypeScript + Vite frontend on top of the CORE-01 API; local-dev CORS
-added to backend/src/main.ts) + CORE-03 PILOT READINESS & OPERATIONAL
-HARDENING (auth/session token hardening regression, cross-tenant mutation
-regression, RECEPTIONIST write-route denial regression, error-response
-safety regression, deterministic synthetic pilot dataset, backup/restore
-verification script, OPERATIONS.md Owner Synthetic Dry Run, frontend 404 +
-logout/401 hardening, responsive table-overflow fix) — SYNTHETIC DATA ONLY,
-NO AI, NO CareEpisode
+| Hạng mục | Trạng thái |
+|---|---|
+| Real-patient runtime | NOT AUTHORIZED |
+| Dữ liệu bệnh nhân thật | NOT AUTHORIZED |
+| Pilot chính thức với BS Thái | NOT STARTED |
+| Production | NOT AUTHORIZED |
+| Cơ sở dữ liệu production | NONE |
+| Legal / privacy review | OPEN / REQUIRED |
+| Historical import implementation | OUT OF CURRENT SCOPE |
 
-CORE-01:
-OWNER ACCEPTED
-CLOSED
-
-CORE-02:
-OWNER ACCEPTED
-CLOSED
-
-CORE-03:
-OWNER ACCEPTED
-CLOSED
-
-CORE-03 REAL-WORLD CLINICAL FORM ALIGNMENT:
-OWNER ACCEPTED
-FINAL INDEPENDENT TECHNICAL AUDIT: PASS
-BACKEND 99/99, FRONTEND 20/20, BROWSER 4/4 (STABLE ACROSS TWO CONSECUTIVE
-FULL-SUITE RUNS), BACKUP/RESTORE PASS INCLUDING ClinicalFormSubmission,
-PRIVACY/GIT FINAL SCAN PASS
-
-TECHNICAL CORE IMPLEMENTATION:
-COMPLETE
-FINAL TECHNICAL AUDIT PASSED
-
-TECHNICAL PILOT READINESS:
-AUDIT CANDIDATE
-
-OWNER SYNTHETIC DRY RUN:
-READY (see OPERATIONS.md)
-
-GASTROCARE CORE:
-IN PROGRESS
-
-REAL-PATIENT-DATA GATE:
-NOT PASSED
-
-REAL PATIENT DATA:
-NOT AUTHORIZED
-
-BS THÁI OFFICIAL PILOT:
-NOT STARTED
-
-PRODUCTION:
-NOT AUTHORIZED
-
-LEGAL / PRIVACY:
-OPEN / LEGAL REVIEW REQUIRED
-
-NEXT GATE:
-CORE-03 (PILOT READINESS & OPERATIONAL HARDENING, AND REAL-WORLD CLINICAL
-FORM ALIGNMENT v0.1) IS OWNER ACCEPTED AND CLOSED. THIS DOES NOT CLOSE THE
-GASTROCARE CORE PHASE. FURTHER WORK PACKAGES (INCLUDING ANY
-REAL-PATIENT-DATA READINESS WORK) REQUIRE NEW OWNER AUTHORIZATION. REAL
-PATIENT DATA AND PRODUCTION REMAIN NOT AUTHORIZED.
+Chỉ được dùng synthetic data (dữ liệu giả lập) cho triển khai, kiểm thử và nghiệm thu hiện tại. Bằng chứng từ corpus thực tế chỉ được ghi nhận dưới dạng bằng chứng/kết quả tổng hợp đã được khử thông tin nhận dạng. Các sự cố sanitizer lịch sử vẫn thuộc hồ sơ quản trị; tài liệu SSOT không tái tạo giá trị bị lộ, dữ liệu định danh hoặc nội dung lâm sàng thô.

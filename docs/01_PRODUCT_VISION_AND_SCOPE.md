@@ -2,6 +2,8 @@
 
 Cập nhật: 2026-08-21
 
+> **Ghi chú trạng thái hiện hành (23/08/2026):** Foundation, Technical Foundation, CORE-01, CORE-02 và CORE-03 / Technical Core đã `CLOSED`. GastroCare Core tổng thể đang `IN PROGRESS`. Longo Clinical Workflow v1.0 đã `OWNER LOCKED`; triển khai Real-world Clinical Core chưa bắt đầu và real-patient runtime chưa được phép. Xem [`PROJECT_STATE.md`](PROJECT_STATE.md) và [`08_LONGO_CLINICAL_WORKFLOW_v1.0.md`](08_LONGO_CLINICAL_WORKFLOW_v1.0.md). A-001 về chuyên khoa đầu tiên vẫn là Working Assumption (giả định đang làm việc), chưa phải Owner Decision.
+
 ## Câu hỏi tài liệu này trả lời
 
 Chúng ta đang xây cái gì, và không xây cái gì?

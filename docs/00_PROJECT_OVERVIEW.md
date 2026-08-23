@@ -1,7 +1,7 @@
 # GastroCare — Project Overview
 
-Cập nhật: 2026-08-21
-Trạng thái: DOCUMENTATION BASELINE v1.0 — OWNER ACCEPTED · GATE 1 CLOSED · FOUNDATION PHASE — GATE 2 TECHNICAL FOUNDATION IN PROGRESS
+Cập nhật trạng thái: 2026-08-23
+Trạng thái: FOUNDATION CLOSED · TECHNICAL CORE CLOSED · GASTROCARE CORE IN PROGRESS · LONGO CLINICAL WORKFLOW v1.0 OWNER LOCKED
 
 ## GastroCare là gì?
 
@@ -26,18 +26,25 @@ Xem lý do đầy đủ tại `01_PRODUCT_VISION_AND_SCOPE.md` và các nguyên 
 
 ```
 PROJECT TYPE: GREENFIELD
-IMPLEMENTATION: TECHNICAL FOUNDATION STARTED
+FOUNDATION: CLOSED
+TECHNICAL FOUNDATION: CLOSED
 DOCUMENTATION BASELINE v1.0: OWNER ACCEPTED (10/10 documents)
 GATE 1 (DOCUMENTATION ACCEPTANCE): CLOSED
-CURRENT GATE: GATE 2 — TECHNICAL FOUNDATION
-GASTROCARE CORE: NOT AUTHORIZED
+GATE 2 (TECHNICAL FOUNDATION): CLOSED
+CORE-01: CLOSED
+CORE-02: CLOSED
+CORE-03 / TECHNICAL CORE: CLOSED
+GASTROCARE CORE: IN PROGRESS
+LONGO CLINICAL WORKFLOW v1.0: OWNER LOCKED
+REAL-WORLD CLINICAL CORE IMPLEMENTATION: NOT STARTED
+REAL-PATIENT RUNTIME: NOT AUTHORIZED
 ```
 
 Xem trạng thái đầy đủ, cập nhật liên tục tại `PROJECT_STATE.md`.
 
 ## Existing Project Assets
 
-*Kiểm kê nguồn — đảm bảo One Source of Truth (P-10), không bắt đầu lại từ đầu. Repository này là GREENFIELD: không có source code, schema, hay database nào tồn tại (xem `PROJECT_STATE.md`).*
+*Đoạn kiểm kê dưới đây là bối cảnh của Documentation Baseline ban đầu. Trạng thái repository hiện hành được quản lý tại `PROJECT_STATE.md`; Technical Core hiện đã tồn tại và đã đóng.*
 
 | Asset | Trạng thái | Vai trò |
 |---|---|---|
@@ -48,4 +55,4 @@ Một schema Prisma nháp (`gastrocare_core_v0.1.prisma`) từng được dùng 
 
 ## Bước tiếp theo
 
-Documentation Baseline v1.0 đã Owner-accepted (Gate 1 CLOSED). Phase FOUNDATION hiện đang thực hiện Gate 2 — Technical Foundation (auth, tenant isolation, migration review process) theo `07_ROADMAP_AND_GATES.md`. GastroCare Core chưa được authorize cho đến khi Gate 2 đạt.
+Foundation và Technical Foundation đã đóng; CORE-01, CORE-02 và CORE-03 / Technical Core cũng đã đóng. GastroCare Core tổng thể vẫn `IN PROGRESS`. Work package tiếp theo là Real-world Clinical Core implementation, hiện `NOT STARTED`, theo SSOT [`08_LONGO_CLINICAL_WORKFLOW_v1.0.md`](08_LONGO_CLINICAL_WORKFLOW_v1.0.md). Real-patient runtime vẫn `NOT AUTHORIZED`.

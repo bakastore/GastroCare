@@ -1,128 +1,163 @@
-# GastroCare — Roadmap and Gates
+# GastroCare — Roadmap và Acceptance Gates
 
-Cập nhật: 2026-08-21
+**Cập nhật:** 23/08/2026
 
-Roadmap này CAPABILITY-DRIVEN — không có mốc thời gian tuần/tháng cố định. Mỗi phase chỉ bắt đầu khi entry conditions của nó được thỏa, và chỉ coi là hoàn thành khi acceptance gate được thỏa. Điều này nhất quán với DEC-003 ([DECISION_LOG.md](DECISION_LOG.md)) — Owner chấp nhận runway đủ dài, không time-box cố định.
+Roadmap này được điều khiển bởi năng lực, không có mốc tuần/tháng cố định. Một phase (giai đoạn) chỉ hoàn thành khi acceptance gate (cổng chấp nhận) tương ứng được thỏa.
 
+```text
+FOUNDATION
+→ GASTROCARE CORE
+→ CONTINUOUS CARE
+→ PRODUCT REFINEMENT
+→ COMMERCIAL VALIDATION
+→ AI VALUE-ADDED LAYER
+→ FUTURE INTELLIGENT CARE
 ```
-FOUNDATION → GASTROCARE CORE → CONTINUOUS CARE → PRODUCT REFINEMENT
-    → COMMERCIAL VALIDATION → AI VALUE-ADDED LAYER → FUTURE INTELLIGENT CARE
+
+## 1. Trạng thái hiện tại
+
+| Hạng mục | Trạng thái |
+|---|---|
+| FOUNDATION | CLOSED |
+| Technical Foundation | CLOSED |
+| CORE-01 | CLOSED |
+| CORE-02 | CLOSED |
+| CORE-03 / Technical Core | CLOSED — baseline `technical-core-v0.1` |
+| Real-world evidence alignment | COMPLETE |
+| Clinical architecture | LOCKED |
+| Longo Clinical Workflow v1.0 | OWNER LOCKED |
+| Real-world Clinical Core implementation | NEXT / NOT STARTED |
+| GASTROCARE CORE tổng thể | IN PROGRESS |
+| CONTINUOUS CARE | NOT COMPLETE |
+| PRODUCT REFINEMENT / UI-UX | NOT STARTED — bị chặn đến khi Clinical Core được chấp nhận |
+| AI VALUE-ADDED LAYER | DEFERRED |
+
+Technical Core đã đóng tại SHA `1a95f57f0b19bddbfcd817101d5c0c1135d90686`, tag `technical-core-v0.1`. Việc đã có primitive `CareTask` không đủ để đánh dấu Continuous Care hoàn tất. Việc Technical Core đã đóng cũng không đóng toàn bộ GastroCare Core.
+
+## 2. FOUNDATION — CLOSED
+
+**Mục tiêu:** hoàn tất Documentation Baseline được Owner review và nền kỹ thuật tối thiểu gồm xác thực, tenant isolation (cô lập tenant) và quy trình rà soát migration.
+
+**Kết quả:**
+
+- Gate 1 — Documentation Acceptance: CLOSED.
+- Gate 2 — Technical Foundation Acceptance: CLOSED.
+- Technical Foundation: CLOSED.
+
+## 3. GASTROCARE CORE — IN PROGRESS
+
+**Mục tiêu:** cung cấp Clinical CRM + Follow-up SaaS vận hành thủ công, không phụ thuộc AI, cho toàn bộ vòng đời chăm sóc cốt lõi.
+
+### 3.1 Các work package đã đóng
+
+- CORE-01 — Clinical Core Walking Skeleton: CLOSED.
+- CORE-02 — Doctor Experience / Web UI v0.1: CLOSED.
+- CORE-03 — Pilot Readiness, Operational Hardening và Technical Core: CLOSED.
+- Real-world evidence alignment: COMPLETE, dựa trên kiểm toán 270/270 DOCX.
+- Kiến trúc `CareEpisode`: LOCKED.
+- Clinician Review: LOCKED FOR v1 SCOPE.
+- Longo Clinical Workflow v1.0: OWNER LOCKED.
+
+### 3.2 Work package tiếp theo
+
+**REAL-WORLD CLINICAL CORE IMPLEMENTATION — NEXT / NOT STARTED**
+
+Nguồn chuẩn bắt buộc: [`08_LONGO_CLINICAL_WORKFLOW_v1.0.md`](08_LONGO_CLINICAL_WORKFLOW_v1.0.md).
+
+Phạm vi triển khai và nghiệm thu hiện tại chỉ dùng synthetic data (dữ liệu giả lập). Bằng chứng từ corpus thực tế chỉ được ghi nhận dưới dạng bằng chứng/kết quả tổng hợp đã được khử thông tin nhận dạng. Real-patient runtime (môi trường chạy với bệnh nhân thật) vẫn `NOT AUTHORIZED`.
+
+### 3.3 Acceptance gates của Longo Clinical Core
+
+Các gate dưới đây dẫn chiếu SSOT, không thay thế hoặc sao chép toàn bộ quy trình:
+
+1. **Domain / Schema Gate:** `CareEpisode`, liên kết `Encounter.episodeId`, `Encounter.occurredAt`, tenant/patient invariants và migration đáp ứng mục 31 Gate A của SSOT.
+2. **Clinical Record Lifecycle Gate:** lifecycle `DRAFT`/`COMPLETED`, bất biến sau hoàn tất, amendment lineage chỉ ghi nối tiếp và provenance đáp ứng Gate B.
+3. **Longo Forms Gate:** sáu họ biểu mẫu, quy tắc validation, Wexner prospective và ranh giới các định nghĩa còn hoãn đáp ứng Gate C.
+4. **Follow-up Gate:** các `CareTask` sau mổ được sinh idempotent, dùng đúng surgery anchor; tháng 1/3/6 dùng một template; nong hậu môn có thể lặp; không tự động đóng Episode, theo Gate D.
+5. **Timeline Gate:** Timeline vẫn là read projection, sắp xếp theo thời điểm lâm sàng và hiển thị đúng lineage, theo Gate E.
+6. **Regression Gate:** tenant isolation, RBAC, privacy, sao lưu/khôi phục và các kiểm thử Technical Core hiện có không bị thoái lui, theo Gate F.
+7. **Owner Synthetic Clinical Acceptance Gate:** Owner nghiệm thu end-to-end bằng synthetic data (dữ liệu giả lập) theo Gate G. Gate này chỉ xác nhận mức sẵn sàng của Clinical Core implementation (triển khai lõi lâm sàng), không cấp phép dữ liệu bệnh nhân thật và không đóng toàn bộ GastroCare Core.
+
+Chỉ khi các gate liên quan được chấp nhận mới được cập nhật trạng thái Clinical Core. Không tự động suy ra quyền production hoặc quyền dùng dữ liệu bệnh nhân thật.
+
+### 3.4 AUTHORIZED REAL-WORLD PILOT ACCEPTANCE — FUTURE GATE
+
+Gate này chỉ được mở sau khi đồng thời thỏa các điều kiện:
+
+- real-patient runtime được Owner cho phép;
+- các yêu cầu legal/privacy cần thiết đã hoàn thành;
+- hệ thống đã đạt các gate kỹ thuật và lâm sàng trước đó.
+
+**Acceptance criterion (tiêu chí chấp nhận):** BS Thái hoàn thành ít nhất một chu kỳ thực tế trong GastroCare mà không phải fallback (quay lại sử dụng) giấy/Zalo cho luồng cốt lõi đó:
+
+```text
+Patient
+→ Encounter/clinical workflow
+→ follow-up
+→ return visit
 ```
 
-AI không được phép quay lại vào Core ban đầu ở bất kỳ phase nào trước AI VALUE-ADDED LAYER (P-01, P-02).
+Cho đến khi gate này được Owner chấp nhận:
 
----
+```text
+GASTROCARE CORE = IN PROGRESS
+```
 
-## Phase: FOUNDATION
+Owner Synthetic Clinical Acceptance không phải real-world product validation (xác thực sản phẩm trong thực tế) và không được dùng để đóng toàn bộ GastroCare Core.
 
-**OBJECTIVE:** Có Documentation Baseline đã được Owner review, và nền tảng kỹ thuật tối thiểu (auth, tenant isolation, migration review) sẵn sàng để bắt đầu implement Core một cách an toàn.
+## 4. CONTINUOUS CARE — NOT COMPLETE
 
-**ENTRY CONDITIONS:** Documentation Baseline v1.0 tồn tại đủ 10 tài liệu (trạng thái hiện tại của repo này).
+**Mục tiêu:** mở rộng từ một lượt khám sang theo dõi liên tục và chứng minh `CareEpisode` giúp giảm thời gian hoặc nhầm lẫn trong chăm sóc dài hạn.
 
-**DELIVERABLES:**
-- Documentation Baseline v1.0 — RELEASE CANDIDATE, đã qua self-review.
-- Owner review hoàn tất cho baseline.
-- Bootstrap kỹ thuật tối thiểu: auth hoạt động, tenant isolation kiểm chứng được, migration review process được định nghĩa (xem [06_SAFETY_PRIVACY_AND_GOVERNANCE.md](06_SAFETY_PRIVACY_AND_GOVERNANCE.md)).
+**Điều kiện vào:** GastroCare Core đạt acceptance gate và có bằng chứng sử dụng phù hợp được phép.
 
-Phase FOUNDATION có hai gate độc lập — gate sau KHÔNG tự động thỏa mãn chỉ vì gate trước đã đạt:
+**Acceptance gate:** Owner xác nhận năng lực chăm sóc liên tục tạo giá trị trong vận hành. Sự tồn tại của `CareTask`, Timeline hoặc `CareEpisode` primitive không tự thỏa gate này.
 
-**GATE 1 — DOCUMENTATION ACCEPTANCE GATE:** Owner chấp nhận Documentation Baseline v1.0 (OWNER REVIEW → OWNER ACCEPTED, ghi vào [PROJECT_STATE.md](PROJECT_STATE.md) chỉ khi Owner tự xác nhận). Gate này chỉ xác nhận nội dung tài liệu, không xác nhận bất kỳ deliverable kỹ thuật nào.
+## 5. PRODUCT REFINEMENT — NOT STARTED
 
-**GATE 2 — TECHNICAL FOUNDATION ACCEPTANCE:** xác nhận độc lập rằng các deliverable kỹ thuật của Phase FOUNDATION (auth hoạt động, tenant isolation đã kiểm chứng, migration review process đã định nghĩa) thực sự tồn tại và hoạt động đúng — không được suy ra từ việc Documentation Baseline đã được Owner chấp nhận. Gate này chỉ đạt khi có kiểm chứng kỹ thuật thật (vd test, review kỹ thuật), không phải khi tài liệu mô tả deliverable đã "PROPOSED".
+**Trạng thái:** DEFERRED; bị chặn đến khi Longo Clinical Core được nghiệm thu.
 
-**OUT OF SCOPE:** bất kỳ tính năng lâm sàng, UI bác sĩ, hay AI nào.
+**Mục tiêu:** tinh chỉnh workflow/UI-UX dựa trên bằng chứng sử dụng và kết quả nghiệm thu Clinical Core, không làm thay đổi các quyết định lâm sàng đã Owner-lock nếu chưa có change control (kiểm soát thay đổi) phù hợp.
 
----
+**Acceptance gate:** workflow và trải nghiệm được Owner chấp nhận trên cơ sở bằng chứng, với mọi thay đổi SSOT được quản trị rõ ràng.
 
-## Phase: GASTROCARE CORE
+## 6. COMMERCIAL VALIDATION — NOT STARTED
 
-**OBJECTIVE:** BS Thái có thể dùng GastroCare thay giấy/Zalo/trí nhớ cho toàn bộ vòng đời một lượt khám: đăng ký bệnh nhân → khám → CarePlan → follow-up task → tái khám, hoàn toàn thủ công, không AI (DEC-001).
+**Mục tiêu:** xác nhận GastroCare Core tạo đủ giá trị để mở rộng ngoài pilot đầu tiên.
 
-**ENTRY CONDITIONS:** Phase FOUNDATION đạt cả GATE 1 (Documentation Acceptance) và GATE 2 (Technical Foundation Acceptance).
+**Điều kiện vào:** Product Refinement đạt acceptance gate.
 
-**DELIVERABLES:**
-- Entity Core hoạt động: Patient, Encounter, CarePlan, CareTask, Patient Timeline, AuditEvent (xem [04_CORE_DOMAIN_MODEL.md](04_CORE_DOMAIN_MODEL.md)).
-- Follow-up Queue dùng CareTask + derived OVERDUE.
-- Không có tính năng AI nào trong luồng chính.
+**Acceptance gate:** có quyết định Owner rõ ràng về hướng mở rộng, số pilot tiếp theo và phạm vi chuyên khoa.
 
-**ACCEPTANCE GATE:** BS Thái hoàn thành ít nhất một chu kỳ khám → follow-up → tái khám thật (không phải synthetic case) trong hệ thống, không cần fallback về giấy cho luồng đó.
+## 7. AI VALUE-ADDED LAYER — DEFERRED
 
-**OUT OF SCOPE:** CareEpisode UI riêng cho bác sĩ, multi-doctor, AI, billing.
+AI chỉ là lớp giá trị gia tăng sau khi Core chứng minh giá trị độc lập và các yêu cầu privacy/processing được giải quyết. Core phải hoạt động đầy đủ khi tắt AI.
 
----
+AI không được thay thế quyết định lâm sàng của bác sĩ hoặc trở thành phụ thuộc bắt buộc của Core.
 
-## Phase: CONTINUOUS CARE
+## 8. FUTURE INTELLIGENT CARE — FUTURE OPTION
 
-**OBJECTIVE:** Mở rộng từ "một lượt khám" sang "theo dõi liên tục" — CareEpisode trở thành công cụ hữu ích thực sự cho các ca theo dõi dài hạn (vd GERD, polyp).
+Chưa định nghĩa deliverable hoặc acceptance gate chi tiết. Đây không phải cam kết hiện tại.
 
-**ENTRY CONDITIONS:** Phase GASTROCARE CORE đạt acceptance gate, và có dữ liệu quan sát thật (P-06) cho thấy nhu cầu nhóm nhiều Encounter theo vấn đề.
+## 9. Ranh giới xuyên suốt
 
-**DELIVERABLES:**
-- Patient Timeline hiển thị theo CareEpisode.
-- Cơ chế review CareEpisode không hoạt động (gợi ý, không tự động đóng — xem 04_CORE_DOMAIN_MODEL.md).
+- Không dùng dữ liệu bệnh nhân thật cho runtime, triển khai, kiểm thử hoặc nghiệm thu khi chưa được Owner cấp phép rõ ràng và chưa vượt các gate an toàn/pháp lý liên quan.
+- Historical import nằm ngoài work package hiện tại.
+- Không biến định nghĩa lâm sàng chưa giải quyết thành dữ kiện: chấm điểm nong hậu môn đầy đủ, HDSS, SHS-HD, tương đương trường sau vô cảm và các mục độ khó Longo vẫn giữ trạng thái hoãn theo SSOT.
+- Research-extension fields (trường mở rộng nghiên cứu) được tính đến nhưng không thuộc quy trình lâm sàng thường ngày mặc định.
+- Không đưa AI Scribe, AI diagnosis, AI prescription, patient AI chatbot, full HIS, full EMR, Research OS, advanced analytics, complex billing hoặc mở rộng đa chuyên khoa vào Core nếu chưa có quyết định Owner tương ứng.
 
-**ACCEPTANCE GATE:** Owner + quan sát từ BS Thái xác nhận CareEpisode giảm được thời gian/nhầm lẫn khi tra cứu ca theo dõi dài hạn.
+## 10. Kiểm soát thay đổi
 
-**OUT OF SCOPE:** AI-assisted grouping, multi-specialty.
+Thứ bậc thẩm quyền:
 
----
+```text
+Quyết định Owner rõ ràng mới nhất
+> Quyết định Owner trước đó
+> Trạng thái dự án đã xác minh
+> Baseline đã phê duyệt
+> Giả định đang làm việc
+> Khuyến nghị của AI
+```
 
-## Phase: PRODUCT REFINEMENT
-
-**OBJECTIVE:** Dựa trên Discovery Round 1 thật với BS Thái (không còn synthetic hypothesis), tinh chỉnh workflow/UI để giảm ma sát vận hành thật.
-
-**ENTRY CONDITIONS:** Đã có đủ dữ liệu sử dụng thật từ Phase GASTROCARE CORE + CONTINUOUS CARE để thay Working Product Hypothesis bằng evidence thật (P-06).
-
-**DELIVERABLES:** Cập nhật [03_CLINICAL_WORKFLOW_BASELINE.md](03_CLINICAL_WORKFLOW_BASELINE.md) từ ASSUMED BASELINE sang VALIDATED, dựa trên quan sát thật.
-
-**ACCEPTANCE GATE:** Workflow baseline được đánh dấu VALIDATED thay vì WORKING HYPOTHESIS.
-
-**OUT OF SCOPE:** mở rộng chuyên khoa, AI.
-
----
-
-## Phase: COMMERCIAL VALIDATION
-
-**OBJECTIVE:** Xác nhận GastroCare Core tạo giá trị đủ để mở rộng ra ngoài BS Thái (phòng khám khác, có thể cùng hoặc khác chuyên khoa).
-
-**ENTRY CONDITIONS:** Phase PRODUCT REFINEMENT đạt acceptance gate.
-
-**DELIVERABLES:** Đánh giá lại A-001 (chuyên khoa tiêu hóa là chuyên khoa duy nhất hay chuyên khoa đầu tiên trong nhiều chuyên khoa) — cần Owner Decision mới, không tự suy diễn.
-
-**ACCEPTANCE GATE:** Owner Decision rõ ràng về hướng mở rộng (số lượng pilot tiếp theo, có multi-specialty hay không).
-
-**OUT OF SCOPE:** AI, cho đến khi Core đã validated thương mại.
-
----
-
-## Phase: AI VALUE-ADDED LAYER
-
-**OBJECTIVE:** Thêm AI như lớp giá trị gia tăng (P-02), dựa trên dữ liệu có cấu trúc đã được workflow Core tạo ra (P-03) — không thay thế Core.
-
-**ENTRY CONDITIONS:** Core đã chứng minh giá trị độc lập không cần AI (Phase COMMERCIAL VALIDATION đạt gate), và [06_SAFETY_PRIVACY_AND_GOVERNANCE.md](06_SAFETY_PRIVACY_AND_GOVERNANCE.md) mục "AI-Specific Privacy/Processing" đã được giải quyết.
-
-**DELIVERABLES:** UNKNOWN / OPEN ITEM — không định nghĩa tính năng AI cụ thể ở Documentation Baseline v1.0 (P-09); danh sách candidate (AI Scribe, v.v.) thuộc Anti-Scope hiện tại cho đến khi phase này mở.
-
-**ACCEPTANCE GATE:** Domain layer vẫn hoạt động đầy đủ nếu tắt AI layer (kiểm chứng lại invariant "Domain independence from AI providers" — [05_ARCHITECTURE_BASELINE.md](05_ARCHITECTURE_BASELINE.md)).
-
-**OUT OF SCOPE:** AI thay thế quyết định lâm sàng của bác sĩ (P-07).
-
----
-
-## Phase: FUTURE INTELLIGENT CARE
-
-**OBJECTIVE:** UNKNOWN / OPEN ITEM — placeholder cho định hướng dài hạn, không được định nghĩa chi tiết ở Documentation Baseline v1.0.
-
-**ENTRY CONDITIONS:** Phase AI VALUE-ADDED LAYER đạt acceptance gate.
-
-**DELIVERABLES:** Không định nghĩa ở baseline này (P-09 — không đóng băng chi tiết chưa cần).
-
-**ACCEPTANCE GATE:** Chưa định nghĩa.
-
-**OUT OF SCOPE:** Toàn bộ nội dung phase này là FUTURE OPTION, không phải cam kết.
-
----
-
-## Anti-Scope (áp dụng xuyên suốt mọi phase Core)
-
-Không nằm trong bất kỳ phase nào trước AI VALUE-ADDED LAYER: AI Scribe, AI diagnosis, AI prescription, patient AI chatbot, full HIS, full EMR, Research OS, advanced analytics, native mobile requirement, insurance platform, complex billing, multi-specialty expansion (trước khi có Owner Decision ở Phase COMMERCIAL VALIDATION), hospital-wide integration. Xem đầy đủ tại [01_PRODUCT_VISION_AND_SCOPE.md](01_PRODUCT_VISION_AND_SCOPE.md).
+Mọi thay đổi đối với Longo Clinical Workflow v1.0 phải tuân theo mục Change Control của SSOT. Không tài liệu roadmap nào được làm yếu, diễn giải lại hoặc tự mở lại quyết định Owner đã khóa.
