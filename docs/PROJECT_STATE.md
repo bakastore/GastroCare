@@ -123,3 +123,24 @@ Clinical Core tiếp theo phải triển khai theo SSOT Longo v1.0 và vượt c
 | Historical import implementation | OUT OF CURRENT SCOPE |
 
 Chỉ được dùng synthetic data (dữ liệu giả lập) cho triển khai, kiểm thử và nghiệm thu hiện tại. Bằng chứng từ corpus thực tế chỉ được ghi nhận dưới dạng bằng chứng/kết quả tổng hợp đã được khử thông tin nhận dạng. Các sự cố sanitizer lịch sử vẫn thuộc hồ sơ quản trị; tài liệu SSOT không tái tạo giá trị bị lộ, dữ liệu định danh hoặc nội dung lâm sàng thô.
+
+## 7. CURRENT EXECUTION CONTEXT
+
+| Thuộc tính | Giá trị |
+|---|---|
+| Current branch | `core/core-04-real-world-clinical-workflow` |
+| Branch baseline | `161b46b9a4c4d77cf6f66bb487b9dc38b1bdfbc5` |
+| Current phase | `GASTROCARE CORE — IN PROGRESS` |
+| Current work package | `CORE-04 — REAL-WORLD CLINICAL WORKFLOW` |
+| Current authoritative clinical SSOT | `docs/08_LONGO_CLINICAL_WORKFLOW_v1.0.md` |
+| Current task | `Create and Owner-review docs/09_CORE04_IMPLEMENTATION_CONTRACT.md` |
+| Implementation status | `NOT STARTED` |
+| Next execution gate | `CORE-04 Implementation Contract → Owner approval → T0 Baseline Verification` |
+| Real-patient runtime | `NOT AUTHORIZED` |
+| Implementation/test data | `SYNTHETIC DATA ONLY` |
+| Full UI/UX redesign | `DEFERRED until Clinical Core acceptance` |
+| AI | `DEFERRED` |
+
+`CURRENT EXECUTION CONTEXT` là trạng thái vận hành, không phải hồ sơ lịch sử. Cập nhật section này mỗi khi một accepted checkpoint (điểm kiểm soát đã được chấp nhận) làm thay đổi branch, current task, next gate hoặc implementation status.
+
+Không âm thầm sửa đổi Owner Decisions khi cập nhật section này.
