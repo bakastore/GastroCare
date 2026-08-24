@@ -35,7 +35,11 @@ echo "== Seeding synthetic E2E accounts =="
 (cd "$BACKEND_DIR" && npm run seed:e2e)
 
 echo "== Starting backend on :$BACKEND_PORT =="
-(cd "$BACKEND_DIR" && PORT=$BACKEND_PORT FRONTEND_ORIGIN="http://localhost:$FRONTEND_PORT" npm run start >/tmp/gastrocare-e2e-backend.log 2>&1) &
+# PILOT_DEFAULT_CLINICIAN_EMAIL must match E2E_DOCTOR_EMAIL in
+# backend/test/e2e-seed.ts — default-clinician resolution is fail-closed
+# (Finding 3 correction), so the Receptionist "new Encounter Context"
+# browser flow needs a real, seeded DOCTOR configured explicitly here.
+(cd "$BACKEND_DIR" && PORT=$BACKEND_PORT FRONTEND_ORIGIN="http://localhost:$FRONTEND_PORT" PILOT_DEFAULT_CLINICIAN_EMAIL="doctor.a@example.test" npm run start >/tmp/gastrocare-e2e-backend.log 2>&1) &
 BACKEND_PID=$!
 
 for _ in $(seq 1 60); do

@@ -335,6 +335,12 @@ function EpisodeTimelineEventBody({
           >
             Phiếu khám lại (cũ)
           </Link>
+          <Link
+            className="btn btn-ghost btn-small"
+            to={`/patients/${patientId}/encounters/${encounterId}/hemorrhoid-examination`}
+          >
+            Khám trĩ
+          </Link>
         </div>
       </div>
     );

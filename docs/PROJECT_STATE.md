@@ -133,10 +133,14 @@ Chỉ được dùng synthetic data (dữ liệu giả lập) cho triển khai, 
 
 | Thuộc tính | Giá trị |
 |---|---|
-| Current branch | `core/core-04-real-world-clinical-workflow` |
-| Branch baseline | `161b46b9a4c4d77cf6f66bb487b9dc38b1bdfbc5` |
+| Current branch | `discovery/hemorrhoid-real-world-workflow` |
+| Branch baseline | `cd27f19e86cddfe8f11d028036503badf200d357` |
 | Current phase | `GASTROCARE CORE — IN PROGRESS` |
-| Current work package | `CORE-04 — REAL-WORLD CLINICAL WORKFLOW` |
+| Current work package | `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 1` (DEC-010, OWNER LOCKED) |
+| Current authorized task | `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 1` |
+| Vertical Slice 1 status | `AUTHORIZED FOR IMPLEMENTATION` |
+| Vertical Slice 1 scope | `Patient → Facility/Room → Responsible Clinician/Handover → Encounter Context → Hemorrhoid Examination v1` |
+| Vertical Slice 1 next gate | `Independent Codex audit sau khi Claude implementation hoàn tất` |
 | Current authoritative clinical SSOT | `docs/08_LONGO_CLINICAL_WORKFLOW_v1.0.md` |
 | Implementation Contract | `OWNER LOCKED v0.3.1` — `docs/09_CORE04_IMPLEMENTATION_CONTRACT.md` |
 | T1 status | `OWNER ACCEPTED — GATE A CLOSED` |
@@ -151,8 +155,9 @@ Chỉ được dùng synthetic data (dữ liệu giả lập) cho triển khai, 
 | T14 status | `IMPLEMENTED` — functional frontend workflow (Episode start/close/reopen, sáu Longo forms, amendment + history, follow-up queue planned/actual, Episode-aware Timeline) |
 | T15 status | `PASS` — browser E2E 5/5, hai lần liên tiếp; bao gồm clinical workflow thực tế cho Month 1/3/6 sau remediation R4 |
 | T16 status | Initial Independent T16: `FAIL` (5 findings R0-R5) → T16 remediation: `COMPLETED` → Fresh Independent T16 re-audit: `PASS` |
-| Current task | `Finalize CORE-04 verified checkpoint before product workflow pivot` |
-| Next direction | `HEMORRHOID REAL-WORLD CLINICAL WORKFLOW RECONCILIATION` — direction only; không mở work package mới trong checkpoint này |
+| Current task | `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 1` (xem DEC-010) |
+| CORE-04 checkpoint (baseline trước pivot) | `Finalize CORE-04 verified checkpoint before product workflow pivot` — đã hoàn tất và preserved as verified baseline, không tiếp tục active work; Gate G Longo-only `RETIRED BY OWNER` vì Owner pivot sang real BS Thái workflow |
+| Next direction | `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 1` — OWNER LOCKED work package theo DEC-010 (đã supersede phần "direction only" của DEC-009 §6) |
 | Latest independently verified regression evidence (post-remediation) | Backend unit 59/59 · Backend E2E 191/191 · Frontend 20/20 + production build PASS · Browser E2E 5/5, hai lần liên tiếp (bao gồm Month 1/3/6 clinical workflow) · `prisma validate`/`migrate status` PASS (8 migrations, up to date; gồm additive migration cho `AuditEvent.seq`) · Backup/restore PASS · Privacy/secret/PII scan: PASS |
 | Real-patient runtime | `NOT AUTHORIZED` |
 | CORE-04 checkpoint role | Independently verified technical/clinical implementation baseline cho Longo sub-branch; `OWNER PRODUCT ACCEPTANCE: NOT CLAIMED` |

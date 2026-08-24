@@ -34,9 +34,7 @@ export function PatientDetailPage() {
       {user?.role === 'DOCTOR' ? (
         <DoctorClinicalWorkspace patientId={patient.id} />
       ) : (
-        <p className="form-hint">
-          Không có quyền xem nội dung lâm sàng chi tiết của bệnh nhân này.
-        </p>
+        <ReceptionistWorkspace patientId={patient.id} />
       )}
     </div>
   );
@@ -49,9 +47,32 @@ function DoctorClinicalWorkspace({ patientId }: { patientId: string }) {
         <Link className="btn btn-primary" to={`/patients/${patientId}/encounters/new`}>
           + Lượt khám mới (ngoài đợt điều trị)
         </Link>
+        <Link className="btn btn-primary" to={`/patients/${patientId}/hemorrhoid/new-encounter`}>
+          + Lượt khám trĩ mới
+        </Link>
       </div>
 
       <LongoEpisodeWorkspace patientId={patientId} />
+    </div>
+  );
+}
+
+// DEC-010 §B — a Receptionist may create the Encounter Context (Facility +
+// Room + responsible clinician) but must not gain read access to detailed
+// clinical content (CORE-01 section 12 role boundary, preserved
+// unchanged). This entry point only lets the Receptionist reach the
+// Encounter Context creation form, never the exam/clinical form pages.
+function ReceptionistWorkspace({ patientId }: { patientId: string }) {
+  return (
+    <div>
+      <div className="form-actions">
+        <Link className="btn btn-primary" to={`/patients/${patientId}/hemorrhoid/new-encounter`}>
+          + Lượt khám trĩ mới (tiếp đón)
+        </Link>
+      </div>
+      <p className="form-hint">
+        Không có quyền xem nội dung lâm sàng chi tiết của bệnh nhân này.
+      </p>
     </div>
   );
 }

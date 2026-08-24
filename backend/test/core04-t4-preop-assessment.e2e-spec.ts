@@ -28,6 +28,7 @@ describe('CORE-04 T4 — LONGO_PREOP_ASSESSMENT (e2e)', () => {
   let patientA2Id: string;
   let patientBId: string;
   let doctorAToken: string;
+  let doctorAId: string;
 
   const occurredAt = '2026-08-23T08:00:00.000Z';
 
@@ -37,8 +38,11 @@ describe('CORE-04 T4 — LONGO_PREOP_ASSESSMENT (e2e)', () => {
     await prisma.careTask.deleteMany();
     await prisma.carePlanVersion.deleteMany();
     await prisma.carePlan.deleteMany();
+    await prisma.clinicianAssignmentHistory.deleteMany();
     await prisma.encounter.deleteMany();
     await prisma.careEpisode.deleteMany();
+    await prisma.room.deleteMany();
+    await prisma.facility.deleteMany();
     await prisma.patient.deleteMany();
     await prisma.foundationProbeRecord.deleteMany();
     await prisma.authUser.deleteMany();
@@ -54,6 +58,11 @@ describe('CORE-04 T4 — LONGO_PREOP_ASSESSMENT (e2e)', () => {
   }
 
   beforeAll(async () => {
+    // Finding 3 correction — default clinician resolution is fail-closed
+    // and requires an explicit config pointing at a real seeded DOCTOR;
+    // set it before app bootstrap so ConfigModule picks it up.
+    process.env.PILOT_DEFAULT_CLINICIAN_EMAIL = 'doctor-a@core04-t4.example.test';
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -75,7 +84,7 @@ describe('CORE-04 T4 — LONGO_PREOP_ASSESSMENT (e2e)', () => {
     tenantBId = tenantB.id;
 
     const doctorAPassword = 'Core04T4-DoctorA-Pass1!';
-    await prisma.authUser.create({
+    const doctorA = await prisma.authUser.create({
       data: {
         email: 'doctor-a@core04-t4.example.test',
         passwordHash: await bcrypt.hash(doctorAPassword, 10),
@@ -83,6 +92,7 @@ describe('CORE-04 T4 — LONGO_PREOP_ASSESSMENT (e2e)', () => {
         tenantId: tenantAId,
       },
     });
+    doctorAId = doctorA.id;
 
     const [patientA1, patientA2, patientB] = await Promise.all([
       prisma.patient.create({
@@ -132,6 +142,7 @@ describe('CORE-04 T4 — LONGO_PREOP_ASSESSMENT (e2e)', () => {
   afterAll(async () => {
     await resetTables();
     await app.close();
+    delete process.env.PILOT_DEFAULT_CLINICIAN_EMAIL;
   });
 
   const fullPreopResponses = {
@@ -192,7 +203,8 @@ describe('CORE-04 T4 — LONGO_PREOP_ASSESSMENT (e2e)', () => {
           tenantId: tenantAId,
           patientId: patientA1Id,
           episodeId: episodeB.id,
-          doctorId: 'synthetic-doctor',
+          responsibleClinicianId: doctorAId,
+          createdByUserId: doctorAId,
           reasonForVisit: 'x',
           clinicalNote: 'x',
           assessment: 'x',
@@ -225,7 +237,8 @@ describe('CORE-04 T4 — LONGO_PREOP_ASSESSMENT (e2e)', () => {
           tenantId: tenantAId,
           patientId: patientA1Id,
           episodeId: episodeForA2.id,
-          doctorId: 'synthetic-doctor',
+          responsibleClinicianId: doctorAId,
+          createdByUserId: doctorAId,
           reasonForVisit: 'x',
           clinicalNote: 'x',
           assessment: 'x',

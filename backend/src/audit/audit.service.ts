@@ -11,6 +11,10 @@ export interface RecordAuditEventInput {
   metadata?: Prisma.InputJsonValue;
 }
 
+/** Any Prisma client capable of running `auditEvent.create` — either the
+ * top-level PrismaService or a `$transaction` callback's `tx` argument. */
+type AuditCapableClient = Pick<PrismaService, 'auditEvent'>;
+
 /**
  * Append-only Core audit writer. No update/delete methods exist here or
  * anywhere in the application boundary — see docs/05_ARCHITECTURE_BASELINE.md
@@ -22,8 +26,18 @@ export interface RecordAuditEventInput {
 export class AuditService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async record(input: RecordAuditEventInput): Promise<void> {
-    await this.prisma.auditEvent.create({
+  /**
+   * @param client Optional — pass a `$transaction` callback's `tx` client to
+   * make this AuditEvent write commit atomically as part of that same
+   * transaction (e.g. Finding 4: the handover transaction must never commit
+   * without its AuditEvent, and must never leave one without the other).
+   * Defaults to the top-level PrismaService for non-transactional callers.
+   */
+  async record(
+    input: RecordAuditEventInput,
+    client: AuditCapableClient = this.prisma,
+  ): Promise<void> {
+    await client.auditEvent.create({
       data: {
         tenantId: input.tenantId,
         actorId: input.actorId,

@@ -39,16 +39,19 @@ model Tenant {
   name      String
   createdAt DateTime @default(now())
 
-  authUsers            AuthUser[]
-  foundationProbeItems FoundationProbeRecord[]
-  patients                Patient[]
-  careEpisodes            CareEpisode[]
-  encounters              Encounter[]
-  carePlans               CarePlan[]
-  carePlanVersions        CarePlanVersion[]
-  careTasks               CareTask[]
-  auditEvents             AuditEvent[]
-  clinicalFormSubmissions ClinicalFormSubmission[]
+  authUsers                  AuthUser[]
+  foundationProbeItems       FoundationProbeRecord[]
+  patients                   Patient[]
+  careEpisodes               CareEpisode[]
+  encounters                 Encounter[]
+  carePlans                  CarePlan[]
+  carePlanVersions           CarePlanVersion[]
+  careTasks                  CareTask[]
+  auditEvents                AuditEvent[]
+  clinicalFormSubmissions    ClinicalFormSubmission[]
+  facilities                 Facility[]
+  rooms                      Room[]
+  clinicianAssignmentHistory ClinicianAssignmentHistory[]
 
   @@map("tenants")
 }
@@ -71,6 +74,10 @@ model AuthUser {
   tenantId     String
   tenant       Tenant   @relation(fields: [tenantId], references: [id])
   createdAt    DateTime @default(now())
+
+  responsibleForEncounters Encounter[]                  @relation("EncounterResponsibleClinician")
+  createdEncounters        Encounter[]                  @relation("EncounterCreatedBy")
+  clinicianAssignments     ClinicianAssignmentHistory[] @relation("AssignmentClinician")
 
   @@index([tenantId])
   @@map("auth_users")
@@ -102,17 +109,17 @@ enum PatientGender {
 /// identity — see docs/04_CORE_DOMAIN_MODEL.md. GastroCare never auto-merges
 /// patients on matching signals.
 model Patient {
-  id                 String   @id @default(uuid())
+  id                 String        @id @default(uuid())
   tenantId           String
-  tenant             Tenant   @relation(fields: [tenantId], references: [id])
+  tenant             Tenant        @relation(fields: [tenantId], references: [id])
   fullName           String
   normalizedFullName String
-  dateOfBirth        DateTime @db.Date
+  dateOfBirth        DateTime      @db.Date
   gender             PatientGender
   phone              String
   normalizedPhone    String
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
   encounters              Encounter[]
   careEpisodes            CareEpisode[]
@@ -133,30 +140,122 @@ model Patient {
 /// absence of a write path is the simplest safe lifecycle satisfying "no
 /// free unrestricted overwrite of finalized clinical content".
 model Encounter {
-  id             String   @id @default(uuid())
-  tenantId       String
-  tenant         Tenant   @relation(fields: [tenantId], references: [id])
-  patientId      String
-  patient        Patient  @relation(fields: [patientId], references: [id])
-  episodeId      String?
-  episode        CareEpisode? @relation(fields: [episodeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  doctorId       String
+  id        String       @id @default(uuid())
+  tenantId  String
+  tenant    Tenant       @relation(fields: [tenantId], references: [id])
+  patientId String
+  patient   Patient      @relation(fields: [patientId], references: [id])
+  episodeId String?
+  episode   CareEpisode? @relation(fields: [episodeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  /// The clinician currently clinically responsible for this Encounter.
+  /// DEC-010 §A: generalized/migrated from the former `doctorId` column,
+  /// which conflated "responsible clinician" with "actor who created the
+  /// row". This field can change over time via handover (see
+  /// ClinicianAssignmentHistory) — it is NEVER inferred from createdByUserId
+  /// or any other provenance/actor field, and vice versa.
+  responsibleClinicianId String
+  responsibleClinician   AuthUser @relation("EncounterResponsibleClinician", fields: [responsibleClinicianId], references: [id])
+
+  /// The actor (AuthUser) who created this Encounter row — pure provenance,
+  /// distinct from responsibleClinicianId. DEC-010 §A.
+  createdByUserId String
+  createdBy       AuthUser @relation("EncounterCreatedBy", fields: [createdByUserId], references: [id])
+
+  /// Physical location (DEC-010 §C) — Tenant remains the security/customer
+  /// workspace boundary; Room/Facility is the physical care location,
+  /// intentionally a separate concept. Nullable: not every historical or
+  /// legacy Encounter has a physical room recorded.
+  roomId String?
+  room   Room?   @relation(fields: [roomId], references: [id])
+
   reasonForVisit String
-  clinicalNote   String
-  assessment     String
+  /// Optional at creation time: a Receptionist creating an Encounter
+  /// Context (DEC-010 §B) has no clinical content to record yet — the
+  /// Hemorrhoid Examination clinical form captures that later. Defaults to
+  /// empty string, never fabricated.
+  clinicalNote   String   @default("")
+  assessment     String   @default("")
   source         String   @default("MANUAL")
   occurredAt     DateTime
   createdAt      DateTime @default(now())
 
-  carePlan                CarePlan?
-  clinicalFormSubmissions ClinicalFormSubmission[]
-  sourceForFollowUpTasks    CareTask[] @relation("CareTaskSourceEncounter")
-  completedForFollowUpTasks CareTask[] @relation("CareTaskCompletedByEncounter")
+  carePlan                   CarePlan?
+  clinicalFormSubmissions    ClinicalFormSubmission[]
+  sourceForFollowUpTasks     CareTask[]                   @relation("CareTaskSourceEncounter")
+  completedForFollowUpTasks  CareTask[]                   @relation("CareTaskCompletedByEncounter")
+  clinicianAssignmentHistory ClinicianAssignmentHistory[]
 
   @@index([tenantId])
   @@index([tenantId, patientId])
   @@index([tenantId, episodeId])
+  @@index([tenantId, roomId])
+  @@index([tenantId, responsibleClinicianId])
   @@map("encounters")
+}
+
+/// Facility — a physical care location, tenant-scoped. DEC-010 §C: Tenant
+/// stays the security/customer workspace boundary; Facility is a distinct
+/// physical-location concept. A patient/CareEpisode may have Encounters at
+/// multiple Facilities within the same tenant.
+model Facility {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  name      String
+  createdAt DateTime @default(now())
+
+  rooms Room[]
+
+  @@index([tenantId])
+  @@map("facilities")
+}
+
+/// Room — a physical location within a Facility, tenant-scoped. A Room's
+/// Facility must belong to the same tenant as the Room itself (ancestry
+/// invariant enforced in RoomsService.create, since Prisma's schema DSL
+/// cannot express a cross-field tenant-equality constraint).
+model Room {
+  id         String   @id @default(uuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  facilityId String
+  facility   Facility @relation(fields: [facilityId], references: [id])
+  name       String
+  createdAt  DateTime @default(now())
+
+  encounters Encounter[]
+
+  @@index([tenantId])
+  @@index([tenantId, facilityId])
+  @@map("rooms")
+}
+
+/// ClinicianAssignmentHistory — append-only provenance trail for
+/// responsible-clinician assignment/handover on an Encounter (DEC-010 §B).
+/// One row is written at initial assignment (Encounter creation) and one
+/// additional row per handover. Historical rows are never updated —
+/// `previousClinicianId` records what the Encounter's responsible clinician
+/// was immediately before this row took effect. This is deliberately
+/// separate from AuditEvent: AuditEvent records the operational event
+/// (actor, action, timestamp); this table records the clinical-responsibility
+/// timeline itself, queryable without parsing AuditEvent.metadata.
+model ClinicianAssignmentHistory {
+  id                  String    @id @default(uuid())
+  tenantId            String
+  tenant              Tenant    @relation(fields: [tenantId], references: [id])
+  encounterId         String
+  encounter           Encounter @relation(fields: [encounterId], references: [id])
+  clinicianId         String
+  clinician           AuthUser  @relation("AssignmentClinician", fields: [clinicianId], references: [id])
+  previousClinicianId String?
+  assignedByUserId    String
+  reason              String?
+  assignedAt          DateTime  @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, encounterId])
+  @@map("clinician_assignment_history")
 }
 
 enum CareEpisodeStatus {
@@ -198,20 +297,20 @@ enum CarePlanStatus {
 /// to the previous version — see docs/04_CORE_DOMAIN_MODEL.md and
 /// docs/05_ARCHITECTURE_BASELINE.md ("Signed-record immutability").
 model CarePlan {
-  id              String          @id @default(uuid())
-  tenantId        String
-  tenant          Tenant          @relation(fields: [tenantId], references: [id])
-  encounterId     String          @unique
-  encounter       Encounter       @relation(fields: [encounterId], references: [id])
-  patientId       String
-  patient         Patient         @relation(fields: [patientId], references: [id])
-  status          CarePlanStatus  @default(DRAFT)
-  instructions    String
-  followUpDate    DateTime?
-  currentVersionId String?        @unique
-  currentVersion  CarePlanVersion? @relation("CurrentVersion", fields: [currentVersionId], references: [id])
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  id               String           @id @default(uuid())
+  tenantId         String
+  tenant           Tenant           @relation(fields: [tenantId], references: [id])
+  encounterId      String           @unique
+  encounter        Encounter        @relation(fields: [encounterId], references: [id])
+  patientId        String
+  patient          Patient          @relation(fields: [patientId], references: [id])
+  status           CarePlanStatus   @default(DRAFT)
+  instructions     String
+  followUpDate     DateTime?
+  currentVersionId String?          @unique
+  currentVersion   CarePlanVersion? @relation("CurrentVersion", fields: [currentVersionId], references: [id])
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
   versions  CarePlanVersion[] @relation("PlanVersions")
   careTasks CareTask[]
@@ -226,20 +325,20 @@ model CarePlan {
 /// creates versionNumber N+1 with previousVersionId pointing at the prior
 /// signed version, actorId + reason + signedAt recording the amendment.
 model CarePlanVersion {
-  id                 String   @id @default(uuid())
-  tenantId           String
-  tenant             Tenant   @relation(fields: [tenantId], references: [id])
-  carePlanId         String
-  carePlan           CarePlan @relation("PlanVersions", fields: [carePlanId], references: [id])
-  versionNumber      Int
-  instructions       String
-  followUpDate       DateTime?
-  actorId            String
-  reason             String?
-  previousVersionId  String?
-  previousVersion    CarePlanVersion?  @relation("VersionLineage", fields: [previousVersionId], references: [id])
-  nextVersions       CarePlanVersion[] @relation("VersionLineage")
-  signedAt           DateTime @default(now())
+  id                String            @id @default(uuid())
+  tenantId          String
+  tenant            Tenant            @relation(fields: [tenantId], references: [id])
+  carePlanId        String
+  carePlan          CarePlan          @relation("PlanVersions", fields: [carePlanId], references: [id])
+  versionNumber     Int
+  instructions      String
+  followUpDate      DateTime?
+  actorId           String
+  reason            String?
+  previousVersionId String?
+  previousVersion   CarePlanVersion?  @relation("VersionLineage", fields: [previousVersionId], references: [id])
+  nextVersions      CarePlanVersion[] @relation("VersionLineage")
+  signedAt          DateTime          @default(now())
 
   currentForPlan CarePlan? @relation("CurrentVersion")
 
@@ -375,8 +474,8 @@ model ClinicalFormSubmission {
   logicalGroupId       String
   revisionNumber       Int
   previousSubmissionId String?                 @unique
-  previousSubmission   ClinicalFormSubmission?  @relation("SubmissionLineage", fields: [previousSubmissionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  nextSubmission       ClinicalFormSubmission?  @relation("SubmissionLineage")
+  previousSubmission   ClinicalFormSubmission? @relation("SubmissionLineage", fields: [previousSubmissionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  nextSubmission       ClinicalFormSubmission? @relation("SubmissionLineage")
   amendmentReason      String?
   amendedByUserId      String?
   completedByUserId    String?

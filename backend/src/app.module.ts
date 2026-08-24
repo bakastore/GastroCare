@@ -15,6 +15,9 @@ import { CareTasksModule } from './care-tasks/care-tasks.module';
 import { ClinicalFormsModule } from './clinical-forms/clinical-forms.module';
 import { CareEpisodesModule } from './care-episodes/care-episodes.module';
 import { FollowUpTasksModule } from './follow-up-tasks/follow-up-tasks.module';
+import { CliniciansModule } from './clinicians/clinicians.module';
+import { FacilitiesModule } from './facilities/facilities.module';
+import { RoomsModule } from './rooms/rooms.module';
 
 @Module({
   imports: [
@@ -31,6 +34,9 @@ import { FollowUpTasksModule } from './follow-up-tasks/follow-up-tasks.module';
     ClinicalFormsModule,
     CareEpisodesModule,
     FollowUpTasksModule,
+    CliniciansModule,
+    FacilitiesModule,
+    RoomsModule,
   ],
   providers: [
     {

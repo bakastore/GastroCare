@@ -88,6 +88,9 @@ record_counts() {
     UNION ALL SELECT 'care_tasks', count(*) FROM care_tasks
     UNION ALL SELECT 'clinical_form_submissions', count(*) FROM clinical_form_submissions
     UNION ALL SELECT 'audit_events', count(*) FROM audit_events
+    UNION ALL SELECT 'facilities', count(*) FROM facilities
+    UNION ALL SELECT 'rooms', count(*) FROM rooms
+    UNION ALL SELECT 'clinician_assignment_history', count(*) FROM clinician_assignment_history
     ORDER BY 1;
   " > "$out_file"
 }
@@ -152,6 +155,55 @@ record_longo_pathway_signature() {
   "
 }
 
+record_hemorrhoid_slice1_signature() {
+  # Hemorrhoid Vertical Slice 1 (DEC-010) — "Phạm Thị Trĩ": Facility/Room
+  # field-level content, Encounter.responsibleClinicianId presence, the
+  # per-examination vital copy-forward snapshot weight (its own stored
+  # value — 54 for the first exam, 55 for the second, edited from the
+  # copied 54 — see test/pilot-seed.ts), the HEMORRHOID_EXAMINATION
+  # amendment lineage/status, and (DEC-010 Finding 2 correction) the
+  # internal/external/mixed hemorrhoid size split — internalHemorrhoidSize
+  # is set on the first exam only, proving that specific generalized field
+  # (not a legacy shared mainHemorrhoidSize) survives the round trip with
+  # its exact value. The dedicated backend e2e suite
+  # (test/hemorrhoid-slice1.e2e-spec.ts) separately proves a later
+  # amendment to a SOURCE record never mutates an already-copied snapshot;
+  # this signature proves that stored snapshot content itself survives
+  # backup/restore unchanged.
+  psql_in_container -t -A -F',' -c "
+    SELECT p.\"fullName\", f.name, r.name,
+           (e.\"responsibleClinicianId\" IS NOT NULL) AS has_responsible_clinician,
+           cfs.\"templateKey\", cfs.status, cfs.\"revisionNumber\",
+           cfs.responses->>'weight' AS snapshot_weight,
+           cfs.responses->>'internalHemorrhoidSize' AS snapshot_internal_size,
+           (cfs.responses ? 'mainHemorrhoidSize') AS has_legacy_main_size
+    FROM patients p
+    JOIN encounters e ON e.\"patientId\" = p.id
+    JOIN rooms r ON r.id = e.\"roomId\"
+    JOIN facilities f ON f.id = r.\"facilityId\"
+    JOIN clinical_form_submissions cfs ON cfs.\"encounterId\" = e.id
+    WHERE p.\"fullName\" = 'Phạm Thị Trĩ' AND cfs.\"templateKey\" = 'HEMORRHOID_EXAMINATION'
+    ORDER BY e.\"occurredAt\", cfs.\"revisionNumber\";
+  "
+}
+
+record_clinician_handover_signature() {
+  # Full clinician-assignment provenance for Phạm Thị Trĩ's first Encounter
+  # (initial assignment row with previousClinicianId NULL, plus the
+  # handover row with previousClinicianId set) must survive intact —
+  # including that the ENCOUNTER_CREATED AuditEvent keeps its original
+  # actor even after the later handover.
+  psql_in_container -t -A -F',' -c "
+    SELECT cah.\"previousClinicianId\" IS NULL AS is_initial_assignment,
+           cah.reason
+    FROM clinician_assignment_history cah
+    JOIN encounters e ON e.id = cah.\"encounterId\"
+    JOIN patients p ON p.id = e.\"patientId\"
+    WHERE p.\"fullName\" = 'Phạm Thị Trĩ'
+    ORDER BY cah.\"assignedAt\";
+  "
+}
+
 record_follow_up_scheduling_signature() {
   # CORE-04 T10 — the 4 generated follow-up CareTasks for Lê Thị Longo's
   # surgery: timepointCode, stored status, and completedByEncounterId
@@ -204,6 +256,12 @@ echo "$BASELINE_LONGO_PATHWAY"
 echo "--- baseline Lê Thị Longo follow-up scheduling (timepointCode,status,matched,scheduleReviewRequired,noCarePlan) ---"
 BASELINE_FOLLOW_UP="$(record_follow_up_scheduling_signature)"
 echo "$BASELINE_FOLLOW_UP"
+echo "--- baseline Phạm Thị Trĩ Hemorrhoid Vertical Slice 1 (fullName,facility,room,hasResponsibleClinician,templateKey,status,revisionNumber,snapshotWeight,snapshotInternalSize,hasLegacyMainSize) ---"
+BASELINE_HEMORRHOID_SLICE1="$(record_hemorrhoid_slice1_signature)"
+echo "$BASELINE_HEMORRHOID_SLICE1"
+echo "--- baseline Phạm Thị Trĩ clinician handover provenance (isInitialAssignment,reason) ---"
+BASELINE_CLINICIAN_HANDOVER="$(record_clinician_handover_signature)"
+echo "$BASELINE_CLINICIAN_HANDOVER"
 
 BASELINE_AUDIT_COUNT="$(psql_in_container -t -A -c "SELECT count(*) FROM audit_events;")"
 [[ "$BASELINE_AUDIT_COUNT" -gt 0 ]] || fail "baseline has zero AuditEvent rows — seed did not run as expected"
@@ -225,7 +283,8 @@ log "6. Destroying disposable DB data (TRUNCATE, same container/db verified abov
 psql_in_container -c "
   TRUNCATE TABLE
     clinical_form_submissions, audit_events, care_tasks, care_plan_versions,
-    care_plans, encounters, care_episodes, patients, foundation_probe_records,
+    care_plans, clinician_assignment_history, encounters, care_episodes,
+    rooms, facilities, patients, foundation_probe_records,
     auth_users, tenants
   RESTART IDENTITY CASCADE;
 "
@@ -277,6 +336,16 @@ RESTORED_FOLLOW_UP="$(record_follow_up_scheduling_signature)"
   || fail "restored Lê Thị Longo follow-up scheduling state does not match baseline"
 log "Lê Thị Longo T10 follow-up scheduling (4 timepoints, matched completion, no carePlanId) verified intact after restore"
 
+RESTORED_HEMORRHOID_SLICE1="$(record_hemorrhoid_slice1_signature)"
+[[ "$RESTORED_HEMORRHOID_SLICE1" == "$BASELINE_HEMORRHOID_SLICE1" ]] \
+  || fail "restored Phạm Thị Trĩ Hemorrhoid Vertical Slice 1 data (Facility/Room/responsibleClinicianId/HEMORRHOID_EXAMINATION lineage/vital snapshot) does not match baseline"
+log "Phạm Thị Trĩ Hemorrhoid Vertical Slice 1 (Facility/Room, responsibleClinicianId, HEMORRHOID_EXAMINATION amendment lineage, vital copy-forward snapshot) verified intact after restore"
+
+RESTORED_CLINICIAN_HANDOVER="$(record_clinician_handover_signature)"
+[[ "$RESTORED_CLINICIAN_HANDOVER" == "$BASELINE_CLINICIAN_HANDOVER" ]] \
+  || fail "restored Phạm Thị Trĩ clinician handover provenance does not match baseline"
+log "Phạm Thị Trĩ clinician handover provenance (initial assignment + handover history) verified intact after restore"
+
 RESTORED_AUDIT_COUNT="$(psql_in_container -t -A -c "SELECT count(*) FROM audit_events;")"
 [[ "$RESTORED_AUDIT_COUNT" == "$BASELINE_AUDIT_COUNT" ]] \
   || fail "restored AuditEvent count ($RESTORED_AUDIT_COUNT) does not match baseline ($BASELINE_AUDIT_COUNT)"
@@ -300,6 +369,7 @@ log "9. Running backend regression against the restored database as a smoke test
 (cd "$BACKEND_DIR" && npx jest --config ./test/jest-e2e.json --runInBand test/core04-t5-t9-longo-forms.e2e-spec.ts)
 (cd "$BACKEND_DIR" && npx jest --config ./test/jest-e2e.json --runInBand test/core04-t10-follow-up-scheduling.e2e-spec.ts)
 (cd "$BACKEND_DIR" && npx jest --config ./test/jest-e2e.json --runInBand test/core04-t11-episode-timeline.e2e-spec.ts)
+(cd "$BACKEND_DIR" && npx jest --config ./test/jest-e2e.json --runInBand test/hemorrhoid-slice1.e2e-spec.ts)
 (cd "$BACKEND_DIR" && npx jest --config ./test/jest-e2e.json --runInBand test/gate2-foundation.e2e-spec.ts)
 
 # The backend e2e suite resets/creates its own tenants inside its own

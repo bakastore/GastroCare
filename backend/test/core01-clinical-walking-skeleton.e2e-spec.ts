@@ -37,6 +37,12 @@ describe('CORE-01 — Clinical Core Walking Skeleton (e2e)', () => {
   let doctorBToken: string;
 
   beforeAll(async () => {
+    // Finding 3 correction — default clinician resolution is fail-closed
+    // and requires an explicit config pointing at a real seeded DOCTOR;
+    // set it before app bootstrap so ConfigModule picks it up.
+    process.env.PILOT_DEFAULT_CLINICIAN_EMAIL =
+      'doctor-a@core01-test.gastrocare.local';
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -55,8 +61,11 @@ describe('CORE-01 — Clinical Core Walking Skeleton (e2e)', () => {
     await prisma.careTask.deleteMany();
     await prisma.carePlanVersion.deleteMany();
     await prisma.carePlan.deleteMany();
+    await prisma.clinicianAssignmentHistory.deleteMany();
     await prisma.encounter.deleteMany();
     await prisma.careEpisode.deleteMany();
+    await prisma.room.deleteMany();
+    await prisma.facility.deleteMany();
     await prisma.patient.deleteMany();
     await prisma.foundationProbeRecord.deleteMany();
     await prisma.authUser.deleteMany();
@@ -114,13 +123,17 @@ describe('CORE-01 — Clinical Core Walking Skeleton (e2e)', () => {
     await prisma.careTask.deleteMany();
     await prisma.carePlanVersion.deleteMany();
     await prisma.carePlan.deleteMany();
+    await prisma.clinicianAssignmentHistory.deleteMany();
     await prisma.encounter.deleteMany();
     await prisma.careEpisode.deleteMany();
+    await prisma.room.deleteMany();
+    await prisma.facility.deleteMany();
     await prisma.patient.deleteMany();
     await prisma.foundationProbeRecord.deleteMany();
     await prisma.authUser.deleteMany();
     await prisma.tenant.deleteMany();
     await app.close();
+    delete process.env.PILOT_DEFAULT_CLINICIAN_EMAIL;
   });
 
   async function loginAs(email: string, password: string): Promise<string> {
@@ -182,18 +195,17 @@ describe('CORE-01 — Clinical Core Walking Skeleton (e2e)', () => {
     });
 
     it('receptionist without a role match receives 403 on a role-restricted route (unauthorized role)', async () => {
-      // Encounter is DOCTOR-only; a RECEPTIONIST is authenticated but not
-      // authorized for this route.
+      // Reading detailed clinical Encounter content is DOCTOR-only; a
+      // RECEPTIONIST is authenticated but not authorized for this route.
+      // (Encounter *creation* — POST /encounters — is intentionally
+      // authorized for RECEPTIONIST as of DEC-010 §B, Hemorrhoid Vertical
+      // Slice 1: a Receptionist may create the Encounter Context. That is
+      // covered separately in the Hemorrhoid slice e2e suite; this RBAC
+      // regression check now uses a still-DOCTOR-only route instead so the
+      // "unauthorized role -> 403" guarantee itself keeps coverage.)
       await request(app.getHttpServer())
-        .post('/encounters')
+        .get('/encounters/00000000-0000-0000-0000-000000000000')
         .set('Authorization', `Bearer ${receptionistAToken}`)
-        .send({
-          patientId: patientMinhId,
-          occurredAt: '2026-08-01T09:00:00.000Z',
-          reasonForVisit: 'x',
-          clinicalNote: 'x',
-          assessment: 'x',
-        })
         .expect(403);
     });
 

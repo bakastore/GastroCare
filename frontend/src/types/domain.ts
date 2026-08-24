@@ -21,11 +21,69 @@ export interface Encounter {
   id: string;
   patientId: string;
   episodeId: string | null;
+  /**
+   * The clinician clinically responsible for this Encounter — DEC-010 §A.
+   * Distinct from provenance (who created the row); may change over time
+   * via handover.
+   */
+  responsibleClinicianId: string;
+  /** Physical room this Encounter takes place in — DEC-010 §C. Nullable. */
+  roomId: string | null;
   occurredAt: string;
   reasonForVisit: string;
   clinicalNote: string;
   assessment: string;
   createdAt: string;
+}
+
+/** Facility — physical care location, tenant-scoped (DEC-010 §C). */
+export interface Facility {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
+/** Room — physical location within a Facility (DEC-010 §C). */
+export interface Room {
+  id: string;
+  facilityId: string;
+  name: string;
+  createdAt: string;
+}
+
+/** Selectable DOCTOR-role clinician (DEC-010 §B) — id/email only. */
+export interface Clinician {
+  id: string;
+  email: string;
+}
+
+/** One entry in an Encounter's responsible-clinician provenance trail. */
+export interface ClinicianAssignmentHistoryEntry {
+  id: string;
+  encounterId: string;
+  clinicianId: string;
+  previousClinicianId: string | null;
+  assignedByUserId: string;
+  reason: string | null;
+  assignedAt: string;
+}
+
+/** Vital-sign copy-forward result for a new HEMORRHOID_EXAMINATION (DEC-010 §6). */
+export interface VitalsCopyForwardResult {
+  sourceSubmissionId: string;
+  sourceEncounterId: string;
+  sourceOccurredAt: string;
+  vitals: Partial<
+    Record<
+      | 'weight'
+      | 'height'
+      | 'pulse'
+      | 'temperature'
+      | 'systolicBloodPressure'
+      | 'diastolicBloodPressure',
+      number
+    >
+  >;
 }
 
 export type CarePlanStatus = 'DRAFT' | 'SIGNED';

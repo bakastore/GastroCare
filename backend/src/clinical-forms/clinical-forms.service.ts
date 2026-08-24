@@ -373,4 +373,117 @@ export class ClinicalFormsService {
       orderBy: { createdAt: 'asc' },
     });
   }
+
+  /**
+   * Vital-sign copy-forward for HEMORRHOID_EXAMINATION (DEC-010 §6).
+   *
+   * Finding 2 correction — target-aware: the caller supplies the target
+   * Encounter (the Encounter the new/being-edited examination belongs to),
+   * not a patientId. This method resolves tenant + patient + clinical time
+   * (Encounter.occurredAt) from that target Encounter itself, then only
+   * considers a prior submission eligible when
+   * `sourceEncounter.occurredAt < targetEncounter.occurredAt` — this is the
+   * invariant that prevents a backdated target Encounter from copying
+   * forward data from the clinical future. Ordering (both the eligibility
+   * cutoff and the "latest prior" selection) uses Encounter.occurredAt
+   * only, never createdAt.
+   *
+   * Also strictly scoped to same tenantId + same patientId (never
+   * cross-tenant, never cross-patient); only considers COMPLETED prior
+   * submissions (DRAFT excluded).
+   *
+   * Deterministic tie-break when two eligible prior records share the exact
+   * same occurredAt: prefer the higher revisionNumber, then the higher `id`
+   * (string comparison — id is a UUID, so this has no clinical meaning, but
+   * it is a stable total order over the tied set, which is all determinism
+   * requires. Documented here and in the CORE04/T13-style test that proves
+   * it, per DEC-010 §6 point 8).
+   *
+   * The caller (frontend form pre-fill) is responsible for letting the user
+   * edit these values before create/complete; whatever ends up in the new
+   * submission's own `responses` JSON at completion time is that
+   * examination's own frozen snapshot — this method only ever reads, it
+   * never mutates or links back to the source record, so a later amendment
+   * to the source can never retroactively change an already-copied value.
+   * The frontend must never compute/decide this clinical ordering itself —
+   * it only ever passes the target Encounter id.
+   */
+  async getVitalsCopyForward(
+    tenantId: string,
+    targetEncounterId: string,
+  ): Promise<{
+    sourceSubmissionId: string;
+    sourceEncounterId: string;
+    sourceOccurredAt: Date;
+    vitals: Partial<
+      Record<
+        | 'weight'
+        | 'height'
+        | 'pulse'
+        | 'temperature'
+        | 'systolicBloodPressure'
+        | 'diastolicBloodPressure',
+        number
+      >
+    >;
+  } | null> {
+    const targetEncounter = await this.prisma.encounter.findFirst({
+      where: { id: targetEncounterId, tenantId },
+      select: { patientId: true, occurredAt: true },
+    });
+    if (!targetEncounter) {
+      throw new NotFoundException('Target Encounter not found');
+    }
+
+    const candidates = await this.prisma.clinicalFormSubmission.findMany({
+      where: {
+        tenantId,
+        patientId: targetEncounter.patientId,
+        templateKey: 'HEMORRHOID_EXAMINATION',
+        status: ClinicalFormStatus.COMPLETED,
+        encounter: { occurredAt: { lt: targetEncounter.occurredAt } },
+      },
+      include: { encounter: { select: { occurredAt: true } } },
+    });
+
+    if (candidates.length === 0) {
+      return null;
+    }
+
+    candidates.sort((a, b) => {
+      const byOccurredAt =
+        b.encounter.occurredAt.getTime() - a.encounter.occurredAt.getTime();
+      if (byOccurredAt !== 0) return byOccurredAt;
+      const byRevision = b.revisionNumber - a.revisionNumber;
+      if (byRevision !== 0) return byRevision;
+      // Deterministic final tie-break: higher id (string compare) wins.
+      return a.id < b.id ? 1 : a.id > b.id ? -1 : 0;
+    });
+
+    const source = candidates[0];
+    const responses = source.responses as Record<string, unknown>;
+    const vitalKeys = [
+      'weight',
+      'height',
+      'pulse',
+      'temperature',
+      'systolicBloodPressure',
+      'diastolicBloodPressure',
+    ] as const;
+
+    const vitals: Record<string, number> = {};
+    for (const key of vitalKeys) {
+      const value = responses[key];
+      if (typeof value === 'number' && !Number.isNaN(value)) {
+        vitals[key] = value;
+      }
+    }
+
+    return {
+      sourceSubmissionId: source.id,
+      sourceEncounterId: source.encounterId,
+      sourceOccurredAt: source.encounter.occurredAt,
+      vitals,
+    };
+  }
 }

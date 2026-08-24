@@ -53,6 +53,27 @@ export class ClinicalFormsController {
     return this.clinicalFormsService.getTemplateDefinition(templateKey);
   }
 
+  // Declared before ':id' for the same reason as 'templates/:templateKey'.
+  // DEC-010 §6 — vital-sign copy-forward for a new HEMORRHOID_EXAMINATION.
+  // Finding 2 correction — target-aware: takes the target Encounter id, not
+  // a patientId. The backend resolves tenant/patient/occurredAt from that
+  // Encounter itself; the frontend must never decide clinical ordering.
+  @Get('vitals-copy-forward')
+  getVitalsCopyForward(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('targetEncounterId') targetEncounterId?: string,
+  ) {
+    if (!targetEncounterId) {
+      throw new BadRequestException(
+        'targetEncounterId query parameter is required',
+      );
+    }
+    return this.clinicalFormsService.getVitalsCopyForward(
+      user.tenantId,
+      targetEncounterId,
+    );
+  }
+
   @Get(':id')
   getById(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.clinicalFormsService.getById(user.tenantId, id);

@@ -28,14 +28,17 @@ import { SectionDef } from '../types';
 // per-field requirements when it composes this section (out of scope for
 // T3).
 
-const GOLIGHER_OPTIONS = [
+// Exported so other templates (e.g. HEMORRHOID_EXAMINATION, DEC-010) can
+// reuse the exact same established Goligher/clock-face vocabulary instead
+// of re-declaring a parallel, potentially drifting, value set.
+export const GOLIGHER_OPTIONS = [
   { value: 'I', label: 'Độ I' },
   { value: 'II', label: 'Độ II' },
   { value: 'III', label: 'Độ III' },
   { value: 'IV', label: 'Độ IV' },
 ];
 
-const CLOCK_FACE_OPTIONS = Array.from({ length: 12 }, (_, i) => {
+export const CLOCK_FACE_OPTIONS = Array.from({ length: 12 }, (_, i) => {
   const hour = i + 1;
   return { value: hour, label: `${hour}h` };
 });

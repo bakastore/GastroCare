@@ -37,8 +37,11 @@ describe('CORE-04 T5-T9 — remaining five Longo form families (e2e)', () => {
     await prisma.careTask.deleteMany();
     await prisma.carePlanVersion.deleteMany();
     await prisma.carePlan.deleteMany();
+    await prisma.clinicianAssignmentHistory.deleteMany();
     await prisma.encounter.deleteMany();
     await prisma.careEpisode.deleteMany();
+    await prisma.room.deleteMany();
+    await prisma.facility.deleteMany();
     await prisma.patient.deleteMany();
     await prisma.foundationProbeRecord.deleteMany();
     await prisma.authUser.deleteMany();
@@ -91,6 +94,11 @@ describe('CORE-04 T5-T9 — remaining five Longo form families (e2e)', () => {
   }
 
   beforeAll(async () => {
+    // Finding 3 correction — default clinician resolution is fail-closed
+    // and requires an explicit config pointing at a real seeded DOCTOR;
+    // set it before app bootstrap so ConfigModule picks it up.
+    process.env.PILOT_DEFAULT_CLINICIAN_EMAIL = 'doctor@core04-t5t9.example.test';
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -147,6 +155,7 @@ describe('CORE-04 T5-T9 — remaining five Longo form families (e2e)', () => {
   afterAll(async () => {
     await resetTables();
     await app.close();
+    delete process.env.PILOT_DEFAULT_CLINICIAN_EMAIL;
   });
 
   describe('A0. Template schema endpoint (frontend generic form renderer)', () => {

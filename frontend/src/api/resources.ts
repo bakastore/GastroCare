@@ -3,13 +3,18 @@ import type {
   CareEpisode,
   CarePlan,
   CareTask,
+  Clinician,
+  ClinicianAssignmentHistoryEntry,
   ClinicalFormResponses,
   ClinicalFormSubmission,
   ClinicalFormTemplateDef,
   CreatePatientResult,
   Encounter,
+  Facility,
   Patient,
   PatientTimeline,
+  Room,
+  VitalsCopyForwardResult,
 } from '../types/domain';
 
 export const authApi = {
@@ -35,12 +40,46 @@ export const encountersApi = {
   create: (dto: {
     patientId: string;
     episodeId?: string;
+    /** DEC-010 §B — omit to resolve the default pilot clinician server-side. */
+    responsibleClinicianId?: string;
+    /** DEC-010 §C — physical room, optional. */
+    roomId?: string;
     occurredAt: string;
     reasonForVisit: string;
-    clinicalNote: string;
-    assessment: string;
+    /** Optional — a Receptionist creating the Encounter Context has no
+     * clinical content yet (DEC-010 §B/§D). */
+    clinicalNote?: string;
+    assessment?: string;
   }) => api.post<Encounter>('/encounters', dto),
   getById: (id: string) => api.get<Encounter>(`/encounters/${id}`),
+  /** Clinician handover — DOCTOR-only (DEC-010 §B). */
+  handover: (id: string, dto: { newClinicianId: string; reason?: string }) =>
+    api.post<Encounter>(`/encounters/${id}/handover`, dto),
+  getClinicianHistory: (id: string) =>
+    api.get<ClinicianAssignmentHistoryEntry[]>(
+      `/encounters/${id}/clinician-history`,
+    ),
+};
+
+/** Facility lookup/management (DEC-010 §C). */
+export const facilitiesApi = {
+  list: () => api.get<Facility[]>('/facilities'),
+  getById: (id: string) => api.get<Facility>(`/facilities/${id}`),
+  create: (name: string) => api.post<Facility>('/facilities', { name }),
+};
+
+/** Room lookup/management (DEC-010 §C). */
+export const roomsApi = {
+  listByFacility: (facilityId: string) =>
+    api.get<Room[]>(`/rooms?facilityId=${facilityId}`),
+  getById: (id: string) => api.get<Room>(`/rooms/${id}`),
+  create: (dto: { facilityId: string; name: string }) =>
+    api.post<Room>('/rooms', dto),
+};
+
+/** Selectable DOCTOR-role clinician lookup (DEC-010 §B). */
+export const cliniciansApi = {
+  list: () => api.get<Clinician[]>('/clinicians'),
 };
 
 export const carePlansApi = {
@@ -81,6 +120,17 @@ export const clinicalFormsApi = {
     ),
   getTemplate: (templateKey: string) =>
     api.get<ClinicalFormTemplateDef>(`/clinical-forms/templates/${templateKey}`),
+  /**
+   * Vital-sign copy-forward for a new HEMORRHOID_EXAMINATION (DEC-010 §6).
+   * Finding 2 correction — target-aware: pass the target Encounter id, not
+   * a patientId. The backend resolves tenant/patient/occurredAt from that
+   * Encounter itself and enforces `source.occurredAt < target.occurredAt`;
+   * the frontend must never compute/decide this clinical ordering.
+   */
+  getVitalsCopyForward: (targetEncounterId: string) =>
+    api.get<VitalsCopyForwardResult | null>(
+      `/clinical-forms/vitals-copy-forward?targetEncounterId=${targetEncounterId}`,
+    ),
 };
 
 export const careEpisodesApi = {

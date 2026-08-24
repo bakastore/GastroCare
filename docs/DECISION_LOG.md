@@ -98,6 +98,76 @@ Owner quyết định:
 
 **Căn cứ:** Owner directive đóng checkpoint kỹ thuật CORE-04 trước khi chuyển sang workflow thực tế mới của BS Thái; fresh Independent T16 re-audit đã PASS sau remediation.
 
+### DEC-010 — Hemorrhoid Real-World Workflow Vertical Slice 1
+
+**Ngày:** 2026-08-24
+
+**Trạng thái:** OWNER LOCKED
+
+**Thẩm quyền:** Explicit Owner decision dated 2026-08-24. Quyết định này supersede DEC-009 §6 CHỈ ở phần DEC-009 nói Hemorrhoid direction "không phải work package mới được mở bởi quyết định này". Toàn bộ nội dung khác của DEC-009 (điểm 1–5, 7) không thay đổi và vẫn có hiệu lực nguyên vẹn.
+
+Owner chính thức mở work package:
+
+**HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 1**
+
+**Evidence basis:**
+
+External sanitized evidence artifact: `LONGO_ATOMIC_FIELD_DICTIONARY_v1.md`
+SHA-256: `e95a240a9d51c73dbabeba0e4c373aa871ca4acf900ed19c95ca38bdff9f3726`
+
+Artifact này chỉ là evidence, không được copy vào repository.
+
+Classification audit:
+
+| Nhóm | Số lượng |
+|---|---|
+| GENERAL_HEMORRHOID_EXAM | 29 |
+| LONGO_SPECIFIC | 4 |
+| SURGERY_SPECIFIC | 51 |
+| RESEARCH_ONLY | 5 |
+| DEFERRED_SEMANTICS | 21 |
+| NOT_RELEVANT_TO_GENERAL_EXAM | 8 |
+| TOTAL | 118 |
+| MISSING | 0 |
+| DUPLICATE | 0 |
+
+**A. Encounter clinician**
+
+`Encounter.doctorId` semantics hiện tại được thay thế/tổng quát hóa bởi `responsibleClinicianId` — nghĩa là clinician hiện đang chịu trách nhiệm lâm sàng cho Encounter, tách biệt với các provenance actor: `createdBy`, `completedBy`, `amendedBy`, `AuditEvent.actor`. Không giữ `doctorId` và `responsibleClinicianId` như hai nguồn sự thật lâm sàng cạnh tranh nhau. Dữ liệu hiện có phải được bảo toàn qua một migration được review trong tương lai.
+
+**B. Clinician assignment/handover**
+
+Receptionist được phép gán clinician + room trước khi khám. Pilot default clinician là BS Thái, resolve qua configuration/data hợp lệ, không hard-code unsafe identity. Responsible clinician có thể thay đổi trong quá trình Encounter (handover); handover phải giữ lịch sử và audit provenance; handover bởi actor không được ủy quyền hoặc cross-tenant phải bị REJECT.
+
+**C. Tenant / Facility / Room**
+
+Tenant = customer/security workspace. Facility/Location/Room = physical care location, tách biệt khỏi Tenant. Một patient/CareEpisode có thể có Encounter tại nhiều physical location khác nhau trong cùng một tenant.
+
+**D. Encounter và CareEpisode**
+
+`Encounter.episodeId` vẫn nullable. Hemorrhoid examination ban đầu không bắt buộc phải có Episode. Không tự động tạo hoặc suy luận CareEpisode. Việc gắn một Encounter lịch sử vào một CareEpisode sau này phải là hành vi application tường minh, dưới một contract riêng trong tương lai.
+
+**Hemorrhoid Examination v1 — approved field set (29 GENERAL_HEMORRHOID_EXAM concepts):**
+
+1 historyConstipation · 2 historyPriorAnorectalSurgery · 3 historyRespiratoryDisease · 4 historyDiabetes · 5 historyCirrhosis · 6 historyOtherPregnancyDietBowelHabit · 7 weight · 8 height · 9 pulse · 10 temperature · 11 systolicBloodPressure · 12 diastolicBloodPressure · 13 anemiaStatus · 14 otherGeneralFinding · 15 hemorrhoidGoligherGrade · 16 internalHemorrhoidCount · 17 internalHemorrhoidLocation · 18 externalHemorrhoidCount · 19 externalHemorrhoidLocation · 20 mixedHemorrhoidCount · 21 mixedHemorrhoidLocation · 22 mainHemorrhoidSize · 23 hemorrhoidProlapse · 24 hemorrhoidFibrosis · 25 hemorrhoidBleeding · 26 sphincterTone · 27 rectalMucosaFinding · 28 associatedAnorectalLesion · 29 skinTagFinding
+
+Tất cả field đều available; không field nào required. Một examination submission hoàn toàn rỗng vẫn được phép COMPLETE — không thêm rule "tối thiểu một field phải có giá trị".
+
+**Implementation generalization decisions (approved generalization của evidence concepts, không phải scoring system mới):**
+
+- Internal/External/Mixed hemorrhoid: mỗi nhóm có count/location/size riêng; không dùng cấu trúc lặp per-lesion trong v1.
+- Goligher: đúng một field `goligherGrade` mỗi examination (I/II/III/IV), không gắn theo từng hemorrhoid lesion.
+- Prolapse tách thành `prolapseSymptom` (patient-reported) và `prolapseObserved` (clinician-observed).
+- Bleeding tách thành `bleedingSymptom` (patient-reported) và `bleedingObserved` (clinician-observed).
+
+**Vital copy-forward (weight, height, pulse, temperature, systolicBloodPressure, diastolicBloodPressure):**
+
+Lookup strictly theo cùng `tenantId + patientId`; chỉ xét prior clinical record đã COMPLETED (loại DRAFT); latest xác định theo `Encounter.occurredAt` (không dùng `createdAt`); pre-fill và cho phép edit; persist snapshot của Encounter hiện tại kể cả khi không đổi; amendment lịch sử không được mutate snapshot đã lưu ở record mới hơn; cần deterministic tie-break khi `occurredAt` bằng nhau.
+
+**Deferred / out of Vertical Slice 1** (không mở trong slice này): Diagnosis, Treatment Decision, Medical Treatment, Procedure, generic Surgery, Investigation Order, Investigation Result, HDSS, SHS-HD, anal dilation scoring, Longo difficulty scoring, rectoscopy interpretation, AI, CORE-05 Case Intelligence. CORE-04 Longo vẫn là reusable baseline và clinical semantics đã lock không bị viết lại. Real-patient runtime tiếp tục `NOT AUTHORIZED`.
+
+**Căn cứ:** Owner explicit authorization dated 2026-08-24, dựa trên external sanitized evidence classification (LONGO_ATOMIC_FIELD_DICTIONARY_v1.md, 118/118 concepts classified, 0 missing, 0 duplicate).
+
 ---
 
 ## WORKING ASSUMPTIONS
@@ -123,7 +193,7 @@ Các mục trên không bị hủy; chúng chỉ không còn thuộc Decision Lo
 
 ## SUPERSEDED
 
-None.
+- DEC-009 §6 (chỉ phần câu "Đây là direction, không phải work package mới được mở bởi quyết định này") — superseded by [[DEC-010]] (2026-08-24), việc mở HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 1. Toàn bộ nội dung khác của DEC-009 (điểm 1–5, 7) không đổi.
 
 ---
 
