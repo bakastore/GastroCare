@@ -254,6 +254,54 @@ describe('Hemorrhoid Vertical Slice 1 (e2e)', () => {
       expect(response.body.responsibleClinicianId).toBe(doctorA2Id);
     });
 
+    it('a DOCTOR generic create without responsibleClinicianId defaults to the authenticated Doctor actor', async () => {
+      const response = await createEncounter(doctorA2Token, {
+        patientId: patientAId,
+        occurredAt: '2026-08-10T03:30:00.000Z',
+        reasonForVisit: 'Khám chung do bác sĩ tạo (synthetic)',
+        clinicalNote: 'Ghi chú lâm sàng (synthetic)',
+        assessment: 'Đánh giá lâm sàng (synthetic)',
+      });
+      expect(response.status).toBe(201);
+      expect(response.body.responsibleClinicianId).toBe(doctorA2Id);
+    });
+
+    it.each([
+      ['absent', undefined],
+      ['invalid', 'missing-doctor@hemorrhoid-slice1.example.test'],
+    ])(
+      'a DOCTOR generic create remains independent when PILOT_DEFAULT_CLINICIAN_EMAIL is %s',
+      async (_case, configuredEmail) => {
+        const originalDefault = process.env.PILOT_DEFAULT_CLINICIAN_EMAIL;
+        if (configuredEmail === undefined) {
+          delete process.env.PILOT_DEFAULT_CLINICIAN_EMAIL;
+        } else {
+          process.env.PILOT_DEFAULT_CLINICIAN_EMAIL = configuredEmail;
+        }
+
+        try {
+          const response = await createEncounter(doctorA2Token, {
+            patientId: patientAId,
+            occurredAt:
+              configuredEmail === undefined
+                ? '2026-08-10T03:40:00.000Z'
+                : '2026-08-10T03:50:00.000Z',
+            reasonForVisit: `Khám chung khi default ${_case} (synthetic)`,
+            clinicalNote: 'Ghi chú lâm sàng (synthetic)',
+            assessment: 'Đánh giá lâm sàng (synthetic)',
+          });
+          expect(response.status).toBe(201);
+          expect(response.body.responsibleClinicianId).toBe(doctorA2Id);
+        } finally {
+          if (originalDefault === undefined) {
+            delete process.env.PILOT_DEFAULT_CLINICIAN_EMAIL;
+          } else {
+            process.env.PILOT_DEFAULT_CLINICIAN_EMAIL = originalDefault;
+          }
+        }
+      },
+    );
+
     it('rejects a cross-tenant responsibleClinicianId', async () => {
       const response = await createEncounter(receptionistAToken, {
         patientId: patientAId,
@@ -386,6 +434,88 @@ describe('Hemorrhoid Vertical Slice 1 (e2e)', () => {
         reasonForVisit: 'Khám trĩ - bàn giao (synthetic)',
       });
       handoverEncounterId = created.body.id;
+    });
+
+    it('rejects a single no-op handover without mutating Encounter or appending history/audit', async () => {
+      const historyBefore = await prisma.clinicianAssignmentHistory.count({
+        where: { tenantId: tenantAId, encounterId: handoverEncounterId },
+      });
+      const auditBefore = await prisma.auditEvent.count({
+        where: {
+          tenantId: tenantAId,
+          entityId: handoverEncounterId,
+          action: 'ENCOUNTER_CLINICIAN_HANDOVER',
+        },
+      });
+
+      await request(app.getHttpServer())
+        .post(`/encounters/${handoverEncounterId}/handover`)
+        .set('Authorization', `Bearer ${doctorA1Token}`)
+        .send({ newClinicianId: doctorA1Id, reason: 'No-op attempt' })
+        .expect(409);
+
+      const encounter = await prisma.encounter.findUniqueOrThrow({
+        where: { id: handoverEncounterId },
+      });
+      expect(encounter.responsibleClinicianId).toBe(doctorA1Id);
+      await expect(
+        prisma.clinicianAssignmentHistory.count({
+          where: { tenantId: tenantAId, encounterId: handoverEncounterId },
+        }),
+      ).resolves.toBe(historyBefore);
+      await expect(
+        prisma.auditEvent.count({
+          where: {
+            tenantId: tenantAId,
+            entityId: handoverEncounterId,
+            action: 'ENCOUNTER_CLINICIAN_HANDOVER',
+          },
+        }),
+      ).resolves.toBe(auditBefore);
+    });
+
+    it('rejects two concurrent no-op handovers without appending history/audit', async () => {
+      const historyBefore = await prisma.clinicianAssignmentHistory.count({
+        where: { tenantId: tenantAId, encounterId: handoverEncounterId },
+      });
+      const auditBefore = await prisma.auditEvent.count({
+        where: {
+          tenantId: tenantAId,
+          entityId: handoverEncounterId,
+          action: 'ENCOUNTER_CLINICIAN_HANDOVER',
+        },
+      });
+
+      const responses = await Promise.all([
+        request(app.getHttpServer())
+          .post(`/encounters/${handoverEncounterId}/handover`)
+          .set('Authorization', `Bearer ${doctorA1Token}`)
+          .send({ newClinicianId: doctorA1Id, reason: 'Concurrent no-op 1' }),
+        request(app.getHttpServer())
+          .post(`/encounters/${handoverEncounterId}/handover`)
+          .set('Authorization', `Bearer ${doctorA1Token}`)
+          .send({ newClinicianId: doctorA1Id, reason: 'Concurrent no-op 2' }),
+      ]);
+
+      expect(responses.map((response) => response.status)).toEqual([409, 409]);
+      const encounter = await prisma.encounter.findUniqueOrThrow({
+        where: { id: handoverEncounterId },
+      });
+      expect(encounter.responsibleClinicianId).toBe(doctorA1Id);
+      await expect(
+        prisma.clinicianAssignmentHistory.count({
+          where: { tenantId: tenantAId, encounterId: handoverEncounterId },
+        }),
+      ).resolves.toBe(historyBefore);
+      await expect(
+        prisma.auditEvent.count({
+          where: {
+            tenantId: tenantAId,
+            entityId: handoverEncounterId,
+            action: 'ENCOUNTER_CLINICIAN_HANDOVER',
+          },
+        }),
+      ).resolves.toBe(auditBefore);
     });
 
     it('valid authorized handover reassigns responsibleClinicianId', async () => {

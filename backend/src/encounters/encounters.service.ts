@@ -99,7 +99,9 @@ export class EncountersService {
           tenantId,
           dto.responsibleClinicianId,
         )
-      : await this.clinicians.resolveDefaultClinician(tenantId);
+      : actorRole === AuthRole.DOCTOR
+        ? await this.clinicians.assertClinicianInTenant(tenantId, actorId)
+        : await this.clinicians.resolveDefaultClinician(tenantId);
 
     if (dto.roomId) {
       await this.rooms.assertRoomInTenant(tenantId, dto.roomId);
@@ -209,6 +211,11 @@ export class EncountersService {
       }
 
       const previousClinicianId = existing.responsibleClinicianId;
+      if (newClinician.id === previousClinicianId) {
+        throw new ConflictException(
+          'Encounter is already assigned to this responsible clinician',
+        );
+      }
 
       // Optimistic concurrency guard: only succeeds if
       // responsibleClinicianId still equals the value just read inside
