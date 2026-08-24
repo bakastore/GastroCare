@@ -82,6 +82,7 @@ record_counts() {
     UNION ALL SELECT 'auth_users', count(*) FROM auth_users
     UNION ALL SELECT 'patients', count(*) FROM patients
     UNION ALL SELECT 'encounters', count(*) FROM encounters
+    UNION ALL SELECT 'care_episodes', count(*) FROM care_episodes
     UNION ALL SELECT 'care_plans', count(*) FROM care_plans
     UNION ALL SELECT 'care_plan_versions', count(*) FROM care_plan_versions
     UNION ALL SELECT 'care_tasks', count(*) FROM care_tasks
@@ -105,15 +106,67 @@ record_patient_signature() {
 }
 
 record_clinical_form_signature() {
-  # Spot-check the new Clinical Forms table: template identity, lifecycle
-  # status, and the deterministic computed score must survive intact.
+  # Spot-check the Clinical Forms amendment lineage (CORE-04 T2): every
+  # revision in Minh's chain, in order, with its provenance and computed
+  # score, must survive intact — including that the original revision-1 row
+  # is untouched by the later amendment.
   psql_in_container -t -A -F',' -c "
     SELECT p.\"fullName\", cfs.\"templateKey\", cfs.\"templateVersion\", cfs.status,
+           cfs.\"revisionNumber\", cfs.\"logicalGroupId\" = cfs.id AS is_chain_root,
+           cfs.\"previousSubmissionId\", cfs.\"amendmentReason\",
+           cfs.\"completedByUserId\" IS NOT NULL AS has_completer,
            cfs.\"computedScores\"->>'wexner'
     FROM patients p
     JOIN clinical_form_submissions cfs ON cfs.\"patientId\" = p.id
     WHERE p.\"fullName\" = 'Nguyễn Văn Minh'
-    ORDER BY cfs.\"createdAt\";
+    ORDER BY cfs.\"logicalGroupId\", cfs.\"revisionNumber\";
+  "
+}
+
+record_care_episode_signature() {
+  # CORE-04 T1 — Minh's CareEpisode and the Encounter linked to it must
+  # survive intact.
+  psql_in_container -t -A -F',' -c "
+    SELECT p.\"fullName\", ce.\"episodeType\", ce.status,
+           (SELECT count(*) FROM encounters e WHERE e.\"episodeId\" = ce.id) AS linked_encounters
+    FROM patients p
+    JOIN care_episodes ce ON ce.\"patientId\" = p.id
+    WHERE p.\"fullName\" = 'Nguyễn Văn Minh'
+    ORDER BY ce.\"startedAt\";
+  "
+}
+
+record_longo_pathway_signature() {
+  # CORE-04 T4-T11 — Lê Thị Longo's full Longo pathway: all six form
+  # families completed (with one amendment revision on PREOP), and the
+  # deterministic T10 follow-up scheduling state (idempotent generation +
+  # matched completion, anchored on Surgery Encounter.occurredAt — never
+  # createdAt) must survive intact.
+  psql_in_container -t -A -F',' -c "
+    SELECT cfs.\"templateKey\", cfs.\"revisionNumber\", cfs.status,
+           cfs.\"computedScores\"->>'longTermTotal'
+    FROM patients p
+    JOIN clinical_form_submissions cfs ON cfs.\"patientId\" = p.id
+    WHERE p.\"fullName\" = 'Lê Thị Longo'
+    ORDER BY cfs.\"templateKey\", cfs.\"revisionNumber\";
+  "
+}
+
+record_follow_up_scheduling_signature() {
+  # CORE-04 T10 — the 4 generated follow-up CareTasks for Lê Thị Longo's
+  # surgery: timepointCode, stored status, and completedByEncounterId
+  # presence must survive intact. episodeId is intentionally never a
+  # care_tasks column (it is inferred via sourceEncounterId), so it cannot
+  # appear here by construction.
+  psql_in_container -t -A -F',' -c "
+    SELECT ct.\"timepointCode\", ct.status,
+           ct.\"completedByEncounterId\" IS NOT NULL AS matched,
+           ct.\"scheduleReviewRequired\", ct.\"carePlanId\" IS NULL AS no_care_plan
+    FROM care_tasks ct
+    JOIN encounters e ON e.id = ct.\"sourceEncounterId\"
+    JOIN patients p ON p.id = e.\"patientId\"
+    WHERE p.\"fullName\" = 'Lê Thị Longo'
+    ORDER BY ct.\"timepointCode\";
   "
 }
 
@@ -139,9 +192,18 @@ cat "$BASELINE_FILE"
 echo "--- baseline Minh CarePlan lineage (fullName,status,versionNumber,reason) ---"
 BASELINE_LINEAGE="$(record_patient_signature)"
 echo "$BASELINE_LINEAGE"
-echo "--- baseline Minh Clinical Form submission (fullName,templateKey,templateVersion,status,wexnerScore) ---"
+echo "--- baseline Minh Clinical Form lineage (fullName,templateKey,templateVersion,status,revisionNumber,isChainRoot,previousSubmissionId,amendmentReason,hasCompleter,wexnerScore) ---"
 BASELINE_CLINICAL_FORM="$(record_clinical_form_signature)"
 echo "$BASELINE_CLINICAL_FORM"
+echo "--- baseline Minh CareEpisode (fullName,episodeType,status,linkedEncounters) ---"
+BASELINE_CARE_EPISODE="$(record_care_episode_signature)"
+echo "$BASELINE_CARE_EPISODE"
+echo "--- baseline Lê Thị Longo six-form pathway (templateKey,revisionNumber,status,longTermWexnerTotal) ---"
+BASELINE_LONGO_PATHWAY="$(record_longo_pathway_signature)"
+echo "$BASELINE_LONGO_PATHWAY"
+echo "--- baseline Lê Thị Longo follow-up scheduling (timepointCode,status,matched,scheduleReviewRequired,noCarePlan) ---"
+BASELINE_FOLLOW_UP="$(record_follow_up_scheduling_signature)"
+echo "$BASELINE_FOLLOW_UP"
 
 BASELINE_AUDIT_COUNT="$(psql_in_container -t -A -c "SELECT count(*) FROM audit_events;")"
 [[ "$BASELINE_AUDIT_COUNT" -gt 0 ]] || fail "baseline has zero AuditEvent rows — seed did not run as expected"
@@ -163,8 +225,8 @@ log "6. Destroying disposable DB data (TRUNCATE, same container/db verified abov
 psql_in_container -c "
   TRUNCATE TABLE
     clinical_form_submissions, audit_events, care_tasks, care_plan_versions,
-    care_plans, encounters, patients, foundation_probe_records, auth_users,
-    tenants
+    care_plans, encounters, care_episodes, patients, foundation_probe_records,
+    auth_users, tenants
   RESTART IDENTITY CASCADE;
 "
 POST_TRUNCATE_COUNT="$(psql_in_container -t -A -c "SELECT count(*) FROM tenants;")"
@@ -197,8 +259,23 @@ log "Nguyễn Văn Minh CarePlan lineage (versions 1-2, amendment reason) verifi
 
 RESTORED_CLINICAL_FORM="$(record_clinical_form_signature)"
 [[ "$RESTORED_CLINICAL_FORM" == "$BASELINE_CLINICAL_FORM" ]] \
-  || fail "restored Nguyễn Văn Minh Clinical Form submission does not match baseline"
-log "Nguyễn Văn Minh Clinical Form submission (template identity, status, computed score) verified intact after restore"
+  || fail "restored Nguyễn Văn Minh Clinical Form amendment lineage does not match baseline"
+log "Nguyễn Văn Minh Clinical Form amendment lineage (revisions 1-2, original row untouched, provenance, computed score) verified intact after restore"
+
+RESTORED_CARE_EPISODE="$(record_care_episode_signature)"
+[[ "$RESTORED_CARE_EPISODE" == "$BASELINE_CARE_EPISODE" ]] \
+  || fail "restored Nguyễn Văn Minh CareEpisode does not match baseline"
+log "Nguyễn Văn Minh CareEpisode (type, status, linked Encounter) verified intact after restore"
+
+RESTORED_LONGO_PATHWAY="$(record_longo_pathway_signature)"
+[[ "$RESTORED_LONGO_PATHWAY" == "$BASELINE_LONGO_PATHWAY" ]] \
+  || fail "restored Lê Thị Longo six-form pathway does not match baseline"
+log "Lê Thị Longo six-form Longo pathway (all templates, amendment revision, deterministic Wexner total) verified intact after restore"
+
+RESTORED_FOLLOW_UP="$(record_follow_up_scheduling_signature)"
+[[ "$RESTORED_FOLLOW_UP" == "$BASELINE_FOLLOW_UP" ]] \
+  || fail "restored Lê Thị Longo follow-up scheduling state does not match baseline"
+log "Lê Thị Longo T10 follow-up scheduling (4 timepoints, matched completion, no carePlanId) verified intact after restore"
 
 RESTORED_AUDIT_COUNT="$(psql_in_container -t -A -c "SELECT count(*) FROM audit_events;")"
 [[ "$RESTORED_AUDIT_COUNT" == "$BASELINE_AUDIT_COUNT" ]] \
@@ -217,7 +294,12 @@ log "AuditEvent count verified intact after restore ($RESTORED_AUDIT_COUNT rows)
 log "9. Running backend regression against the restored database as a smoke test"
 (cd "$BACKEND_DIR" && npx jest --config ./test/jest-e2e.json --runInBand test/core01-clinical-walking-skeleton.e2e-spec.ts)
 (cd "$BACKEND_DIR" && npx jest --config ./test/jest-e2e.json --runInBand test/core03-hardening.e2e-spec.ts)
+(cd "$BACKEND_DIR" && npx jest --config ./test/jest-e2e.json --runInBand test/core04-t1-care-episodes.e2e-spec.ts)
 (cd "$BACKEND_DIR" && npx jest --config ./test/jest-e2e.json --runInBand test/clinical-forms.e2e-spec.ts)
+(cd "$BACKEND_DIR" && npx jest --config ./test/jest-e2e.json --runInBand test/core04-t4-preop-assessment.e2e-spec.ts)
+(cd "$BACKEND_DIR" && npx jest --config ./test/jest-e2e.json --runInBand test/core04-t5-t9-longo-forms.e2e-spec.ts)
+(cd "$BACKEND_DIR" && npx jest --config ./test/jest-e2e.json --runInBand test/core04-t10-follow-up-scheduling.e2e-spec.ts)
+(cd "$BACKEND_DIR" && npx jest --config ./test/jest-e2e.json --runInBand test/core04-t11-episode-timeline.e2e-spec.ts)
 (cd "$BACKEND_DIR" && npx jest --config ./test/jest-e2e.json --runInBand test/gate2-foundation.e2e-spec.ts)
 
 # The backend e2e suite resets/creates its own tenants inside its own

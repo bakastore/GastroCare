@@ -37,6 +37,10 @@ describe('TodayPage — overdue is derived from the API response', () => {
         completedAt: null,
         cancelledAt: null,
         overdue: true,
+        sourceEncounterId: null,
+        timepointCode: null,
+        completedByEncounterId: null,
+        scheduleReviewRequired: false,
       },
     ]);
 
@@ -61,6 +65,10 @@ describe('TodayPage — overdue is derived from the API response', () => {
         completedAt: null,
         cancelledAt: null,
         overdue: false,
+        sourceEncounterId: null,
+        timepointCode: null,
+        completedByEncounterId: null,
+        scheduleReviewRequired: false,
       },
     ]);
 

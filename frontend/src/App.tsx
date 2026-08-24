@@ -13,6 +13,7 @@ import { NewCarePlanPage } from './pages/NewCarePlanPage';
 import { CarePlanPage } from './pages/CarePlanPage';
 import { FollowUpPage } from './pages/FollowUpPage';
 import { ClinicalFormPage } from './pages/ClinicalFormPage';
+import { LongoClinicalFormPage } from './pages/LongoClinicalFormPage';
 
 export default function App() {
   return (
@@ -33,6 +34,10 @@ export default function App() {
             <Route
               path="/patients/:patientId/encounters/:encounterId/clinical-forms/hemorrhoid-longo-followup"
               element={<ClinicalFormPage />}
+            />
+            <Route
+              path="/patients/:patientId/encounters/:encounterId/longo-forms/:templateKey"
+              element={<LongoClinicalFormPage />}
             />
           </Route>
 

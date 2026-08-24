@@ -130,7 +130,9 @@ function FormEditor({
 }) {
   const navigate = useNavigate();
   const isReadOnly = submission.status === 'COMPLETED';
-  const [responses, setResponses] = useState<Responses>(submission.responses);
+  const [responses, setResponses] = useState<Responses>(
+    submission.responses as Responses,
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
   const [error, setError] = useState<string | null>(null);

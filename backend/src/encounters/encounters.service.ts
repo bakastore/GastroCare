@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Encounter } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -29,14 +33,31 @@ export class EncountersService {
       throw new NotFoundException('Patient not found');
     }
 
+    if (dto.episodeId) {
+      const episode = await this.prisma.careEpisode.findFirst({
+        where: { id: dto.episodeId, tenantId },
+        select: { patientId: true },
+      });
+      if (!episode) {
+        throw new NotFoundException('Care episode not found');
+      }
+      if (episode.patientId !== dto.patientId) {
+        throw new BadRequestException(
+          'Care episode does not belong to the Encounter patient',
+        );
+      }
+    }
+
     const encounter = await this.prisma.encounter.create({
       data: {
         tenantId,
         patientId: dto.patientId,
+        episodeId: dto.episodeId,
         doctorId,
         reasonForVisit: dto.reasonForVisit,
         clinicalNote: dto.clinicalNote,
         assessment: dto.assessment,
+        occurredAt: new Date(dto.occurredAt),
       },
     });
 

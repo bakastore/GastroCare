@@ -1,12 +1,15 @@
 import { api } from './client';
 import type {
+  CareEpisode,
   CarePlan,
   CareTask,
+  ClinicalFormResponses,
   ClinicalFormSubmission,
+  ClinicalFormTemplateDef,
   CreatePatientResult,
   Encounter,
   Patient,
-  TimelineEvent,
+  PatientTimeline,
 } from '../types/domain';
 
 export const authApi = {
@@ -25,12 +28,14 @@ export const patientsApi = {
   }) => api.post<CreatePatientResult>('/patients', dto),
   checkDuplicates: (dto: { fullName: string; dateOfBirth: string; phone: string }) =>
     api.post<Patient[]>('/patients/duplicate-check', dto),
-  getTimeline: (id: string) => api.get<TimelineEvent[]>(`/patients/${id}/timeline`),
+  getTimeline: (id: string) => api.get<PatientTimeline>(`/patients/${id}/timeline`),
 };
 
 export const encountersApi = {
   create: (dto: {
     patientId: string;
+    episodeId?: string;
+    occurredAt: string;
     reasonForVisit: string;
     clinicalNote: string;
     assessment: string;
@@ -59,13 +64,40 @@ export const clinicalFormsApi = {
   create: (dto: {
     encounterId: string;
     templateKey: string;
-    responses: Record<string, number | string>;
+    responses: ClinicalFormResponses;
   }) => api.post<ClinicalFormSubmission>('/clinical-forms', dto),
   getById: (id: string) => api.get<ClinicalFormSubmission>(`/clinical-forms/${id}`),
   listByPatient: (patientId: string) =>
     api.get<ClinicalFormSubmission[]>(`/clinical-forms?patientId=${patientId}`),
-  updateDraft: (id: string, dto: { responses: Record<string, number | string> }) =>
+  updateDraft: (id: string, dto: { responses: ClinicalFormResponses }) =>
     api.patch<ClinicalFormSubmission>(`/clinical-forms/${id}/draft`, dto),
   complete: (id: string) =>
     api.post<ClinicalFormSubmission>(`/clinical-forms/${id}/complete`),
+  amend: (id: string, dto: { responses: ClinicalFormResponses; amendmentReason: string }) =>
+    api.post<ClinicalFormSubmission>(`/clinical-forms/${id}/amend`, dto),
+  getHistory: (id: string) =>
+    api.get<{ revisions: ClinicalFormSubmission[]; current: ClinicalFormSubmission }>(
+      `/clinical-forms/${id}/history`,
+    ),
+  getTemplate: (templateKey: string) =>
+    api.get<ClinicalFormTemplateDef>(`/clinical-forms/templates/${templateKey}`),
+};
+
+export const careEpisodesApi = {
+  create: (dto: { patientId: string; episodeType: string; startedAt: string }) =>
+    api.post<CareEpisode>('/care-episodes', dto),
+  listByPatient: (patientId: string) =>
+    api.get<CareEpisode[]>(`/patients/${patientId}/care-episodes`),
+  close: (id: string) => api.post<CareEpisode>(`/care-episodes/${id}/close`),
+  reopen: (id: string, dto: { reason: string }) =>
+    api.post<CareEpisode>(`/care-episodes/${id}/reopen`, dto),
+};
+
+export const followUpTasksApi = {
+  listByPatient: (patientId: string) =>
+    api.get<CareTask[]>(`/follow-up-tasks?patientId=${patientId}`),
+  generate: (sourceEncounterId: string) =>
+    api.post<CareTask[]>('/follow-up-tasks/generate', { sourceEncounterId }),
+  reschedule: (id: string, dueDate: string) =>
+    api.patch<CareTask>(`/follow-up-tasks/${id}/reschedule`, { dueDate }),
 };

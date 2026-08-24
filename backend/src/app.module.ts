@@ -13,6 +13,8 @@ import { EncountersModule } from './encounters/encounters.module';
 import { CarePlansModule } from './care-plans/care-plans.module';
 import { CareTasksModule } from './care-tasks/care-tasks.module';
 import { ClinicalFormsModule } from './clinical-forms/clinical-forms.module';
+import { CareEpisodesModule } from './care-episodes/care-episodes.module';
+import { FollowUpTasksModule } from './follow-up-tasks/follow-up-tasks.module';
 
 @Module({
   imports: [
@@ -27,6 +29,8 @@ import { ClinicalFormsModule } from './clinical-forms/clinical-forms.module';
     CarePlansModule,
     CareTasksModule,
     ClinicalFormsModule,
+    CareEpisodesModule,
+    FollowUpTasksModule,
   ],
   providers: [
     {

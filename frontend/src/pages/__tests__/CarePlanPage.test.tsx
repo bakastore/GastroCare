@@ -19,7 +19,10 @@ vi.mock('../../api/resources', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(patientsApi.getTimeline).mockResolvedValue([]);
+  vi.mocked(patientsApi.getTimeline).mockResolvedValue({
+    episodes: [],
+    ungroupedEncounters: [],
+  });
 });
 
 function renderCarePlanPage() {

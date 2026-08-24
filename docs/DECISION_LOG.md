@@ -1,6 +1,6 @@
 # GastroCare — Decision Log
 
-Cập nhật: 2026-08-23
+Cập nhật: 2026-08-24
 
 Đây là Decision Log hiện hành và là nguồn chuẩn cho Owner Decisions
 và Working Assumptions của GastroCare.
@@ -45,6 +45,58 @@ Owner khóa các quyết định sau cho phạm vi v1:
 **Căn cứ:** quyết định Owner/clinician; kiểm toán toàn bộ 270/270 DOCX; Atomic Field Dictionary 118/118 khái niệm đã được tính đến, 0 unmapped; kiểm tra hẹp việc thu thập Wexner/HDSS/SHS-HD.
 
 Các định nghĩa vẫn hoãn, không được suy diễn thành dữ kiện: chấm điểm nong hậu môn đầy đủ; cách chấm HDSS; cách chấm SHS-HD; tương đương trường sau vô cảm chưa giải quyết; định nghĩa các mục độ khó Longo; triển khai nhập dữ liệu lịch sử.
+
+### DEC-007 — CORE-04 Implementation Contract v0.3.1 và mốc Wexner v1
+
+**Ngày:** 2026-08-23
+
+**Trạng thái:** OWNER LOCKED
+
+**Nguồn chuẩn:** [`09_CORE04_IMPLEMENTATION_CONTRACT.md`](09_CORE04_IMPLEMENTATION_CONTRACT.md)
+
+Owner chấp thuận và khóa CORE-04 Implementation Contract v0.3.1 sau final micro-patch, gồm các quyết định:
+
+1. `LONGO_TWO_WEEK_FOLLOWUP` không triển khai Wexner trong v1.
+2. Wexner prospective routine bắt đầu từ `MONTH_1` và áp dụng tại `MONTH_1`, `MONTH_3`, `MONTH_6` trong `LONGO_LONG_TERM_FOLLOWUP`.
+3. Contract v0.3.1 có 0 unresolved Owner questions và là execution contract (hợp đồng thực thi) có thẩm quyền cho CORE-04, dưới clinical SSOT 08.
+
+Quyết định này không resolve A-001 và không cấp phép real-patient runtime, T1 implementation, commit hoặc push.
+
+### DEC-008 — plannedTimepoint là workflow identity, bất biến qua amendment (T16 remediation R3)
+
+**Ngày:** 2026-08-24
+
+**Trạng thái:** OWNER LOCKED
+
+**Nguồn chuẩn:** Owner directive trong T16 remediation batch instructions; triển khai tại `backend/src/clinical-forms/clinical-forms.service.ts` (`amend()`).
+
+Owner khóa quyết định sau cho phạm vi CORE-04 v1:
+
+1. `plannedTimepoint` của một revision `LONGO_LONG_TERM_FOLLOWUP` đã `COMPLETED` là workflow identity và KHÔNG được thay đổi qua amendment lineage. Amendment chỉ được sửa nội dung lâm sàng.
+2. Nếu payload amendment chỉ định `plannedTimepoint` khác giá trị của revision đã hoàn tất (MONTH_1/MONTH_3/MONTH_6), validation phải REJECT (409 Conflict) — không âm thầm chuẩn hóa (normalize) giá trị.
+3. Không bao giờ reconcile/remap một `CareTask` bằng cách chuyển một submission đã hoàn tất sang timepoint khác.
+4. Nếu một timepoint bị nhập sai, quy trình đúng là tạo một clinical occurrence/submission mới phù hợp — không bao giờ viết lại identity của một occurrence đã hoàn tất thông qua amendment.
+5. Bất biến này có automated test bắt buộc (xem `backend/test/core04-t5-t9-longo-forms.e2e-spec.ts`, mục G).
+
+**Căn cứ:** Independent T16 Audit finding R3 (5 findings, T16 FAIL); tránh rủi ro một amendment âm thầm gán lại một submission đã khớp CareTask sang timepoint khác mà không chạy lại matching.
+
+### DEC-009 — Retire Longo-only Gate G và giữ CORE-04 làm verified baseline trước workflow pivot
+
+**Ngày:** 2026-08-24
+
+**Trạng thái:** OWNER DECISION
+
+Owner quyết định:
+
+1. Ghi nhận chuỗi kiểm chứng CORE-04: Initial Independent T16 `FAIL` → T16 remediation `COMPLETED` → Fresh Independent T16 re-audit `PASS`.
+2. Gate G Longo-only được `RETIRED BY OWNER` và không tiếp tục, vì workflow sản phẩm đã đổi.
+3. Không ghi nhận hoặc suy ra `CORE-04 OWNER ACCEPTED`; CORE-04 Owner product acceptance là `NOT CLAIMED`.
+4. Vai trò của CORE-04 là independently verified technical/clinical implementation baseline cho Longo sub-branch, dùng làm checkpoint trước khi chuyển hướng sản phẩm.
+5. Real-patient runtime tiếp tục `NOT AUTHORIZED`; quyết định này không mở pilot thật, production hoặc quyền dùng dữ liệu bệnh nhân thật.
+6. Current direction là `HEMORRHOID REAL-WORLD CLINICAL WORKFLOW RECONCILIATION`. Đây là direction, không phải work package mới được mở bởi quyết định này.
+7. `CORE-05` giữ nguyên là `CASE INTELLIGENCE`; không đổi tên, không thay scope và chưa được mở trong checkpoint CORE-04.
+
+**Căn cứ:** Owner directive đóng checkpoint kỹ thuật CORE-04 trước khi chuyển sang workflow thực tế mới của BS Thái; fresh Independent T16 re-audit đã PASS sau remediation.
 
 ---
 

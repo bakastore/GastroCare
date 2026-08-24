@@ -59,6 +59,7 @@ describe('CORE-03 — Pilot Readiness & Operational Hardening (e2e)', () => {
     await prisma.carePlanVersion.deleteMany();
     await prisma.carePlan.deleteMany();
     await prisma.encounter.deleteMany();
+    await prisma.careEpisode.deleteMany();
     await prisma.patient.deleteMany();
     await prisma.foundationProbeRecord.deleteMany();
     await prisma.authUser.deleteMany();
@@ -117,6 +118,7 @@ describe('CORE-03 — Pilot Readiness & Operational Hardening (e2e)', () => {
     await prisma.carePlanVersion.deleteMany();
     await prisma.carePlan.deleteMany();
     await prisma.encounter.deleteMany();
+    await prisma.careEpisode.deleteMany();
     await prisma.patient.deleteMany();
     await prisma.foundationProbeRecord.deleteMany();
     await prisma.authUser.deleteMany();
@@ -286,6 +288,7 @@ describe('CORE-03 — Pilot Readiness & Operational Hardening (e2e)', () => {
         .set('Authorization', `Bearer ${doctorAToken}`)
         .send({
           patientId: patientAId,
+          occurredAt: '2026-08-01T09:00:00.000Z',
           reasonForVisit: 'x',
           clinicalNote: 'x',
           assessment: 'x',
@@ -317,6 +320,7 @@ describe('CORE-03 — Pilot Readiness & Operational Hardening (e2e)', () => {
         .set('Authorization', `Bearer ${doctorBToken}`)
         .send({
           patientId: patientAId,
+          occurredAt: '2026-08-01T09:00:00.000Z',
           reasonForVisit: 'x',
           clinicalNote: 'x',
           assessment: 'x',
@@ -453,6 +457,7 @@ describe('CORE-03 — Pilot Readiness & Operational Hardening (e2e)', () => {
         .set('Authorization', `Bearer ${doctorAToken}`)
         .send({
           patientId: patientRes.body.patient.id,
+          occurredAt: '2026-08-02T09:00:00.000Z',
           reasonForVisit: 'x',
           clinicalNote: 'x',
           assessment: 'x',

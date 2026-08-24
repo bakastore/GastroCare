@@ -21,6 +21,7 @@ export async function seedE2eDatabase(): Promise<void> {
     await prisma.carePlanVersion.deleteMany();
     await prisma.carePlan.deleteMany();
     await prisma.encounter.deleteMany();
+    await prisma.careEpisode.deleteMany();
     await prisma.patient.deleteMany();
     await prisma.foundationProbeRecord.deleteMany();
     await prisma.authUser.deleteMany();

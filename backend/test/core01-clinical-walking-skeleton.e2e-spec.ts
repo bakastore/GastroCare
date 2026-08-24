@@ -56,6 +56,7 @@ describe('CORE-01 — Clinical Core Walking Skeleton (e2e)', () => {
     await prisma.carePlanVersion.deleteMany();
     await prisma.carePlan.deleteMany();
     await prisma.encounter.deleteMany();
+    await prisma.careEpisode.deleteMany();
     await prisma.patient.deleteMany();
     await prisma.foundationProbeRecord.deleteMany();
     await prisma.authUser.deleteMany();
@@ -114,6 +115,7 @@ describe('CORE-01 — Clinical Core Walking Skeleton (e2e)', () => {
     await prisma.carePlanVersion.deleteMany();
     await prisma.carePlan.deleteMany();
     await prisma.encounter.deleteMany();
+    await prisma.careEpisode.deleteMany();
     await prisma.patient.deleteMany();
     await prisma.foundationProbeRecord.deleteMany();
     await prisma.authUser.deleteMany();
@@ -187,6 +189,7 @@ describe('CORE-01 — Clinical Core Walking Skeleton (e2e)', () => {
         .set('Authorization', `Bearer ${receptionistAToken}`)
         .send({
           patientId: patientMinhId,
+          occurredAt: '2026-08-01T09:00:00.000Z',
           reasonForVisit: 'x',
           clinicalNote: 'x',
           assessment: 'x',
@@ -286,6 +289,7 @@ describe('CORE-01 — Clinical Core Walking Skeleton (e2e)', () => {
         .set('Authorization', `Bearer ${doctorAToken}`)
         .send({
           patientId: patientMinhId,
+          occurredAt: '2026-08-01T09:00:00.000Z',
           reasonForVisit: 'Đau thượng vị 6 tuần, đầy bụng, ợ nóng',
           clinicalNote: 'Không nôn máu, không phân đen.',
           assessment: 'Theo dõi viêm dạ dày / GERD',
@@ -498,6 +502,7 @@ describe('CORE-01 — Clinical Core Walking Skeleton (e2e)', () => {
         .set('Authorization', `Bearer ${doctorAToken}`)
         .send({
           patientId: patientMinhId,
+          occurredAt: '2026-08-15T09:00:00.000Z',
           reasonForVisit: 'Tái khám theo hẹn 14 ngày',
           clinicalNote: 'Triệu chứng giảm rõ, không còn đau khi đói',
           assessment: 'Đáp ứng tốt với điều trị',
@@ -532,6 +537,7 @@ describe('CORE-01 — Clinical Core Walking Skeleton (e2e)', () => {
         .set('Authorization', `Bearer ${doctorAToken}`)
         .send({
           patientId: patientMinhId,
+          occurredAt: '2026-08-16T09:00:00.000Z',
           reasonForVisit: 'reason',
           clinicalNote: 'note',
           assessment: 'assessment',
@@ -571,24 +577,30 @@ describe('CORE-01 — Clinical Core Walking Skeleton (e2e)', () => {
   });
 
   describe('F. Patient Timeline — projection, ordering, tenant isolation', () => {
-    it('doctor retrieves a chronological timeline composed from Encounter/CarePlan/CareTask', async () => {
+    // These Encounters predate CORE-04 Episodes (no episodeId), so the
+    // CORE-04 T11 grouped Timeline response places all of their events
+    // under `ungroupedEncounters` — see docs/09_CORE04_IMPLEMENTATION_CONTRACT.md
+    // T11 ("hỗ trợ Encounter không thuộc Episode").
+    it('doctor retrieves a chronological timeline composed from Encounter/CarePlan/CareTask, grouped under ungroupedEncounters when there is no Episode', async () => {
       const res = await request(app.getHttpServer())
         .get(`/patients/${patientMinhId}/timeline`)
         .set('Authorization', `Bearer ${doctorAToken}`)
         .expect(200);
 
-      expect(Array.isArray(res.body)).toBe(true);
+      expect(Array.isArray(res.body.episodes)).toBe(true);
+      expect(Array.isArray(res.body.ungroupedEncounters)).toBe(true);
+      const ungrouped = res.body.ungroupedEncounters;
       expect(
-        res.body.some((e: { type: string }) => e.type === 'ENCOUNTER'),
+        ungrouped.some((e: { type: string }) => e.type === 'ENCOUNTER'),
       ).toBe(true);
       expect(
-        res.body.some((e: { type: string }) => e.type === 'CARE_PLAN_SIGNED'),
+        ungrouped.some((e: { type: string }) => e.type === 'CARE_PLAN_SIGNED'),
       ).toBe(true);
       expect(
-        res.body.some((e: { type: string }) => e.type === 'CARE_TASK'),
+        ungrouped.some((e: { type: string }) => e.type === 'CARE_TASK'),
       ).toBe(true);
 
-      const timestamps = res.body.map((e: { timestamp: string }) =>
+      const timestamps = ungrouped.map((e: { timestamp: string }) =>
         new Date(e.timestamp).getTime(),
       );
       const sorted = [...timestamps].sort((a, b) => a - b);
@@ -606,7 +618,7 @@ describe('CORE-01 — Clinical Core Walking Skeleton (e2e)', () => {
         timestamp: string;
         data: { id: string };
       };
-      const timeline = res.body as TimelineEvent[];
+      const timeline = res.body.ungroupedEncounters as TimelineEvent[];
       const encounterEvents = timeline.filter((e) => e.type === 'ENCOUNTER');
       const initialEvent = encounterEvents.find(
         (e) => e.data.id === encounterId,
