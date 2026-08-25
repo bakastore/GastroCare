@@ -28,7 +28,7 @@ FOUNDATION
 | Longo Clinical Workflow v1.0 | OWNER LOCKED |
 | Real-world Clinical Core implementation | IN PROGRESS — Hemorrhoid Vertical Slice 1 TECHNICALLY ACCEPTED |
 | Hemorrhoid Vertical Slice 1 | CLOSED — TECHNICAL ACCEPTANCE at `2ea529ee200a0a37a77cebb9a750f70adde57618` |
-| Hemorrhoid Vertical Slice 2 | DISCOVERY ONLY — implementation NOT AUTHORIZED |
+| Hemorrhoid Vertical Slice 2 | IMPLEMENTATION AUTHORIZED — DEC-012 + Contract v0.1 OWNER LOCKED |
 | GASTROCARE CORE tổng thể | IN PROGRESS |
 | CONTINUOUS CARE | NOT COMPLETE |
 | PRODUCT REFINEMENT / UI-UX | NOT STARTED — bị chặn đến khi Clinical Core được chấp nhận |
@@ -64,9 +64,11 @@ Technical Core đã đóng tại SHA `1a95f57f0b19bddbfcd817101d5c0c1135d90686`,
 
 ### 3.2 Work package hiện tại
 
-**HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 2 DISCOVERY**
+**HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 2 IMPLEMENTATION**
 
-Authority: DEC-011.
+Authority:
+- DEC-012 — OWNER LOCKED;
+- [`11_HEMORRHOID_SLICE2_IMPLEMENTATION_CONTRACT.md`](11_HEMORRHOID_SLICE2_IMPLEMENTATION_CONTRACT.md) — OWNER LOCKED.
 
 Target:
 
@@ -74,42 +76,43 @@ Target:
 Hemorrhoid Examination
 → Diagnosis
 → Treatment Decision
-→ CarePlan / Follow-up
+→ CarePlan
+→ Follow-up
+→ Return Encounter
 ```
 
-Authoritative clinical workflow SSOT: [`10_HEMORRHOID_CLINICAL_WORKFLOW_v1.0.md`](10_HEMORRHOID_CLINICAL_WORKFLOW_v1.0.md)
+Discovery Gate CLOSED; unresolved Owner questions = 0.
 
-Vertical Slice 2 hiện chỉ được phép Discovery (khám phá/phân tích).
+Sequence:
+`T0 → T1 Diagnosis → T2 Treatment Decision → T3 CarePlan sequence → T4 reconciliation/concurrency → mandatory focused Independent Codex T4 audit → T5 CareTask/Return Encounter → T6 Timeline/frontend → T7 targeted synthetic acceptance`.
 
-Discovery phải resolve Diagnosis semantics, Treatment Decision semantics, CarePlan reuse decision, follow-up semantics, domain/schema impact, RBAC, audit/provenance, Timeline behavior, acceptance criteria, implementation contract và unresolved Owner questions = 0.
-
-Không tự động tạo entity/model mới nếu Core primitive hiện có đáp ứng được.
-Không tự động mở Procedure, generic Surgery, Investigation, AI hoặc CORE-05.
-Implementation/test hiện tiếp tục dùng synthetic data. Real-patient runtime tiếp tục `NOT AUTHORIZED`.
-
+Expected boundary: `NO PRISMA SCHEMA CHANGE / NO DATABASE MIGRATION`.
+Synthetic data only. Real-patient runtime `NOT AUTHORIZED`.
+Procedure/Surgery/Investigation/AI/CORE-05 không được mở.
 ### 3.3 Preserved Longo Clinical Core baseline
 
 CORE-04 Longo tiếp tục là preserved verified baseline, không phải active product gate.
 Longo-only Owner Synthetic Clinical Acceptance Gate G đã `RETIRED BY OWNER` theo DEC-009 và không được mở lại ngầm.
 
-### 3.4 Hemorrhoid Vertical Slice 2 Discovery Gate
+### 3.4 Hemorrhoid Vertical Slice 2 Gates
 
-Discovery chỉ được coi là CLOSED khi có:
-1. clinician-confirmed workflow;
-2. Diagnosis semantics resolved;
-3. Treatment Decision semantics resolved;
-4. CarePlan reuse decision;
-5. follow-up semantics resolved;
-6. domain/schema impact analysis;
-7. RBAC impact analysis;
-8. audit/provenance requirements;
-9. Timeline behavior;
-10. acceptance criteria;
-11. implementation contract;
-12. unresolved Owner questions = 0.
+**Discovery Gate:** CLOSED — DEC-012 approved; Contract v0.1 OWNER LOCKED; unresolved Owner questions = 0.
 
-Gate này KHÔNG cấp quyền implementation. Vertical Slice 2 chỉ được chuyển sang implementation bằng Owner Decision rõ ràng sau Discovery.
+**Implementation gates:**
+1. T0 preflight PASS.
+2. T1 Diagnosis PASS.
+3. T2 Treatment Decision PASS.
+4. T3 CarePlan sequence PASS.
+5. T4 Serializable reconciliation + concurrency tests PASS.
+6. ChatGPT T4 source review PASS.
+7. Fresh Independent Codex READ-ONLY T4 audit: `READY FOR T4 ACCEPTANCE: YES`.
+8. T5 generic CareTask + explicit Return Encounter linkage PASS.
+9. T6 Timeline/frontend PASS.
+10. T7 targeted synthetic acceptance PASS.
 
+T4 independent audit là mandatory focused gate, không phải full-Slice audit.
+Nếu T4 production code thay đổi sau PASS, T4 independent gate mở lại cho affected delta.
+Nếu cần schema/migration: STOP trước scope expansion.
 ### 3.5 AUTHORIZED REAL-WORLD PILOT ACCEPTANCE — FUTURE GATE
 
 Gate này chỉ được mở sau khi đồng thời thỏa các điều kiện:
