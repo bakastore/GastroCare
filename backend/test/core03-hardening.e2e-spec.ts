@@ -40,6 +40,12 @@ describe('CORE-03 — Pilot Readiness & Operational Hardening (e2e)', () => {
   let jwtSecret: string;
 
   beforeAll(async () => {
+    // Finding 3 correction — default clinician resolution is fail-closed
+    // and requires an explicit config pointing at a real seeded DOCTOR;
+    // set it before app bootstrap so ConfigModule picks it up.
+    process.env.PILOT_DEFAULT_CLINICIAN_EMAIL =
+      'doctor-a@core03-test.gastrocare.local';
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -58,7 +64,11 @@ describe('CORE-03 — Pilot Readiness & Operational Hardening (e2e)', () => {
     await prisma.careTask.deleteMany();
     await prisma.carePlanVersion.deleteMany();
     await prisma.carePlan.deleteMany();
+    await prisma.clinicianAssignmentHistory.deleteMany();
     await prisma.encounter.deleteMany();
+    await prisma.careEpisode.deleteMany();
+    await prisma.room.deleteMany();
+    await prisma.facility.deleteMany();
     await prisma.patient.deleteMany();
     await prisma.foundationProbeRecord.deleteMany();
     await prisma.authUser.deleteMany();
@@ -116,12 +126,17 @@ describe('CORE-03 — Pilot Readiness & Operational Hardening (e2e)', () => {
     await prisma.careTask.deleteMany();
     await prisma.carePlanVersion.deleteMany();
     await prisma.carePlan.deleteMany();
+    await prisma.clinicianAssignmentHistory.deleteMany();
     await prisma.encounter.deleteMany();
+    await prisma.careEpisode.deleteMany();
+    await prisma.room.deleteMany();
+    await prisma.facility.deleteMany();
     await prisma.patient.deleteMany();
     await prisma.foundationProbeRecord.deleteMany();
     await prisma.authUser.deleteMany();
     await prisma.tenant.deleteMany();
     await app.close();
+    delete process.env.PILOT_DEFAULT_CLINICIAN_EMAIL;
   });
 
   async function loginAs(email: string, password: string): Promise<string> {
@@ -286,6 +301,7 @@ describe('CORE-03 — Pilot Readiness & Operational Hardening (e2e)', () => {
         .set('Authorization', `Bearer ${doctorAToken}`)
         .send({
           patientId: patientAId,
+          occurredAt: '2026-08-01T09:00:00.000Z',
           reasonForVisit: 'x',
           clinicalNote: 'x',
           assessment: 'x',
@@ -317,6 +333,7 @@ describe('CORE-03 — Pilot Readiness & Operational Hardening (e2e)', () => {
         .set('Authorization', `Bearer ${doctorBToken}`)
         .send({
           patientId: patientAId,
+          occurredAt: '2026-08-01T09:00:00.000Z',
           reasonForVisit: 'x',
           clinicalNote: 'x',
           assessment: 'x',
@@ -453,6 +470,7 @@ describe('CORE-03 — Pilot Readiness & Operational Hardening (e2e)', () => {
         .set('Authorization', `Bearer ${doctorAToken}`)
         .send({
           patientId: patientRes.body.patient.id,
+          occurredAt: '2026-08-02T09:00:00.000Z',
           reasonForVisit: 'x',
           clinicalNote: 'x',
           assessment: 'x',

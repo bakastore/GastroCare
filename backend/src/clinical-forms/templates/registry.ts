@@ -1,7 +1,23 @@
 import { ClinicalFormTemplate } from './types';
 import { hemorrhoidLongoFollowupV1 } from './hemorrhoid-longo-followup.v1';
+import { longoPreopAssessmentV1 } from './longo-preop-assessment.v1';
+import { longoIntraopRecordV1 } from './longo-intraop-record.v1';
+import { longoEarlyPostopV1 } from './longo-early-postop.v1';
+import { longoTwoWeekFollowupV1 } from './longo-two-week-followup.v1';
+import { analDilationAssessmentV1 } from './anal-dilation-assessment.v1';
+import { longoLongTermFollowupV1 } from './longo-long-term-followup.v1';
+import { hemorrhoidExaminationV1 } from './hemorrhoid-examination.v1';
 
-const TEMPLATES: ClinicalFormTemplate[] = [hemorrhoidLongoFollowupV1];
+const TEMPLATES: ClinicalFormTemplate[] = [
+  hemorrhoidLongoFollowupV1,
+  longoPreopAssessmentV1,
+  longoIntraopRecordV1,
+  longoEarlyPostopV1,
+  longoTwoWeekFollowupV1,
+  analDilationAssessmentV1,
+  longoLongTermFollowupV1,
+  hemorrhoidExaminationV1,
+];
 
 /** Latest version per templateKey — new submissions are created against this. */
 const LATEST_VERSION_BY_KEY = new Map<string, number>();

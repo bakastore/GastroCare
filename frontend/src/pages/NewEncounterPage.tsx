@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { encountersApi } from '../api/resources';
 import { ApiError } from '../api/client';
 
 export function NewEncounterPage() {
   const { patientId } = useParams<{ patientId: string }>();
+  const [searchParams] = useSearchParams();
+  const episodeId = searchParams.get('episodeId') ?? undefined;
   const navigate = useNavigate();
 
   const [reasonForVisit, setReasonForVisit] = useState('');
+  const [occurredAt, setOccurredAt] = useState('');
   const [clinicalNote, setClinicalNote] = useState('');
   const [assessment, setAssessment] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -22,11 +25,21 @@ export function NewEncounterPage() {
     try {
       const encounter = await encountersApi.create({
         patientId,
+        episodeId,
+        occurredAt: new Date(occurredAt).toISOString(),
         reasonForVisit,
         clinicalNote,
         assessment,
       });
-      navigate(`/patients/${patientId}/care-plan/new?encounterId=${encounter.id}`);
+      // Longo Episode workflow does not use CarePlan/CareTask — return
+      // straight to the patient workspace so the doctor can pick a Longo
+      // form for this Encounter. A general (non-episode) Encounter keeps
+      // the existing CarePlan creation flow.
+      if (episodeId) {
+        navigate(`/patients/${patientId}`);
+      } else {
+        navigate(`/patients/${patientId}/care-plan/new?encounterId=${encounter.id}`);
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Không tạo được lượt khám.');
     } finally {
@@ -38,6 +51,15 @@ export function NewEncounterPage() {
     <div className="form-page">
       <h1>Lượt khám mới</h1>
       <form onSubmit={handleSubmit} noValidate>
+        <label htmlFor="occurredAt">Thời điểm khám</label>
+        <input
+          id="occurredAt"
+          type="datetime-local"
+          required
+          value={occurredAt}
+          onChange={(e) => setOccurredAt(e.target.value)}
+        />
+
         <label htmlFor="reasonForVisit">Lý do khám</label>
         <input
           id="reasonForVisit"

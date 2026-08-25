@@ -20,7 +20,11 @@ export async function seedE2eDatabase(): Promise<void> {
     await prisma.careTask.deleteMany();
     await prisma.carePlanVersion.deleteMany();
     await prisma.carePlan.deleteMany();
+    await prisma.clinicianAssignmentHistory.deleteMany();
     await prisma.encounter.deleteMany();
+    await prisma.careEpisode.deleteMany();
+    await prisma.room.deleteMany();
+    await prisma.facility.deleteMany();
     await prisma.patient.deleteMany();
     await prisma.foundationProbeRecord.deleteMany();
     await prisma.authUser.deleteMany();

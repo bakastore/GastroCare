@@ -13,6 +13,9 @@ import { NewCarePlanPage } from './pages/NewCarePlanPage';
 import { CarePlanPage } from './pages/CarePlanPage';
 import { FollowUpPage } from './pages/FollowUpPage';
 import { ClinicalFormPage } from './pages/ClinicalFormPage';
+import { LongoClinicalFormPage } from './pages/LongoClinicalFormPage';
+import { NewHemorrhoidEncounterPage } from './pages/NewHemorrhoidEncounterPage';
+import { HemorrhoidExaminationPage } from './pages/HemorrhoidExaminationPage';
 
 export default function App() {
   return (
@@ -34,11 +37,23 @@ export default function App() {
               path="/patients/:patientId/encounters/:encounterId/clinical-forms/hemorrhoid-longo-followup"
               element={<ClinicalFormPage />}
             />
+            <Route
+              path="/patients/:patientId/encounters/:encounterId/longo-forms/:templateKey"
+              element={<LongoClinicalFormPage />}
+            />
+            <Route
+              path="/patients/:patientId/encounters/:encounterId/hemorrhoid-examination"
+              element={<HemorrhoidExaminationPage />}
+            />
           </Route>
 
           <Route element={<RequireRole allowed={['DOCTOR', 'RECEPTIONIST']} />}>
             <Route path="/patients" element={<PatientsPage />} />
             <Route path="/patients/:patientId" element={<PatientDetailPage />} />
+            <Route
+              path="/patients/:patientId/hemorrhoid/new-encounter"
+              element={<NewHemorrhoidEncounterPage />}
+            />
           </Route>
 
           <Route path="*" element={<NotFoundPage />} />

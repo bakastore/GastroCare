@@ -45,6 +45,20 @@ describe('Gate 2 — Technical Foundation (e2e)', () => {
     prisma = app.get(PrismaService);
 
     // Reset Foundation tables (disposable test DB only — see docker-compose.test.yml).
+    // Also defensively clears Core clinical tables that FK-reference
+    // AuthUser (clinicianAssignmentHistory/encounters) in case an earlier
+    // suite in the same run left rows behind.
+    await prisma.clinicalFormSubmission.deleteMany();
+    await prisma.auditEvent.deleteMany();
+    await prisma.careTask.deleteMany();
+    await prisma.carePlanVersion.deleteMany();
+    await prisma.carePlan.deleteMany();
+    await prisma.clinicianAssignmentHistory.deleteMany();
+    await prisma.encounter.deleteMany();
+    await prisma.careEpisode.deleteMany();
+    await prisma.room.deleteMany();
+    await prisma.facility.deleteMany();
+    await prisma.patient.deleteMany();
     await prisma.foundationProbeRecord.deleteMany();
     await prisma.authUser.deleteMany();
     await prisma.tenant.deleteMany();
@@ -80,6 +94,8 @@ describe('Gate 2 — Technical Foundation (e2e)', () => {
   });
 
   afterAll(async () => {
+    await prisma.clinicianAssignmentHistory.deleteMany();
+    await prisma.encounter.deleteMany();
     await prisma.foundationProbeRecord.deleteMany();
     await prisma.authUser.deleteMany();
     await prisma.tenant.deleteMany();

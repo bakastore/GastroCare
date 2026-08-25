@@ -1,4 +1,5 @@
 import { IsObject, IsString, IsUUID, MinLength } from 'class-validator';
+import type { ClinicalFormResponses } from '../templates/types';
 
 export class CreateClinicalFormSubmissionDto {
   @IsUUID()
@@ -9,5 +10,5 @@ export class CreateClinicalFormSubmissionDto {
   templateKey!: string;
 
   @IsObject()
-  responses!: Record<string, number | string>;
+  responses!: ClinicalFormResponses;
 }

@@ -113,58 +113,94 @@ export class PatientsService {
   }
 
   /**
-   * Patient Timeline — a read PROJECTION composed from Encounter/CarePlan/
-   * CareTask at request time. Never a stored table, never a write target —
-   * see docs/04_CORE_DOMAIN_MODEL.md — Patient Timeline.
+   * Patient Timeline — a read PROJECTION composed from CareEpisode/
+   * Encounter/CarePlan/CareTask/ClinicalFormSubmission at request time.
+   * Never a stored table, never a write target — see
+   * docs/04_CORE_DOMAIN_MODEL.md — Patient Timeline.
+   *
+   * CORE-04 T11 (docs/09_CORE04_IMPLEMENTATION_CONTRACT.md T11) groups
+   * events by CareEpisode and sorts using clinical time
+   * (Encounter.occurredAt), not createdAt. Encounters with episodeId =
+   * null (and everything hung off them) are returned under
+   * `ungroupedEncounters` rather than silently dropped. Amendment lineage
+   * is preserved in full: every COMPLETED revision of a
+   * ClinicalFormSubmission (root and every amendment) appears as its own
+   * CLINICAL_FORM_SUBMITTED event — the original is never hidden by a
+   * later amendment.
    */
   async getTimeline(tenantId: string, patientId: string) {
     await this.getById(tenantId, patientId);
-
-    const encounters = await this.prisma.encounter.findMany({
-      where: { tenantId, patientId },
-      include: {
-        carePlan: {
-          include: {
-            versions: { orderBy: { versionNumber: 'asc' } },
-            careTasks: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'asc' },
-    });
-
-    const completedClinicalForms =
-      await this.prisma.clinicalFormSubmission.findMany({
-        where: { tenantId, patientId, status: 'COMPLETED' },
-      });
 
     type TimelineEvent = {
       type:
         | 'ENCOUNTER'
         | 'CARE_PLAN_SIGNED'
         | 'CARE_TASK'
-        | 'CLINICAL_FORM_SUBMITTED';
+        | 'CLINICAL_FORM_SUBMITTED'
+        | 'FOLLOW_UP_TASK';
       timestamp: Date;
       data: unknown;
     };
 
-    const events: TimelineEvent[] = [];
+    const [episodes, encounters, completedClinicalForms, followUpTasks] =
+      await Promise.all([
+        this.prisma.careEpisode.findMany({
+          where: { tenantId, patientId },
+          orderBy: [{ startedAt: 'asc' }, { createdAt: 'asc' }],
+        }),
+        this.prisma.encounter.findMany({
+          where: { tenantId, patientId },
+          include: {
+            carePlan: {
+              include: {
+                versions: { orderBy: { versionNumber: 'asc' } },
+                careTasks: true,
+              },
+            },
+          },
+          orderBy: { occurredAt: 'asc' },
+        }),
+        this.prisma.clinicalFormSubmission.findMany({
+          where: { tenantId, patientId, status: 'COMPLETED' },
+          orderBy: { revisionNumber: 'asc' },
+        }),
+        this.prisma.careTask.findMany({
+          where: { tenantId, patientId, timepointCode: { not: null } },
+          include: { sourceEncounter: { select: { episodeId: true } } },
+        }),
+      ]);
+
+    const encounterById = new Map(encounters.map((e) => [e.id, e]));
+    const eventsByEpisodeId = new Map<string, TimelineEvent[]>();
+    const ungroupedEncounters: TimelineEvent[] = [];
+
+    function bucketFor(episodeId: string | null): TimelineEvent[] {
+      if (!episodeId) return ungroupedEncounters;
+      let bucket = eventsByEpisodeId.get(episodeId);
+      if (!bucket) {
+        bucket = [];
+        eventsByEpisodeId.set(episodeId, bucket);
+      }
+      return bucket;
+    }
 
     for (const encounter of encounters) {
-      events.push({
+      const bucket = bucketFor(encounter.episodeId);
+      bucket.push({
         type: 'ENCOUNTER',
-        timestamp: encounter.createdAt,
+        timestamp: encounter.occurredAt,
         data: {
           id: encounter.id,
           reasonForVisit: encounter.reasonForVisit,
           clinicalNote: encounter.clinicalNote,
           assessment: encounter.assessment,
+          occurredAt: encounter.occurredAt,
         },
       });
 
       if (encounter.carePlan) {
         for (const version of encounter.carePlan.versions) {
-          events.push({
+          bucket.push({
             type: 'CARE_PLAN_SIGNED',
             timestamp: version.signedAt,
             data: {
@@ -178,7 +214,7 @@ export class PatientsService {
         }
 
         for (const task of encounter.carePlan.careTasks) {
-          events.push({
+          bucket.push({
             type: 'CARE_TASK',
             timestamp: task.createdAt,
             data: {
@@ -192,19 +228,53 @@ export class PatientsService {
     }
 
     for (const submission of completedClinicalForms) {
-      events.push({
+      const encounter = encounterById.get(submission.encounterId);
+      const bucket = bucketFor(encounter?.episodeId ?? null);
+      bucket.push({
         type: 'CLINICAL_FORM_SUBMITTED',
-        timestamp: submission.submittedAt ?? submission.createdAt,
+        timestamp: submission.completedAt ?? submission.createdAt,
         data: {
           id: submission.id,
           templateKey: submission.templateKey,
           templateVersion: submission.templateVersion,
           computedScores: submission.computedScores,
+          logicalGroupId: submission.logicalGroupId,
+          revisionNumber: submission.revisionNumber,
+          previousSubmissionId: submission.previousSubmissionId,
+          amendmentReason: submission.amendmentReason,
         },
       });
     }
 
-    events.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-    return events;
+    for (const task of followUpTasks) {
+      const bucket = bucketFor(task.sourceEncounter?.episodeId ?? null);
+      bucket.push({
+        type: 'FOLLOW_UP_TASK',
+        timestamp: task.dueDate,
+        data: {
+          id: task.id,
+          status: task.status,
+          dueDate: task.dueDate,
+          timepointCode: task.timepointCode,
+          sourceEncounterId: task.sourceEncounterId,
+          completedByEncounterId: task.completedByEncounterId,
+        },
+      });
+    }
+
+    function byTimestamp(a: TimelineEvent, b: TimelineEvent): number {
+      return a.timestamp.getTime() - b.timestamp.getTime();
+    }
+
+    ungroupedEncounters.sort(byTimestamp);
+
+    return {
+      episodes: episodes.map((episode) => {
+        const events = eventsByEpisodeId.get(episode.id) ?? [];
+        events.sort(byTimestamp);
+        return { episode, events };
+      }),
+      ungroupedEncounters,
+    };
   }
 }

@@ -6,6 +6,7 @@ import { useApiQuery } from '../api/useApiQuery';
 import { ApiError } from '../api/client';
 import { ErrorState, LoadingState } from '../components/AsyncStates';
 import { formatDate, formatDateTime } from '../lib/format';
+import { flattenTimeline } from '../types/domain';
 
 interface SignedVersion {
   versionNumber: number;
@@ -25,7 +26,8 @@ export function CarePlanPage() {
 
   const timelineQuery = useApiQuery(async () => {
     if (!carePlanQuery.data) return [] as SignedVersion[];
-    const events = await patientsApi.getTimeline(carePlanQuery.data.patientId);
+    const timeline = await patientsApi.getTimeline(carePlanQuery.data.patientId);
+    const events = flattenTimeline(timeline);
     return events
       .filter(
         (e) =>
