@@ -1,6 +1,6 @@
 # GastroCare — Decision Log
 
-Cập nhật: 2026-08-24
+Cập nhật: 2026-08-25
 
 Đây là Decision Log hiện hành và là nguồn chuẩn cho Owner Decisions
 và Working Assumptions của GastroCare.
@@ -167,6 +167,35 @@ Lookup strictly theo cùng `tenantId + patientId`; chỉ xét prior clinical rec
 **Deferred / out of Vertical Slice 1** (không mở trong slice này): Diagnosis, Treatment Decision, Medical Treatment, Procedure, generic Surgery, Investigation Order, Investigation Result, HDSS, SHS-HD, anal dilation scoring, Longo difficulty scoring, rectoscopy interpretation, AI, CORE-05 Case Intelligence. CORE-04 Longo vẫn là reusable baseline và clinical semantics đã lock không bị viết lại. Real-patient runtime tiếp tục `NOT AUTHORIZED`.
 
 **Căn cứ:** Owner explicit authorization dated 2026-08-24, dựa trên external sanitized evidence classification (LONGO_ATOMIC_FIELD_DICTIONARY_v1.md, 118/118 concepts classified, 0 missing, 0 duplicate).
+
+---
+
+### DEC-011 — Close Hemorrhoid Vertical Slice 1 and open Vertical Slice 2 Discovery
+
+**Ngày:** 2026-08-25
+
+**Trạng thái:** OWNER LOCKED
+
+**Thẩm quyền:** Explicit Owner authorization dated 2026-08-25 after independent correction re-check.
+
+Owner quyết định:
+1. Đóng `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 1` ở mức Technical Acceptance.
+2. Accepted baseline: initial `d67e1014b7a21b91f2d04112cf031773f61ed52c`; final correction `2ea529ee200a0a37a77cebb9a750f70adde57618` trên branch `discovery/hemorrhoid-real-world-workflow`.
+3. Independent lineage: Codex audit `FAIL` (2 blockers) → correction → targeted verification PASS → focused Codex re-check `PASS` → READY FOR TECHNICAL ACCEPTANCE: YES.
+4. Correction evidence: Hemorrhoid E2E `36/36 PASS`; CORE-01 E2E `42/42 PASS`; backend build `PASS`; `git diff --check PASS`; new blockers `NONE`.
+5. DEC-010 tiếp tục là authoritative Owner Decision cho Vertical Slice 1; DEC-011 không supersede DEC-010.
+6. Mở `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 2 DISCOVERY`.
+7. Target: `Hemorrhoid Examination → Diagnosis → Treatment Decision → CarePlan / Follow-up`.
+8. Slice 2 chỉ được phép Discovery; implementation CHƯA được phép.
+9. Discovery phải resolve workflow, Diagnosis/Treatment Decision semantics, CarePlan reuse, follow-up semantics, domain/schema, RBAC, audit/provenance, Timeline, acceptance criteria, implementation contract và unresolved Owner questions = 0.
+10. Reuse-first là bắt buộc; đánh giá `Encounter`, `ClinicalFormSubmission`, `CarePlan`, `CarePlanVersion`, `CareTask`, `AuditEvent`, Timeline trước khi tạo model mới.
+11. `docs/10_HEMORRHOID_CLINICAL_WORKFLOW_v1.0.md` là authoritative Hemorrhoid clinical SSOT.
+12. `docs/08_LONGO_CLINICAL_WORKFLOW_v1.0.md` tiếp tục là authoritative verified Longo sub-workflow SSOT.
+13. Procedure, generic Surgery, Investigation, HDSS, SHS-HD, deferred scoring/interpretation, historical import, AI và CORE-05 không tự động được mở.
+14. `CORE-05 = CASE INTELLIGENCE — NOT OPENED`.
+15. Implementation/test/acceptance: `SYNTHETIC DATA ONLY`.
+16. Real-patient runtime và production: `NOT AUTHORIZED`.
+17. Slice 2 chỉ chuyển sang implementation bằng Owner Decision mới sau Discovery Gate.
 
 ---
 
