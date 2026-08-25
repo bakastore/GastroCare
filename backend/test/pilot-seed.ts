@@ -151,12 +151,17 @@ export async function seedPilotDataset(): Promise<void> {
       followUpDate: daysFromNow(14),
     });
 
-    await carePlansService.sign(tenant.id, doctor.id, carePlan.id);
+    const signedCarePlan = await carePlansService.sign(
+      tenant.id,
+      doctor.id,
+      carePlan.id,
+    );
 
     await carePlansService.amend(tenant.id, doctor.id, carePlan.id, {
       instructions: 'Điều chỉnh liều thuốc theo đáp ứng, tái khám 14 ngày',
       followUpDate: daysFromNow(14),
       reason: 'Đáp ứng chưa đủ với liều ban đầu',
+      expectedCurrentVersionId: signedCarePlan.version.id,
     });
 
     // CORE-04 T1 — a CareEpisode grouping Minh's return visit, exercising

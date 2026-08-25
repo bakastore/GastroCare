@@ -12,6 +12,7 @@ import { AmendClinicalFormSubmissionDto } from './dto/amend-submission.dto';
 import { getLatestTemplate, getTemplate } from './templates/registry';
 import { computeScores, validateResponses } from './templates/validation';
 import { assertLongoEpisodeAncestry } from './templates/longo-episode-invariant';
+import { assertHemorrhoidSequencePrerequisite } from './templates/hemorrhoid-sequence';
 import { ClinicalFormResponses } from './templates/types';
 import { FollowUpTasksService } from '../follow-up-tasks/follow-up-tasks.service';
 
@@ -69,6 +70,12 @@ export class ClinicalFormsService {
       tenantId,
       template.templateKey,
       encounter,
+    );
+    await assertHemorrhoidSequencePrerequisite(
+      this.prisma,
+      tenantId,
+      template.templateKey,
+      dto.encounterId,
     );
 
     // Reject if ANY submission already exists for this (Encounter,
