@@ -1,6 +1,6 @@
 # GastroCare — Trạng thái dự án
 
-**Cập nhật:** 26/08/2026 — T4 Independent Codex Gate CLOSED — PASS (verified against HEAD `ca347bc2b043c6050b5635b2e58ef8cd977e320e`); current authorized task T7 TARGETED SYNTHETIC ACCEPTANCE
+**Cập nhật:** 26/08/2026 — T4 Independent Codex Gate CLOSED — PASS (verified against HEAD `ca347bc2b043c6050b5635b2e58ef8cd977e320e`); T7 TARGETED SYNTHETIC ACCEPTANCE = PASS (Owner-confirmed 2026-08-26); Hemorrhoid Vertical Slice 2 execution sequence T0→T7 = COMPLETE; Owner product acceptance NOT CLAIMED
 
 **Loại dự án:** GREENFIELD
 
@@ -38,7 +38,7 @@ Quyết định Owner rõ ràng mới nhất
 | Product Refinement / UI-UX (tinh chỉnh sản phẩm/giao diện-trải nghiệm) | DEFERRED đến khi Clinical Core được chấp nhận |
 | AI Value-Added Layer | DEFERRED |
 | Hemorrhoid Vertical Slice 1 | `TECHNICALLY ACCEPTED` — Independent Codex Gate CLOSED; accepted baseline `2ea529ee200a0a37a77cebb9a750f70adde57618` |
-| Hemorrhoid Vertical Slice 2 | `AUTHORIZED FOR IMPLEMENTATION` — Diagnosis → Treatment Decision → CarePlan/Follow-up → Return Encounter; T4 focused Independent Codex Gate `CLOSED — PASS` (2026-08-26); current task T7 |
+| Hemorrhoid Vertical Slice 2 | Execution sequence `T0→T7 COMPLETE` — Diagnosis → Treatment Decision → CarePlan/Follow-up → Return Encounter; T4 focused Independent Codex Gate `CLOSED — PASS` (2026-08-26); T7 TARGETED SYNTHETIC ACCEPTANCE `PASS` (Owner-confirmed 2026-08-26); Owner product acceptance NOT CLAIMED |
 | Current product direction | `HEMORRHOID REAL-WORLD CLINICAL WORKFLOW` — active under DEC-010 + DEC-011 + DEC-012 |
 | CORE-05 | `CASE INTELLIGENCE` — giữ nguyên; chưa mở trong checkpoint này |
 
@@ -126,7 +126,8 @@ T4 baseline: 1602b114ccb50482c890754d59a44e3958e61c59
 T4 verified against HEAD: ca347bc2b043c6050b5635b2e58ef8cd977e320e
 T4 audit results: READY FOR T4 ACCEPTANCE: YES; targeted real-PostgreSQL T4 E2E 22/22 PASS; C1-C4 PASS; Serializable transaction PASS; expectedCurrentVersionId/stale-write protection PASS; serialization/write conflict→409 PASS; no automatic retry PASS; CareTask 0..1 OPEN generic cardinality PASS; atomic audit PASS; rollback proof PASS; schema/migration NO CHANGE; blockers NONE; audit strict READ-ONLY, worktree unchanged
 T5/T6 were implemented after the T4 implementation baseline; the fresh Independent Codex READ-ONLY audit on 2026-08-26 verified that T5/T6 did not modify T4 production behavior.
-Current authorized task: T7 — TARGETED SYNTHETIC ACCEPTANCE
+T7 TARGETED SYNTHETIC ACCEPTANCE: PASS (Owner-confirmed 2026-08-26) — golden path 17/17 PASS; mandatory negative acceptance cases PASS; relevant regression tests 177/177 PASS; backend build PASS; git diff --check PASS; no production-code change; schema/migration NO CHANGE; blockers NONE.
+Hemorrhoid Vertical Slice 2 execution sequence T0→T7: COMPLETE (technical execution). Owner product acceptance: NOT CLAIMED.
 Real-patient runtime: NOT AUTHORIZED
 ```
 ## 5. Giai đoạn và hướng tiếp theo
@@ -135,7 +136,7 @@ Real-patient runtime: NOT AUTHORIZED
 
 **Hướng sản phẩm hiện tại:** HEMORRHOID REAL-WORLD CLINICAL WORKFLOW
 
-**Last completed checkpoint:** `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 2 DISCOVERY`
+**Last completed checkpoint:** `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 2 IMPLEMENTATION` — T0→T7 execution sequence COMPLETE (T7 TARGETED SYNTHETIC ACCEPTANCE PASS, Owner-confirmed 2026-08-26)
 
 Discovery Gate CLOSED: Diagnosis/Treatment Decision/CarePlan/follow-up/Return Encounter semantics, concurrency model, schema impact, RBAC, audit, Timeline và acceptance criteria đều RESOLVED; unresolved Owner questions = 0.
 
@@ -160,7 +161,7 @@ T1→T4 implemented tại `1602b114ccb50482c890754d59a44e3958e61c59`; T5 tại `
 
 T4 là high-risk transaction/concurrency gate: sau implementation + targeted concurrency tests + ChatGPT source review PASS, bắt buộc fresh Independent Codex READ-ONLY audit chỉ cho T4. T4 independent gate: `CLOSED — PASS`, fresh Independent Codex READ-ONLY audit ngày 2026-08-26, verified against HEAD `ca347bc2b043c6050b5635b2e58ef8cd977e320e`, `READY FOR T4 ACCEPTANCE: YES`, 22/22 targeted real-PostgreSQL T4 tests PASS, C1-C4 PASS, blockers NONE. T5/T6 không thay đổi T4 production behavior.
 
-Current authorized task: `T7 — TARGETED SYNTHETIC ACCEPTANCE`.
+T7 — TARGETED SYNTHETIC ACCEPTANCE: `PASS` (Owner-confirmed 2026-08-26). Slice 2 execution sequence `T0→T7 COMPLETE` (technical execution; Owner product acceptance NOT CLAIMED).
 
 Expected schema boundary: `NO PRISMA SCHEMA CHANGE / NO DATABASE MIGRATION`.
 Nếu cần migration, Diagnosis/TreatmentDecision entity hoặc clinical semantic mới: STOP và xin Owner Decision.
@@ -190,13 +191,13 @@ Chỉ được dùng synthetic data (dữ liệu giả lập) cho triển khai, 
 | Discovery baseline | `eeadfc31ed9819e06fb80c545573a4bba76d952a` |
 | Current phase | `GASTROCARE CORE — IN PROGRESS` |
 | Last technically accepted implementation | `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 1` at `2ea529ee200a0a37a77cebb9a750f70adde57618` |
-| Last completed work package | `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 2 DISCOVERY` |
+| Last completed work package | `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 2 IMPLEMENTATION` — T0→T7 execution sequence COMPLETE |
 | Discovery status | `CLOSED — OWNER ACCEPTED` |
 | Current work package | `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 2 IMPLEMENTATION` |
 | Current authority | `DEC-012 — OWNER LOCKED` |
 | Implementation Contract | `docs/11_HEMORRHOID_SLICE2_IMPLEMENTATION_CONTRACT.md — OWNER LOCKED` |
-| Current authorized task | `T7 — TARGETED SYNTHETIC ACCEPTANCE` (T0→T6 implemented; T7 not yet executed) |
-| Slice 2 implementation | `AUTHORIZED FOR IMPLEMENTATION` |
+| Current authorized task | `T7 — TARGETED SYNTHETIC ACCEPTANCE = PASS` (Owner-confirmed 2026-08-26); T0→T7 execution sequence COMPLETE |
+| Slice 2 implementation | `T0→T7 EXECUTION COMPLETE (TECHNICAL)` — OWNER ACCEPTED = NOT CLAIMED |
 | T1–T4 baseline | `1602b114ccb50482c890754d59a44e3958e61c59` |
 | T5 baseline | `39d263cee23e062122417b999ce102a7aced590b` |
 | T6 baseline | `ca347bc2b043c6050b5635b2e58ef8cd977e320e` (= current HEAD) |
