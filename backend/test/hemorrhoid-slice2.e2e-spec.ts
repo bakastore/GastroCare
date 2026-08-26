@@ -1531,4 +1531,202 @@ describe('Hemorrhoid Vertical Slice 2 — T1-T4 (e2e)', () => {
       });
     });
   });
+
+  // ==========================================================================
+  // T6 — Timeline projection (Diagnosis / Treatment Decision)
+  // ==========================================================================
+  describe('T6 — Timeline projection', () => {
+    async function getTimeline(token: string, patientId: string) {
+      const res = await request(app.getHttpServer())
+        .get(`/patients/${patientId}/timeline`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+      return res.body as {
+        episodes: { events: { type: string; data: Record<string, unknown> }[] }[];
+        ungroupedEncounters: { type: string; data: Record<string, unknown> }[];
+      };
+    }
+
+    function flatten(timeline: {
+      episodes: { events: { type: string; data: Record<string, unknown> }[] }[];
+      ungroupedEncounters: { type: string; data: Record<string, unknown> }[];
+    }) {
+      return [
+        ...timeline.episodes.flatMap((g) => g.events),
+        ...timeline.ungroupedEncounters,
+      ];
+    }
+
+    it('projects a completed Diagnosis with its summary and encounterId, without a new stored entity', async () => {
+      const encounterId = await createEncounter(doctorAToken, patientAId);
+      await completeExamination(doctorAToken, encounterId);
+      await completeDiagnosis(
+        doctorAToken,
+        encounterId,
+        'Trĩ nội độ III (synthetic timeline)',
+      );
+
+      const timeline = await getTimeline(doctorAToken, patientAId);
+      const events = flatten(timeline).filter(
+        (e) =>
+          e.type === 'CLINICAL_FORM_SUBMITTED' &&
+          e.data.templateKey === 'HEMORRHOID_DIAGNOSIS' &&
+          e.data.encounterId === encounterId,
+      );
+      expect(events).toHaveLength(1);
+      expect(events[0].data.summary).toBe('Trĩ nội độ III (synthetic timeline)');
+      expect(events[0].data.revisionNumber).toBe(1);
+      // F3 data minimization — the full responses object must not be
+      // projected into the Timeline, only the named summary field.
+      expect(events[0].data.responses).toBeUndefined();
+    });
+
+    it('projects a completed Treatment Decision with its summary and encounterId', async () => {
+      const encounterId = await createEncounter(doctorAToken, patientAId);
+      await completeExamination(doctorAToken, encounterId);
+      await completeDiagnosis(doctorAToken, encounterId);
+      await completeTreatmentDecision(
+        doctorAToken,
+        encounterId,
+        'Cắt trĩ Longo (synthetic timeline)',
+      );
+
+      const timeline = await getTimeline(doctorAToken, patientAId);
+      const events = flatten(timeline).filter(
+        (e) =>
+          e.type === 'CLINICAL_FORM_SUBMITTED' &&
+          e.data.templateKey === 'HEMORRHOID_TREATMENT_DECISION' &&
+          e.data.encounterId === encounterId,
+      );
+      expect(events).toHaveLength(1);
+      expect(events[0].data.summary).toBe('Cắt trĩ Longo (synthetic timeline)');
+    });
+
+    it('preserves amendment/revision lineage — original Diagnosis remains visible after amendment', async () => {
+      const encounterId = await createEncounter(doctorAToken, patientAId);
+      await completeExamination(doctorAToken, encounterId);
+      const originalId = await completeDiagnosis(
+        doctorAToken,
+        encounterId,
+        'Trĩ nội độ II (bản gốc, synthetic)',
+      );
+
+      const amendRes = await request(app.getHttpServer())
+        .post(`/clinical-forms/${originalId}/amend`)
+        .set('Authorization', `Bearer ${doctorAToken}`)
+        .send({
+          responses: { diagnosisSummary: 'Trĩ nội độ III (đã sửa, synthetic)' },
+          amendmentReason: 'Đánh giá lại sau khi có thêm dữ liệu (synthetic)',
+        });
+      expect(amendRes.status).toBe(201);
+
+      const timeline = await getTimeline(doctorAToken, patientAId);
+      const events = flatten(timeline)
+        .filter(
+          (e) =>
+            e.type === 'CLINICAL_FORM_SUBMITTED' &&
+            e.data.templateKey === 'HEMORRHOID_DIAGNOSIS' &&
+            e.data.encounterId === encounterId,
+        )
+        .sort(
+          (a, b) => (a.data.revisionNumber as number) - (b.data.revisionNumber as number),
+        );
+
+      expect(events).toHaveLength(2);
+      expect(events[0].data.id).toBe(originalId);
+      expect(events[0].data.summary).toBe('Trĩ nội độ II (bản gốc, synthetic)');
+      expect(events[1].data.summary).toBe('Trĩ nội độ III (đã sửa, synthetic)');
+      expect(events[1].data.previousSubmissionId).toBe(originalId);
+      expect(events[1].data.amendmentReason).toBe(
+        'Đánh giá lại sau khi có thêm dữ liệu (synthetic)',
+      );
+    });
+
+    it('tenant/patient isolation: Tenant B cannot read Tenant A patient Timeline', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`/patients/${patientAId}/timeline`)
+        .set('Authorization', `Bearer ${doctorBToken}`);
+      expect(res.status).toBe(404);
+    });
+
+    it('F1 — explicit Return Encounter completion is visible in Timeline: CareTask.completedByEncounterId resolves to the correct ENCOUNTER', async () => {
+      const { carePlanId } = await signedHemorrhoidCarePlan(doctorAToken, '2026-10-10');
+      const carePlan = await prisma.carePlan.findUniqueOrThrow({ where: { id: carePlanId } });
+      const openTask = await prisma.careTask.findFirstOrThrow({
+        where: { carePlanId, status: CareTaskStatus.OPEN },
+      });
+
+      const returnEncounterId = await createEncounter(
+        doctorAToken,
+        carePlan.patientId,
+        'Tái khám (F1 synthetic)',
+      );
+      const completeRes = await request(app.getHttpServer())
+        .post(`/care-tasks/${openTask.id}/complete`)
+        .set('Authorization', `Bearer ${doctorAToken}`)
+        .send({ completedByEncounterId: returnEncounterId });
+      expect(completeRes.status).toBe(201);
+
+      const timeline = await getTimeline(doctorAToken, carePlan.patientId);
+      const events = flatten(timeline);
+      const taskEvent = events.find(
+        (e) => e.type === 'CARE_TASK' && e.data.id === openTask.id,
+      );
+      expect(taskEvent).toBeTruthy();
+      expect(taskEvent?.data.carePlanId).toBe(carePlanId);
+      expect(taskEvent?.data.timepointCode).toBeNull();
+      expect(taskEvent?.data.completedByEncounterId).toBe(returnEncounterId);
+      expect(taskEvent?.data.completedAt).toBeTruthy();
+
+      // The Return Encounter itself is independently visible in the same
+      // Timeline (already-existing ENCOUNTER projection) — resolvable by id.
+      const returnEncounterEvent = events.find(
+        (e) => e.type === 'ENCOUNTER' && e.data.id === returnEncounterId,
+      );
+      expect(returnEncounterEvent).toBeTruthy();
+      expect(returnEncounterEvent?.data.reasonForVisit).toBe('Tái khám (F1 synthetic)');
+    });
+
+    it('F2 — ENCOUNTER Timeline projection exposes carePlanId/carePlanStatus for DRAFT and SIGNED CarePlans', async () => {
+      // DRAFT — no sign yet.
+      const draftEncounterId = await readyForCarePlanEncounter(doctorAToken);
+      const draftCreated = await createCarePlan(
+        doctorAToken,
+        draftEncounterId,
+        'Điều trị (F2 draft synthetic)',
+      );
+      expect(draftCreated.status).toBe(201);
+      const draftCarePlanId = draftCreated.body.id as string;
+
+      let timeline = await getTimeline(doctorAToken, patientAId);
+      let encounterEvent = flatten(timeline).find(
+        (e) => e.type === 'ENCOUNTER' && e.data.id === draftEncounterId,
+      );
+      expect(encounterEvent?.data.carePlanId).toBe(draftCarePlanId);
+      expect(encounterEvent?.data.carePlanStatus).toBe('DRAFT');
+
+      // SIGNED — separate Encounter/CarePlan.
+      const { carePlanId: signedCarePlanId } = await signedHemorrhoidCarePlan(doctorAToken);
+      const signedCarePlan = await prisma.carePlan.findUniqueOrThrow({
+        where: { id: signedCarePlanId },
+      });
+
+      timeline = await getTimeline(doctorAToken, patientAId);
+      encounterEvent = flatten(timeline).find(
+        (e) => e.type === 'ENCOUNTER' && e.data.id === signedCarePlan.encounterId,
+      );
+      expect(encounterEvent?.data.carePlanId).toBe(signedCarePlanId);
+      expect(encounterEvent?.data.carePlanStatus).toBe('SIGNED');
+    });
+
+    it('an Encounter with no CarePlan yet projects carePlanId/carePlanStatus as null', async () => {
+      const encounterId = await createEncounter(doctorAToken, patientAId);
+      const timeline = await getTimeline(doctorAToken, patientAId);
+      const encounterEvent = flatten(timeline).find(
+        (e) => e.type === 'ENCOUNTER' && e.data.id === encounterId,
+      );
+      expect(encounterEvent?.data.carePlanId).toBeNull();
+      expect(encounterEvent?.data.carePlanStatus).toBeNull();
+    });
+  });
 });

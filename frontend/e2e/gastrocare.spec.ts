@@ -86,7 +86,7 @@ test.describe('CORE-02 — Doctor golden path', () => {
     await page.getByRole('link', { name: 'Theo dõi' }).click();
     await expect(page).toHaveURL(/\/follow-up$/);
     const row = page.getByRole('row').filter({ hasText: PATIENT_NAME });
-    await row.getByRole('button', { name: 'Hoàn thành' }).click();
+    await row.getByRole('button', { name: 'Hoàn thành', exact: true }).click();
     await expect(row).toHaveCount(0);
 
     // 10. Open Timeline (Patient detail).
@@ -760,5 +760,175 @@ test.describe('DEC-010 Hemorrhoid Vertical Slice 1 — real-world workflow golde
     expect(revision2.responses.weight).toBe(65);
     expect(history.current.revisionNumber).toBe(2);
     expect(history.current.responses.weight).toBe(65);
+  });
+});
+
+// DEC-012 Hemorrhoid Vertical Slice 2 (T6) browser E2E — golden path only:
+// Examination -> Diagnosis -> Treatment Decision -> CarePlan create/sign ->
+// follow-up CareTask -> CD-08 amendment reconciliation -> Return Encounter ->
+// explicit CareTask completion via completedByEncounterId -> Timeline
+// projection. Backend remains authoritative throughout; this only checks the
+// UI guides/reflects that sequence. Synthetic data only.
+test.describe('DEC-012 Hemorrhoid Vertical Slice 2 — T6 golden path', () => {
+  test('Diagnosis -> Treatment Decision -> CarePlan -> sign -> CD-08 reconciliation -> explicit Return Encounter completion -> Timeline', async ({
+    page,
+  }) => {
+    const patientName = `Lê Thị Slice2 E2E ${Date.now()}`;
+    const patientPhone = `07${Date.now().toString().slice(-8)}`;
+    const diagnosisSummary = `Trĩ nội độ III (E2E ${Date.now()})`;
+    const decisionSummary = `Điều trị nội khoa, hẹn tái khám (E2E ${Date.now()})`;
+
+    await page.goto('/login');
+    await page.getByLabel('Email').fill(DOCTOR_EMAIL);
+    await page.getByLabel('Mật khẩu').fill(DOCTOR_PASSWORD);
+    await page.getByRole('button', { name: 'Đăng nhập' }).click();
+    await expect(page).toHaveURL(/\/today$/);
+
+    // 1. Register patient + first hemorrhoid Encounter Context.
+    await page.getByRole('link', { name: 'Bệnh nhân' }).click();
+    await page.getByRole('button', { name: '+ Bệnh nhân mới' }).click();
+    await page.getByLabel('Họ tên').fill(patientName);
+    await page.getByLabel('Ngày sinh').fill('1982-04-20');
+    await page.getByLabel('Điện thoại').fill(patientPhone);
+    await page.getByRole('button', { name: 'Tạo bệnh nhân mới' }).click();
+    await expect(page).toHaveURL(/\/patients\/[^/]+$/);
+    const patientId = page.url().match(/patients\/([^/]+)$/)?.[1];
+    expect(patientId).toBeTruthy();
+
+    await page.getByRole('link', { name: '+ Lượt khám trĩ mới' }).click();
+    await page.getByLabel('Thời điểm khám').fill('2026-09-01T09:00');
+    await page.getByLabel('Lý do khám').fill('Khám trĩ lần đầu (E2E Slice 2)');
+    await page.getByRole('button', { name: 'Tạo lượt khám' }).click();
+    await expect(page.getByRole('heading', { name: 'Đã tạo lượt khám trĩ' })).toBeVisible();
+    await page.getByRole('button', { name: 'Mở phiếu khám trĩ' }).click();
+    await expect(page).toHaveURL(/\/hemorrhoid-examination$/);
+
+    // 2. Complete Examination (no required fields).
+    await page.getByRole('button', { name: 'Bắt đầu phiếu khám trĩ' }).click();
+    await page.getByRole('button', { name: 'Hoàn tất' }).click();
+    await expect(page.getByText('Đã hoàn tất (phiên bản 1)')).toBeVisible();
+    await page.getByRole('button', { name: 'Về hồ sơ bệnh nhân' }).click();
+    await expect(page).toHaveURL(/\/patients\/[^/]+$/);
+
+    // 3. Sequence chain: Examination done -> "Chẩn đoán" is the next
+    // reachable step; Treatment Decision / CarePlan are guided as
+    // unreachable yet (backend prerequisite, not just UI decoration).
+    await expect(page.getByRole('link', { name: 'Chẩn đoán' })).toBeVisible();
+    await expect(page.getByText('Quyết định điều trị', { exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Quyết định điều trị' })).toHaveCount(0);
+
+    // 4. Diagnosis — reuses the generic Clinical Form renderer.
+    await page.getByRole('link', { name: 'Chẩn đoán' }).click();
+    await expect(page.getByRole('heading', { name: 'Chẩn đoán', level: 1 })).toBeVisible();
+    await page.getByRole('button', { name: 'Bắt đầu biểu mẫu' }).click();
+    await page.getByLabel('Chẩn đoán *').fill(diagnosisSummary);
+    await page.getByRole('button', { name: 'Hoàn tất' }).click();
+    await expect(page.getByText('Đã hoàn tất (phiên bản 1)')).toBeVisible();
+    await page.getByRole('button', { name: 'Về hồ sơ bệnh nhân' }).click();
+
+    // 5. Diagnosis done -> Treatment Decision now reachable; CarePlan still
+    // guided as unreachable.
+    await expect(page.getByRole('link', { name: 'Chẩn đoán ✓' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Quyết định điều trị' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Tạo kế hoạch chăm sóc' })).toHaveCount(0);
+
+    // 6. Treatment Decision.
+    await page.getByRole('link', { name: 'Quyết định điều trị' }).click();
+    await expect(
+      page.getByRole('heading', { name: 'Quyết định điều trị', level: 1 }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Bắt đầu biểu mẫu' }).click();
+    await page.getByLabel('Quyết định điều trị *').fill(decisionSummary);
+    await page.getByRole('button', { name: 'Hoàn tất' }).click();
+    await expect(page.getByText('Đã hoàn tất (phiên bản 1)')).toBeVisible();
+    await page.getByRole('button', { name: 'Về hồ sơ bệnh nhân' }).click();
+
+    // 7. Treatment Decision done -> CarePlan creation now reachable.
+    await expect(page.getByRole('link', { name: 'Quyết định điều trị ✓' })).toBeVisible();
+    await page.getByRole('link', { name: 'Tạo kế hoạch chăm sóc' }).click();
+
+    // 8. Create + sign CarePlan.
+    await expect(page).toHaveURL(/\/care-plan\/new/);
+    await page.getByLabel('Điều trị / dặn dò').fill('Điều trị nội khoa (E2E Slice 2)');
+    await page.getByLabel('Ngày tái khám (tùy chọn)').fill('2026-09-15');
+    await page.getByRole('button', { name: 'Lưu bản nháp' }).click();
+    await expect(page).toHaveURL(/\/care-plans\/[^/]+$/);
+    await page.getByRole('button', { name: 'Ký kế hoạch' }).click();
+    await page.getByRole('button', { name: 'Xác nhận ký' }).click();
+    await expect(page.getByText('Đã ký', { exact: true })).toBeVisible();
+
+    // 9. Exactly one OPEN generic CareTask was created, distinct from
+    // CarePlan.followUpDate (both currently 15/9, shown in two places).
+    await expect(page.getByText('Ngày tái khám (ý định lâm sàng đã ký):')).toBeVisible();
+    await expect(page.getByText('Ngày hẹn hiện tại:')).toBeVisible();
+
+    // 10. CD-08 — change followUpDate while an OPEN generic task exists:
+    // the reconciliation control must appear and block submit until an
+    // action is chosen.
+    await page.getByRole('button', { name: 'Sửa (tạo phiên bản mới)' }).click();
+    await expect(page.getByLabel('Ngày tái khám mới (tùy chọn)')).toHaveValue('2026-09-15');
+    await page.getByLabel('Ngày tái khám mới (tùy chọn)').fill('2026-09-25');
+    await page.getByLabel('Lý do sửa').fill('Đổi lịch theo yêu cầu bệnh nhân (E2E)');
+    await expect(page.getByLabel('Xử lý nhiệm vụ tái khám')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Lưu phiên bản mới' })).toBeDisabled();
+    await page.getByLabel('Xử lý nhiệm vụ tái khám').selectOption('RESCHEDULE');
+    await expect(page.getByRole('button', { name: 'Lưu phiên bản mới' })).toBeEnabled();
+    await page.getByRole('button', { name: 'Lưu phiên bản mới' }).click();
+    await expect(page.getByText('Phiên bản 2')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Về hồ sơ bệnh nhân' }).click();
+
+    // 11. Create a second hemorrhoid Encounter Context — the explicit
+    // Return Encounter used to complete the follow-up CareTask below. Just
+    // capture its id from the exam URL; completing its own exam is not
+    // needed for this step.
+    await page.getByRole('link', { name: '+ Lượt khám trĩ mới' }).click();
+    await page.getByLabel('Thời điểm khám').fill('2026-09-26T09:00');
+    await page.getByLabel('Lý do khám').fill('Tái khám trĩ (E2E Slice 2)');
+    await page.getByRole('button', { name: 'Tạo lượt khám' }).click();
+    await page.getByRole('button', { name: 'Mở phiếu khám trĩ' }).click();
+    const returnEncounterId = page
+      .url()
+      .match(/\/encounters\/([^/]+)\/hemorrhoid-examination$/)?.[1];
+    expect(returnEncounterId).toBeTruthy();
+    // Before the exam is started, only "Hủy"/"Bắt đầu phiếu khám trĩ" exist
+    // (no "Về hồ sơ bệnh nhân" yet) — "Hủy" navigates back to the patient.
+    await page.getByRole('button', { name: 'Hủy' }).click();
+
+    // 12. Explicit Return Encounter completion on the Follow-up queue — the
+    // doctor must pick the Encounter; no date-based inference.
+    await page.getByRole('link', { name: 'Theo dõi' }).click();
+    await expect(page).toHaveURL(/\/follow-up$/);
+    const row = page.getByRole('row').filter({ hasText: patientName });
+    await expect(row).toBeVisible();
+    await row.getByRole('button', { name: 'Hoàn thành qua lượt tái khám' }).click();
+    const confirmButton = page.getByRole('button', { name: 'Xác nhận hoàn thành' });
+    await expect(confirmButton).toBeDisabled();
+    await page.getByLabel('Lượt tái khám').selectOption(returnEncounterId as string);
+    await expect(confirmButton).toBeEnabled();
+    await confirmButton.click();
+    await expect(row).toHaveCount(0);
+
+    // 13. Timeline projects Diagnosis/Treatment Decision summaries (no new
+    // storage — read straight from the minimal Timeline summary field) and
+    // keeps the amended CarePlan's version lineage visible.
+    await page.goto(`/patients/${patientId}`);
+    await expect(page.getByText(diagnosisSummary)).toBeVisible();
+    await expect(page.getByText(decisionSummary)).toBeVisible();
+    const timelineItems = page.locator('.timeline-item');
+    await expect(timelineItems.filter({ hasText: 'Lượt khám' })).toHaveCount(2);
+
+    // 14. F2 — the first Encounter already has a CarePlan (DRAFT->SIGNED
+    // above): the sequence must offer to view it, not re-offer creation.
+    await expect(
+      page.getByRole('link', { name: 'Xem kế hoạch chăm sóc', exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Tạo kế hoạch chăm sóc' })).toHaveCount(0);
+
+    // 15. F1 — the completed follow-up CareTask shows which Return
+    // Encounter closed it (explicit linkage, not inferred).
+    await expect(
+      page.getByText(/Hoàn thành qua lượt tái khám:.*Tái khám trĩ \(E2E Slice 2\)/),
+    ).toBeVisible();
   });
 });

@@ -42,6 +42,10 @@ export default function App() {
               element={<LongoClinicalFormPage />}
             />
             <Route
+              path="/patients/:patientId/encounters/:encounterId/clinical-forms/:templateKey"
+              element={<LongoClinicalFormPage />}
+            />
+            <Route
               path="/patients/:patientId/encounters/:encounterId/hemorrhoid-examination"
               element={<HemorrhoidExaminationPage />}
             />

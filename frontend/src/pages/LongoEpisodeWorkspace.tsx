@@ -291,16 +291,60 @@ function EpisodeCard({
   );
 }
 
+// DEC-012 §19 — the Hemorrhoid Slice 2 golden path
+// (Examination -> Diagnosis -> Treatment Decision -> CarePlan) is
+// backend-authoritative; these buttons only guide sequence, they never
+// replace the backend prerequisite check (creating out of order still 400s).
+// HEMORRHOID_EXAMINATION is deliberately NOT part of this list — it keeps
+// the original, always-visible "Khám trĩ" link below unchanged (accepted
+// Slice 1 E2E baseline asserts on that exact, non-checkmarked text).
+const HEMORRHOID_PREREQ_CHAIN = [
+  'HEMORRHOID_EXAMINATION',
+  'HEMORRHOID_DIAGNOSIS',
+  'HEMORRHOID_TREATMENT_DECISION',
+];
+const HEMORRHOID_SEQUENCE: { templateKey: string; label: string }[] = [
+  { templateKey: 'HEMORRHOID_DIAGNOSIS', label: 'Chẩn đoán' },
+  { templateKey: 'HEMORRHOID_TREATMENT_DECISION', label: 'Quyết định điều trị' },
+];
+
 function TimelineEventList({ events, patientId }: { events: TimelineEvent[]; patientId: string }) {
   if (events.length === 0) {
     return <EmptyState message="Chưa có sự kiện." />;
+  }
+  // Per-Encounter set of COMPLETED templateKeys, derived from this same
+  // events list — used only to guide (disable/hide) the next hemorrhoid
+  // workflow step; the backend remains the sole authority on sequence.
+  const completedByEncounter = new Map<string, Set<string>>();
+  // F1 — ENCOUNTER events already present in this same bucket, so an
+  // explicit Return Encounter linkage (CareTask.completedByEncounterId) can
+  // be resolved to human-readable context without a new API call.
+  const encounterById = new Map<string, { reasonForVisit: string; occurredAt: string }>();
+  for (const e of events) {
+    if (e.type === 'CLINICAL_FORM_SUBMITTED' && e.data.encounterId) {
+      const encId = String(e.data.encounterId);
+      const set = completedByEncounter.get(encId) ?? new Set<string>();
+      set.add(String(e.data.templateKey));
+      completedByEncounter.set(encId, set);
+    }
+    if (e.type === 'ENCOUNTER') {
+      encounterById.set(String(e.data.id), {
+        reasonForVisit: String(e.data.reasonForVisit ?? ''),
+        occurredAt: String(e.data.occurredAt ?? e.timestamp),
+      });
+    }
   }
   return (
     <ul className="timeline">
       {events.map((event, index) => (
         <li key={`${event.type}-${index}`} className={`timeline-item timeline-${event.type}`}>
           <span className="timeline-time">{formatDateTime(event.timestamp)}</span>
-          <EpisodeTimelineEventBody event={event} patientId={patientId} />
+          <EpisodeTimelineEventBody
+            event={event}
+            patientId={patientId}
+            completedByEncounter={completedByEncounter}
+            encounterById={encounterById}
+          />
         </li>
       ))}
     </ul>
@@ -310,12 +354,29 @@ function TimelineEventList({ events, patientId }: { events: TimelineEvent[]; pat
 function EpisodeTimelineEventBody({
   event,
   patientId,
+  completedByEncounter,
+  encounterById,
 }: {
   event: TimelineEvent;
   patientId: string;
+  completedByEncounter: Map<string, Set<string>>;
+  encounterById: Map<string, { reasonForVisit: string; occurredAt: string }>;
 }) {
   if (event.type === 'ENCOUNTER') {
     const encounterId = String(event.data.id);
+    const completed = completedByEncounter.get(encounterId) ?? new Set<string>();
+    // Next unblocked step in the Examination -> Diagnosis -> Treatment
+    // Decision chain, plus whether CarePlan creation is reachable — guidance
+    // only, see HEMORRHOID_SEQUENCE comment above. Index within the full
+    // prerequisite chain (Examination included) so Diagnosis only becomes
+    // reachable once Examination is COMPLETED.
+    const nextChainIndex = HEMORRHOID_PREREQ_CHAIN.findIndex(
+      (key) => !completed.has(key),
+    );
+    const treatmentDecisionDone = completed.has('HEMORRHOID_TREATMENT_DECISION');
+    // F2 — an Encounter is 1:1 with CarePlan; once one exists (DRAFT or
+    // SIGNED) the sequence must offer to view it, never re-offer creation.
+    const carePlanId = event.data.carePlanId as string | null;
     return (
       <div>
         <strong>Lượt khám</strong> — {String(event.data.reasonForVisit)}
@@ -341,6 +402,57 @@ function EpisodeTimelineEventBody({
           >
             Khám trĩ
           </Link>
+          {HEMORRHOID_SEQUENCE.map((step, index) => {
+            const isDone = completed.has(step.templateKey);
+            // This step's position in the full prerequisite chain (offset by
+            // 1 since Examination — chain[0] — is rendered separately above).
+            const isNext = index + 1 === nextChainIndex;
+            if (!isDone && !isNext) {
+              // Not reachable yet — show as a disabled hint rather than a
+              // dead link, so the sequence chain stays visible end-to-end.
+              return (
+                <span
+                  key={step.templateKey}
+                  className="btn btn-ghost btn-small btn-disabled"
+                  aria-disabled="true"
+                  title="Cần hoàn tất bước trước"
+                >
+                  {step.label}
+                </span>
+              );
+            }
+            return (
+              <Link
+                key={step.templateKey}
+                className={
+                  isDone ? 'btn btn-ghost btn-small' : 'btn btn-primary btn-small'
+                }
+                to={`/patients/${patientId}/encounters/${encounterId}/clinical-forms/${step.templateKey}`}
+              >
+                {isDone ? `${step.label} ✓` : step.label}
+              </Link>
+            );
+          })}
+          {carePlanId ? (
+            <Link className="btn btn-ghost btn-small" to={`/care-plans/${carePlanId}`}>
+              Xem kế hoạch chăm sóc
+            </Link>
+          ) : treatmentDecisionDone ? (
+            <Link
+              className="btn btn-primary btn-small"
+              to={`/patients/${patientId}/care-plan/new?encounterId=${encounterId}`}
+            >
+              Tạo kế hoạch chăm sóc
+            </Link>
+          ) : (
+            <span
+              className="btn btn-ghost btn-small btn-disabled"
+              aria-disabled="true"
+              title="Cần hoàn tất Quyết định điều trị"
+            >
+              Tạo kế hoạch chăm sóc
+            </span>
+          )}
         </div>
       </div>
     );
@@ -358,6 +470,25 @@ function EpisodeTimelineEventBody({
           {scores?.wexner !== undefined && scores?.wexner !== null && (
             <p>Tổng điểm Wexner: {scores.wexner} / 20</p>
           )}
+        </div>
+      );
+    }
+    // HEMORRHOID_DIAGNOSIS / HEMORRHOID_TREATMENT_DECISION (DEC-012 §6-7,
+    // §17) — the backend Timeline projection (F3 data minimization) exposes
+    // only this named `summary` field, never the full
+    // ClinicalFormSubmission.responses object.
+    if (
+      event.data.templateKey === 'HEMORRHOID_DIAGNOSIS' ||
+      event.data.templateKey === 'HEMORRHOID_TREATMENT_DECISION'
+    ) {
+      const isDiagnosis = event.data.templateKey === 'HEMORRHOID_DIAGNOSIS';
+      const summary = event.data.summary;
+      return (
+        <div>
+          <strong>{isDiagnosis ? 'Chẩn đoán' : 'Quyết định điều trị'}</strong>
+          {' '}(phiên bản {String(event.data.revisionNumber)})
+          {summary ? <p>{String(summary)}</p> : null}
+          {event.data.amendmentReason ? <span> — Sửa: {String(event.data.amendmentReason)}</span> : null}
         </div>
       );
     }
@@ -387,9 +518,25 @@ function EpisodeTimelineEventBody({
     );
   }
   if (event.type === 'CARE_TASK') {
+    // F1 — explicit Return Encounter linkage (DEC-012 §16): once
+    // completedByEncounterId is set, show which Encounter closed this task,
+    // resolved from the ENCOUNTER events already in this same Timeline
+    // bucket — never inferred by date/time.
+    const completedByEncounterId = event.data.completedByEncounterId as string | null;
+    const completingEncounter = completedByEncounterId
+      ? encounterById.get(completedByEncounterId)
+      : undefined;
     return (
       <div>
         <strong>Nhiệm vụ theo dõi</strong> — {String(event.data.status)}
+        {completedByEncounterId && (
+          <p>
+            Hoàn thành qua lượt tái khám:{' '}
+            {completingEncounter
+              ? `${formatDateTime(completingEncounter.occurredAt)} — ${completingEncounter.reasonForVisit}`
+              : completedByEncounterId}
+          </p>
+        )}
       </div>
     );
   }

@@ -195,6 +195,12 @@ export class PatientsService {
           clinicalNote: encounter.clinicalNote,
           assessment: encounter.assessment,
           occurredAt: encounter.occurredAt,
+          // F2 — lets the UI offer "Xem kế hoạch chăm sóc" instead of
+          // re-offering CarePlan creation once one already exists for this
+          // Encounter (DRAFT or SIGNED); no new storage, CarePlan is already
+          // fetched 1:1 with Encounter above.
+          carePlanId: encounter.carePlan?.id ?? null,
+          carePlanStatus: encounter.carePlan?.status ?? null,
         },
       });
 
@@ -221,22 +227,43 @@ export class PatientsService {
               id: task.id,
               status: task.status,
               dueDate: task.dueDate,
+              // F1 — expose existing fields (no new storage) so explicit
+              // Return Encounter completion is visible in the Timeline:
+              // generic follow-up tasks (carePlanId set, timepointCode
+              // null) vs Longo timepoint tasks, and who/what closed it.
+              carePlanId: task.carePlanId,
+              timepointCode: task.timepointCode,
+              completedAt: task.completedAt,
+              completedByEncounterId: task.completedByEncounterId,
             },
           });
         }
       }
     }
 
+    // F3 — data minimization: the Timeline is a read PROJECTION, not a
+    // mirror of ClinicalFormSubmission.responses. Only the two Hemorrhoid
+    // Slice 2 templates get a minimal, named summary field; every other
+    // template keeps its existing (no full-responses) Timeline shape.
+    const summaryFieldByTemplateKey: Record<string, string> = {
+      HEMORRHOID_DIAGNOSIS: 'diagnosisSummary',
+      HEMORRHOID_TREATMENT_DECISION: 'decisionSummary',
+    };
+
     for (const submission of completedClinicalForms) {
       const encounter = encounterById.get(submission.encounterId);
       const bucket = bucketFor(encounter?.episodeId ?? null);
+      const summaryField = summaryFieldByTemplateKey[submission.templateKey];
+      const responses = submission.responses as Record<string, unknown> | null;
       bucket.push({
         type: 'CLINICAL_FORM_SUBMITTED',
         timestamp: submission.completedAt ?? submission.createdAt,
         data: {
           id: submission.id,
+          encounterId: submission.encounterId,
           templateKey: submission.templateKey,
           templateVersion: submission.templateVersion,
+          summary: summaryField ? (responses?.[summaryField] ?? null) : null,
           computedScores: submission.computedScores,
           logicalGroupId: submission.logicalGroupId,
           revisionNumber: submission.revisionNumber,
