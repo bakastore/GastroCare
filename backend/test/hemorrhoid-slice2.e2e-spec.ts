@@ -1304,4 +1304,231 @@ describe('Hemorrhoid Vertical Slice 2 — T1-T4 (e2e)', () => {
       }
     });
   });
+
+  // ==========================================================================
+  // T5 — Generic CareTask reschedule + explicit Return Encounter linkage
+  // ==========================================================================
+  describe('T5 — CareTask reschedule + explicit Return Encounter linkage', () => {
+    let patientA2Id: string;
+    let tenantBPatientId: string;
+    let tenantBEncounterId: string;
+
+    beforeAll(async () => {
+      const patientA2 = await prisma.patient.create({
+        data: {
+          tenantId: tenantAId,
+          fullName: 'Synthetic Hemorrhoid Slice2 Patient A2',
+          normalizedFullName: 'synthetic hemorrhoid slice2 patient a2',
+          dateOfBirth: new Date('1985-01-01'),
+          gender: 'FEMALE',
+          phone: '0900000702',
+          normalizedPhone: '0900000702',
+        },
+      });
+      patientA2Id = patientA2.id;
+
+      const tenantBPatient = await prisma.patient.create({
+        data: {
+          tenantId: tenantBId,
+          fullName: 'Synthetic Hemorrhoid Slice2 Patient B',
+          normalizedFullName: 'synthetic hemorrhoid slice2 patient b',
+          dateOfBirth: new Date('1990-01-01'),
+          gender: 'MALE',
+          phone: '0900000703',
+          normalizedPhone: '0900000703',
+        },
+      });
+      tenantBPatientId = tenantBPatient.id;
+      tenantBEncounterId = await createEncounter(
+        doctorBToken,
+        tenantBPatientId,
+      );
+    });
+
+    async function openGenericTask(): Promise<{
+      carePlanId: string;
+      careTaskId: string;
+      patientId: string;
+    }> {
+      const { carePlanId, careTaskId } = await signedHemorrhoidCarePlan(
+        doctorAToken,
+        '2026-11-01',
+      );
+      expect(careTaskId).toBeTruthy();
+      const carePlan = await prisma.carePlan.findUniqueOrThrow({
+        where: { id: carePlanId },
+      });
+      return {
+        carePlanId,
+        careTaskId: careTaskId as string,
+        patientId: carePlan.patientId,
+      };
+    }
+
+    describe('T5-A — reschedule', () => {
+      it('reschedules an OPEN task and leaves CarePlan.followUpDate unchanged', async () => {
+        const { carePlanId, careTaskId } = await openGenericTask();
+        const before = await prisma.carePlan.findUniqueOrThrow({
+          where: { id: carePlanId },
+        });
+
+        const res = await request(app.getHttpServer())
+          .post(`/care-tasks/${careTaskId}/reschedule`)
+          .set('Authorization', `Bearer ${doctorAToken}`)
+          .send({ dueDate: '2026-11-15' });
+
+        expect(res.status).toBe(201);
+        expect(
+          new Date(res.body.dueDate).toISOString().slice(0, 10),
+        ).toBe('2026-11-15');
+
+        const after = await prisma.carePlan.findUniqueOrThrow({
+          where: { id: carePlanId },
+        });
+        expect(after.followUpDate).toEqual(before.followUpDate);
+
+        const events = await prisma.auditEvent.findMany({
+          where: {
+            entityType: 'CareTask',
+            entityId: careTaskId,
+            action: 'CARE_TASK_RESCHEDULED',
+          },
+        });
+        expect(events).toHaveLength(1);
+        const metadata = events[0].metadata as Record<string, unknown>;
+        expect(metadata.newDueDate).toBe(
+          new Date('2026-11-15').toISOString(),
+        );
+        expect(metadata.oldDueDate).toBeTruthy();
+      });
+
+      it('rejects reschedule of a COMPLETED task', async () => {
+        const { careTaskId } = await openGenericTask();
+        await request(app.getHttpServer())
+          .post(`/care-tasks/${careTaskId}/complete`)
+          .set('Authorization', `Bearer ${doctorAToken}`)
+          .expect(201);
+
+        const res = await request(app.getHttpServer())
+          .post(`/care-tasks/${careTaskId}/reschedule`)
+          .set('Authorization', `Bearer ${doctorAToken}`)
+          .send({ dueDate: '2026-11-20' });
+        expect(res.status).toBe(409);
+      });
+
+      it('rejects reschedule of a CANCELLED task', async () => {
+        const { careTaskId } = await openGenericTask();
+        await request(app.getHttpServer())
+          .post(`/care-tasks/${careTaskId}/cancel`)
+          .set('Authorization', `Bearer ${doctorAToken}`)
+          .expect(201);
+
+        const res = await request(app.getHttpServer())
+          .post(`/care-tasks/${careTaskId}/reschedule`)
+          .set('Authorization', `Bearer ${doctorAToken}`)
+          .send({ dueDate: '2026-11-20' });
+        expect(res.status).toBe(409);
+      });
+
+      it('rejects cross-tenant reschedule', async () => {
+        const { careTaskId } = await openGenericTask();
+        const res = await request(app.getHttpServer())
+          .post(`/care-tasks/${careTaskId}/reschedule`)
+          .set('Authorization', `Bearer ${doctorBToken}`)
+          .send({ dueDate: '2026-11-20' });
+        expect(res.status).toBe(404);
+      });
+    });
+
+    describe('T5-B — explicit completion with Return Encounter linkage', () => {
+      it('preserves existing completion behavior when no Encounter supplied', async () => {
+        const { careTaskId } = await openGenericTask();
+        const res = await request(app.getHttpServer())
+          .post(`/care-tasks/${careTaskId}/complete`)
+          .set('Authorization', `Bearer ${doctorAToken}`)
+          .send({});
+        expect(res.status).toBe(201);
+        expect(res.body.status).toBe(CareTaskStatus.COMPLETED);
+        expect(res.body.completedByEncounterId ?? null).toBeNull();
+      });
+
+      it('completes with a same-patient explicit Return Encounter and persists completedByEncounterId', async () => {
+        const { careTaskId, patientId } = await openGenericTask();
+        const returnEncounterId = await createEncounter(
+          doctorAToken,
+          patientId,
+          'Tái khám (synthetic)',
+        );
+
+        const res = await request(app.getHttpServer())
+          .post(`/care-tasks/${careTaskId}/complete`)
+          .set('Authorization', `Bearer ${doctorAToken}`)
+          .send({ completedByEncounterId: returnEncounterId });
+        expect(res.status).toBe(201);
+        expect(res.body.completedByEncounterId).toBe(returnEncounterId);
+
+        const events = await prisma.auditEvent.findMany({
+          where: {
+            entityType: 'CareTask',
+            entityId: careTaskId,
+            action: 'CARE_TASK_COMPLETED',
+          },
+        });
+        expect(events).toHaveLength(1);
+        expect(
+          (events[0].metadata as Record<string, unknown>)
+            .completedByEncounterId,
+        ).toBe(returnEncounterId);
+      });
+
+      it('rejects completion with a nonexistent Encounter', async () => {
+        const { careTaskId } = await openGenericTask();
+        const res = await request(app.getHttpServer())
+          .post(`/care-tasks/${careTaskId}/complete`)
+          .set('Authorization', `Bearer ${doctorAToken}`)
+          .send({ completedByEncounterId: '00000000-0000-0000-0000-000000000000' });
+        expect(res.status).toBe(404);
+      });
+
+      it('rejects completion with a cross-tenant Encounter', async () => {
+        const { careTaskId } = await openGenericTask();
+        const res = await request(app.getHttpServer())
+          .post(`/care-tasks/${careTaskId}/complete`)
+          .set('Authorization', `Bearer ${doctorAToken}`)
+          .send({ completedByEncounterId: tenantBEncounterId });
+        expect(res.status).toBe(404);
+      });
+
+      it('rejects completion with a same-tenant, different-patient Encounter', async () => {
+        const { careTaskId } = await openGenericTask();
+        const otherPatientEncounterId = await createEncounter(
+          doctorAToken,
+          patientA2Id,
+        );
+        const res = await request(app.getHttpServer())
+          .post(`/care-tasks/${careTaskId}/complete`)
+          .set('Authorization', `Bearer ${doctorAToken}`)
+          .send({ completedByEncounterId: otherPatientEncounterId });
+        expect(res.status).toBe(409);
+      });
+
+      it('rejects completion of an already CANCELLED task', async () => {
+        const { careTaskId, patientId } = await openGenericTask();
+        await request(app.getHttpServer())
+          .post(`/care-tasks/${careTaskId}/cancel`)
+          .set('Authorization', `Bearer ${doctorAToken}`)
+          .expect(201);
+
+        const returnEncounterId = await createEncounter(
+          doctorAToken,
+          patientId,
+        );
+        const res = await request(app.getHttpServer())
+          .post(`/care-tasks/${careTaskId}/complete`)
+          .set('Authorization', `Bearer ${doctorAToken}`)
+          .send({ completedByEncounterId: returnEncounterId });
+        expect(res.status).toBe(409);
+      });
+    });
+  });
 });
