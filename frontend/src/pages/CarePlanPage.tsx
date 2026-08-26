@@ -102,6 +102,7 @@ export function CarePlanPage() {
         instructions: amendInstructions,
         followUpDate: amendFollowUpDate || undefined,
         reason: amendReason,
+        expectedCurrentVersionId: carePlan?.currentVersionId as string,
       });
       setIsAmending(false);
       setAmendInstructions('');

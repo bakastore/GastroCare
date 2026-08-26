@@ -199,6 +199,55 @@ Owner quyết định:
 
 ---
 
+### DEC-012 — Lock Hemorrhoid Vertical Slice 2 semantics and authorize implementation
+
+**Ngày:** 2026-08-25
+
+**Trạng thái:** OWNER LOCKED
+
+**Thẩm quyền:** Explicit Owner approval dated 2026-08-25.
+
+**Nguồn chuẩn:**
+
+- `docs/10_HEMORRHOID_CLINICAL_WORKFLOW_v1.0.md`;
+- `docs/11_HEMORRHOID_SLICE2_IMPLEMENTATION_CONTRACT.md`;
+- accepted Discovery baseline `eeadfc31ed9819e06fb80c545573a4bba76d952a`.
+
+Owner quyết định:
+
+1. Đóng `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 2 DISCOVERY`; Discovery Gate đạt đủ điều kiện và unresolved Owner questions = 0.
+2. Mở `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 2 IMPLEMENTATION`.
+3. Implementation được phép theo `docs/11_HEMORRHOID_SLICE2_IMPLEMENTATION_CONTRACT.md` và không vượt contract.
+4. **CD-01:** mỗi Encounter có đúng một logical `HEMORRHOID_DIAGNOSIS` chain; correction dùng append-only amendment lineage.
+5. **CD-02:** Diagnosis v1 có `diagnosisSummary` REQUIRED, free text; không tự suy diagnosis từ Examination/Goligher/symptoms/rules/AI.
+6. **CD-03:** v1 không ICD, custom taxonomy hoặc automatic classification. Free-text Diagnosis không phải final analytics representation cho CORE-05.
+7. **CD-04:** mỗi Encounter có đúng một logical `HEMORRHOID_TREATMENT_DECISION` chain; `decisionSummary` REQUIRED, free text, không taxonomy. `Treatment Decision ≠ Procedure performed ≠ Surgery performed`.
+8. **CD-05:** backend enforce `HEMORRHOID_EXAMINATION COMPLETED → HEMORRHOID_DIAGNOSIS COMPLETED → HEMORRHOID_TREATMENT_DECISION COMPLETED → CarePlan → CarePlan SIGNED`. Upstream amendment không auto-rewrite downstream completed/signed records.
+9. **CD-06:** general Hemorrhoid CarePlan v1 có `0..1` next clinical follow-up target; không áp Longo multi-timepoint scheduling.
+10. **CD-07:** Return Encounter matching explicit only. Doctor chọn CareTask cần hoàn thành; backend lưu `completedByEncounterId`; không heuristic auto-match.
+11. **CD-08:** signed CarePlan amendment thay đổi `followUpDate` phải reconcile linked OPEN generic CareTask tường minh trong cùng transaction bằng `RESCHEDULE`, `CANCEL` hoặc `KEEP_WITH_REASON`; `KEEP_WITH_REASON` bắt buộc reason + audit.
+12. Transition: `null→date` tạo OPEN task; `date1→date2` dùng `RESCHEDULE` hoặc `KEEP_WITH_REASON`; `date→null` dùng `CANCEL` hoặc `KEEP_WITH_REASON`; unchanged date không yêu cầu action; historical CLOSED task không rewrite.
+13. Signed CarePlan amendment request bắt buộc `expectedCurrentVersionId`; stale version → `409 Conflict`.
+14. T4 chọn **Option A — SERIALIZABLE TRANSACTION**. Authoritative CarePlan/current version/OPEN task state phải re-read bên trong transaction.
+15. Serialization/write conflict → rollback + `409 Conflict`; không automatic retry clinical amendment; không silent last-write-wins.
+16. Concurrent amendments không được tạo lost update, CarePlanVersion fork, duplicate user intent hoặc hơn một OPEN generic CareTask.
+17. Reuse-first: `Encounter`, `ClinicalFormSubmission`, `CarePlan`, `CarePlanVersion`, `CareTask`, `AuditEvent`, Patient Timeline read projection.
+18. Diagnosis/Treatment Decision v1 dùng `ClinicalFormSubmission`; không tạo Diagnosis/TreatmentDecision table.
+19. **Schema boundary:** `NO PRISMA SCHEMA CHANGE`; `NO DATABASE MIGRATION`. Nếu migration cần thiết: STOP và xin Owner Decision.
+20. RBAC giữ DOCTOR-only cho Diagnosis, Treatment Decision, CarePlan clinical actions và Return Encounter CareTask linkage.
+21. Timeline tiếp tục là read projection; amendment history phải được bảo toàn.
+22. T4 là mandatory high-risk gate: sau T4 implementation + targeted concurrency tests + ChatGPT source review PASS, bắt buộc đúng một fresh Independent Codex READ-ONLY audit chỉ cho T4; required verdict `READY FOR T4 ACCEPTANCE: YES`.
+23. T1/T2/T3/T5/T6 không mặc định cần independent Codex audit. Nếu T4 production code đổi sau audit PASS, T4 gate mở lại cho affected delta.
+24. Procedure, generic Surgery, Investigation, HDSS, SHS-HD, deferred scoring/interpretation, AI và CORE-05 không được mở.
+25. `CORE-05 = CASE INTELLIGENCE — NOT OPENED`.
+26. Implementation/test/acceptance: `SYNTHETIC DATA ONLY`.
+27. Real-patient runtime và production: `NOT AUTHORIZED`.
+28. `docs/11_HEMORRHOID_SLICE2_IMPLEMENTATION_CONTRACT.md` được OWNER LOCKED và là execution contract cho Slice 2.
+
+**Căn cứ:** DEC-010; DEC-011; source-level Discovery tại `eeadfc31`; Owner approval CD-01→CD-08; concurrency review chọn Serializable + `expectedCurrentVersionId` + mandatory T4 Codex gate.
+
+---
+
 ## WORKING ASSUMPTIONS
 
 | ID | Nội dung | Nguồn gốc | Trạng thái |

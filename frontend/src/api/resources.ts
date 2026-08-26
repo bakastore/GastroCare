@@ -89,8 +89,17 @@ export const carePlansApi = {
   updateDraft: (id: string, dto: { instructions?: string; followUpDate?: string }) =>
     api.patch<CarePlan>(`/care-plans/${id}/draft`, dto),
   sign: (id: string) => api.post<CarePlan>(`/care-plans/${id}/sign`),
-  amend: (id: string, dto: { instructions: string; followUpDate?: string; reason: string }) =>
-    api.post<CarePlan>(`/care-plans/${id}/amend`, dto),
+  amend: (
+    id: string,
+    dto: {
+      instructions: string;
+      followUpDate?: string;
+      reason: string;
+      expectedCurrentVersionId: string;
+      followUpTaskAction?: 'RESCHEDULE' | 'CANCEL' | 'KEEP_WITH_REASON';
+      followUpTaskReason?: string;
+    },
+  ) => api.post<CarePlan>(`/care-plans/${id}/amend`, dto),
 };
 
 export const careTasksApi = {

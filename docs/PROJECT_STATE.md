@@ -1,6 +1,6 @@
 # GastroCare — Trạng thái dự án
 
-**Cập nhật:** 25/08/2026 — Hemorrhoid Vertical Slice 1 technically accepted after independent Codex correction re-check; Vertical Slice 2 Discovery opened by DEC-011
+**Cập nhật:** 25/08/2026 — Vertical Slice 2 Discovery CLOSED; DEC-012 + Implementation Contract v0.1 OWNER LOCKED; Slice 2 AUTHORIZED FOR IMPLEMENTATION
 
 **Loại dự án:** GREENFIELD
 
@@ -31,15 +31,15 @@ Quyết định Owner rõ ràng mới nhất
 | CORE-02 | CLOSED — OWNER ACCEPTED |
 | CORE-03 / Technical Core (lõi kỹ thuật) | CLOSED — OWNER ACCEPTED |
 | GastroCare Core tổng thể | IN PROGRESS |
-| Real-world Clinical Core implementation (triển khai lõi lâm sàng theo thực tế) | IN PROGRESS — CORE-04 Longo preserved as verified baseline; Hemorrhoid Vertical Slice 1 TECHNICALLY ACCEPTED at `2ea529ee200a0a37a77cebb9a750f70adde57618`; Vertical Slice 2 DISCOVERY ONLY is current work package |
+| Real-world Clinical Core implementation (triển khai lõi lâm sàng theo thực tế) | IN PROGRESS — Hemorrhoid Vertical Slice 1 TECHNICALLY ACCEPTED; Vertical Slice 2 AUTHORIZED FOR IMPLEMENTATION under DEC-012 |
 | Owner Synthetic Clinical Acceptance | Longo-only Gate G: RETIRED BY OWNER — không tiếp tục vì workflow sản phẩm đã đổi; không suy ra CORE-04 Owner product acceptance |
 | AUTHORIZED REAL-WORLD PILOT ACCEPTANCE | FUTURE GATE — chưa được phép mở |
 | Continuous Care (chăm sóc liên tục) | NOT COMPLETE |
 | Product Refinement / UI-UX (tinh chỉnh sản phẩm/giao diện-trải nghiệm) | DEFERRED đến khi Clinical Core được chấp nhận |
 | AI Value-Added Layer | DEFERRED |
 | Hemorrhoid Vertical Slice 1 | `TECHNICALLY ACCEPTED` — Independent Codex Gate CLOSED; accepted baseline `2ea529ee200a0a37a77cebb9a750f70adde57618` |
-| Hemorrhoid Vertical Slice 2 | `DISCOVERY ONLY` — Diagnosis → Treatment Decision → CarePlan / Follow-up; implementation NOT AUTHORIZED |
-| Current product direction | `HEMORRHOID REAL-WORLD CLINICAL WORKFLOW` — active under DEC-010 + DEC-011 |
+| Hemorrhoid Vertical Slice 2 | `AUTHORIZED FOR IMPLEMENTATION` — Diagnosis → Treatment Decision → CarePlan/Follow-up → Return Encounter; T4 focused Independent Codex Gate mandatory |
+| Current product direction | `HEMORRHOID REAL-WORLD CLINICAL WORKFLOW` — active under DEC-010 + DEC-011 + DEC-012 |
 | CORE-05 | `CASE INTELLIGENCE` — giữ nguyên; chưa mở trong checkpoint này |
 
 Không được diễn giải việc Technical Core đã đóng là toàn bộ GastroCare Core đã đóng.
@@ -119,8 +119,9 @@ Status: OWNER LOCKED
 Version: 1.0
 Vertical Slice 1: TECHNICALLY ACCEPTED
 Accepted baseline: 2ea529ee200a0a37a77cebb9a750f70adde57618
-Vertical Slice 2: DISCOVERY ONLY
-Vertical Slice 2 implementation: NOT AUTHORIZED
+Vertical Slice 2: AUTHORIZED FOR IMPLEMENTATION
+Vertical Slice 2 authority: DEC-012 + docs/11_HEMORRHOID_SLICE2_IMPLEMENTATION_CONTRACT.md
+T4 independent audit: MANDATORY FOCUSED CODEX GATE
 Real-patient runtime: NOT AUTHORIZED
 ```
 ## 5. Giai đoạn và hướng tiếp theo
@@ -129,20 +130,13 @@ Real-patient runtime: NOT AUTHORIZED
 
 **Hướng sản phẩm hiện tại:** HEMORRHOID REAL-WORLD CLINICAL WORKFLOW
 
-**Checkpoint đã đóng:** `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 1`
+**Last completed checkpoint:** `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 2 DISCOVERY`
 
-Vertical Slice 1 đã đạt Technical Acceptance (nghiệm thu kỹ thuật) sau chuỗi:
+Discovery Gate CLOSED: Diagnosis/Treatment Decision/CarePlan/follow-up/Return Encounter semantics, concurrency model, schema impact, RBAC, audit, Timeline và acceptance criteria đều RESOLVED; unresolved Owner questions = 0.
 
-```text
-d67e1014 initial implementation
-→ Independent Codex audit: FAIL (2 blockers)
-→ correction
-→ targeted verification PASS
-→ 2ea529ee correction commit
-→ focused independent Codex re-check: PASS
-```
+**Work package hiện tại:** `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 2 IMPLEMENTATION`
 
-**Work package hiện tại:** `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 2 DISCOVERY`
+**Authority:** DEC-012 + `docs/11_HEMORRHOID_SLICE2_IMPLEMENTATION_CONTRACT.md`, đều OWNER LOCKED.
 
 Target:
 
@@ -150,18 +144,21 @@ Target:
 Hemorrhoid Examination
 → Diagnosis
 → Treatment Decision
-→ CarePlan / Follow-up
+→ CarePlan
+→ Follow-up
+→ Return Encounter
 ```
 
-Vertical Slice 2 hiện chỉ được phép Discovery (khám phá/phân tích). Implementation (triển khai) chưa được phép.
+Implementation được phép tuần tự T0 → T7 theo Contract.
 
-Discovery phải resolve clinical semantics (ngữ nghĩa lâm sàng), reuse boundary (ranh giới tái sử dụng), domain/schema impact, RBAC, audit/provenance, Timeline behavior, acceptance criteria và implementation contract trước khi Owner có thể mở implementation.
+T4 là high-risk transaction/concurrency gate: sau implementation + targeted concurrency tests + ChatGPT source review PASS, bắt buộc fresh Independent Codex READ-ONLY audit chỉ cho T4.
 
-**Dữ liệu dùng cho development/test/acceptance hiện tại:** chỉ synthetic data (dữ liệu giả lập).
+Expected schema boundary: `NO PRISMA SCHEMA CHANGE / NO DATABASE MIGRATION`.
+Nếu cần migration, Diagnosis/TreatmentDecision entity hoặc clinical semantic mới: STOP và xin Owner Decision.
 
-`CORE-05` tiếp tục là `CASE INTELLIGENCE` và chưa được mở.
-
-Real-patient runtime và production tiếp tục `NOT AUTHORIZED`.
+Implementation/test/acceptance: SYNTHETIC DATA ONLY.
+`CORE-05 = CASE INTELLIGENCE — NOT OPENED`.
+Real-patient runtime và production: `NOT AUTHORIZED`.
 ## 6. Ranh giới vận hành và an toàn
 
 | Hạng mục | Trạng thái |
@@ -181,33 +178,30 @@ Chỉ được dùng synthetic data (dữ liệu giả lập) cho triển khai, 
 | Thuộc tính | Giá trị |
 |---|---|
 | Current branch | `discovery/hemorrhoid-real-world-workflow` |
-| Branch baseline | `2ea529ee200a0a37a77cebb9a750f70adde57618` |
+| Discovery baseline | `eeadfc31ed9819e06fb80c545573a4bba76d952a` |
 | Current phase | `GASTROCARE CORE — IN PROGRESS` |
-| Last completed work package | `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 1` |
-| Vertical Slice 1 authority | `DEC-010 — OWNER LOCKED` |
-| Vertical Slice 1 status | `TECHNICALLY ACCEPTED — INDEPENDENT CODEX GATE CLOSED` |
-| Vertical Slice 1 scope | `Patient → Facility/Room → Responsible Clinician/Handover → Encounter Context → Hemorrhoid Examination v1` |
-| Initial implementation commit | `d67e1014b7a21b91f2d04112cf031773f61ed52c` |
-| Accepted correction baseline | `2ea529ee200a0a37a77cebb9a750f70adde57618` |
-| Independent audit lineage | Initial Codex audit `FAIL` (2 blockers) → correction completed → focused Codex re-check `PASS` → `READY FOR TECHNICAL ACCEPTANCE: YES` |
-| Latest correction verification | Hemorrhoid targeted E2E `36/36 PASS` · CORE-01 E2E `42/42 PASS` · backend build `PASS` · `git diff --check PASS` |
-| Earlier full Vertical Slice regression evidence | Backend unit `80/80 PASS` · backend full E2E `222/222 PASS` · frontend unit `20/20 PASS` · browser E2E `6/6 PASS` · backup/restore `PASS` |
-| Current work package | `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 2 DISCOVERY` |
-| Current authority | `DEC-011 — OWNER LOCKED` |
-| Current authorized task | `DISCOVERY ONLY` |
-| Vertical Slice 2 target | `Hemorrhoid Examination → Diagnosis → Treatment Decision → CarePlan / Follow-up` |
-| Vertical Slice 2 implementation | `NOT AUTHORIZED` |
-| Vertical Slice 2 next gate | `Clinician-confirmed semantics + impact analysis + implementation contract + unresolved Owner questions = 0 → Owner implementation decision` |
+| Last technically accepted implementation | `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 1` at `2ea529ee200a0a37a77cebb9a750f70adde57618` |
+| Last completed work package | `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 2 DISCOVERY` |
+| Discovery status | `CLOSED — OWNER ACCEPTED` |
+| Current work package | `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 2 IMPLEMENTATION` |
+| Current authority | `DEC-012 — OWNER LOCKED` |
+| Implementation Contract | `docs/11_HEMORRHOID_SLICE2_IMPLEMENTATION_CONTRACT.md — OWNER LOCKED` |
+| Current authorized task | `T0 → T7 IMPLEMENTATION SEQUENCE` |
+| Slice 2 implementation | `AUTHORIZED FOR IMPLEMENTATION` |
+| Diagnosis | `1 logical HEMORRHOID_DIAGNOSIS chain/Encounter; diagnosisSummary required free text; no coding v1` |
+| Treatment Decision | `1 logical HEMORRHOID_TREATMENT_DECISION chain/Encounter; decisionSummary required free text; no taxonomy v1` |
+| Follow-up | `0..1 next clinical follow-up target/CarePlan; explicit Return Encounter matching` |
+| T4 concurrency model | `SERIALIZABLE + expectedCurrentVersionId + no automatic retry + conflict → 409` |
+| T4 independent gate | `MANDATORY — fresh Codex READ-ONLY audit limited to T4 after implementation/tests/ChatGPT review PASS` |
+| Schema/migration expectation | `NO CHANGE / NO MIGRATION` |
 | Current authoritative Hemorrhoid SSOT | `docs/10_HEMORRHOID_CLINICAL_WORKFLOW_v1.0.md` |
 | Longo SSOT role | `docs/08_LONGO_CLINICAL_WORKFLOW_v1.0.md` — VERIFIED SUB-WORKFLOW BASELINE |
-| CORE-04 role | Independently verified Longo technical/clinical baseline; Owner product acceptance `NOT CLAIMED` |
 | CORE-05 | `CASE INTELLIGENCE — NOT OPENED` |
 | Implementation/test data | `SYNTHETIC DATA ONLY` |
 | Real-patient runtime | `NOT AUTHORIZED` |
 | Production | `NOT AUTHORIZED` |
-| Full UI/UX | `DEFERRED` |
 | AI | `DEFERRED` |
 
-`CURRENT EXECUTION CONTEXT` là trạng thái vận hành, không phải hồ sơ lịch sử. Cập nhật section này mỗi khi một accepted checkpoint làm thay đổi branch, current task, next gate hoặc implementation status.
+`CURRENT EXECUTION CONTEXT` là trạng thái vận hành, không phải hồ sơ lịch sử. Cập nhật section này khi accepted checkpoint thay đổi current work package, authority, gate hoặc implementation status.
 
 Không âm thầm sửa đổi Owner Decisions khi cập nhật section này.

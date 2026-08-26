@@ -95,6 +95,7 @@ export interface CarePlan {
   status: CarePlanStatus;
   instructions: string;
   followUpDate: string | null;
+  currentVersionId: string | null;
   createdAt: string;
   updatedAt: string;
 }

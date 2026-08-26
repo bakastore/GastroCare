@@ -44,6 +44,7 @@ describe('CarePlanPage — sign/amend UI state', () => {
       status: 'DRAFT',
       instructions: 'Điều trị theo đơn',
       followUpDate: null,
+      currentVersionId: null,
       createdAt: '2026-08-21T00:00:00.000Z',
       updatedAt: '2026-08-21T00:00:00.000Z',
     });
@@ -72,6 +73,7 @@ describe('CarePlanPage — sign/amend UI state', () => {
       status: 'SIGNED',
       instructions: 'Điều trị theo đơn, tái khám 14 ngày',
       followUpDate: '2026-09-05T00:00:00.000Z',
+      currentVersionId: 'version-1',
       createdAt: '2026-08-21T00:00:00.000Z',
       updatedAt: '2026-08-21T00:00:00.000Z',
     });
@@ -93,6 +95,7 @@ describe('CarePlanPage — sign/amend UI state', () => {
       status: 'SIGNED',
       instructions: 'Điều trị theo đơn',
       followUpDate: null,
+      currentVersionId: 'version-1',
       createdAt: '2026-08-21T00:00:00.000Z',
       updatedAt: '2026-08-21T00:00:00.000Z',
     });

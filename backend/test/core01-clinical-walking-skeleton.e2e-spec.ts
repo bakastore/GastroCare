@@ -408,6 +408,10 @@ describe('CORE-01 — Clinical Core Walking Skeleton (e2e)', () => {
     });
 
     it('amending the SIGNED plan requires a reason and creates version 2 with lineage to version 1', async () => {
+      const carePlanBefore = await request(app.getHttpServer())
+        .get(`/care-plans/${carePlanId}`)
+        .set('Authorization', `Bearer ${doctorAToken}`)
+        .expect(200);
       const res = await request(app.getHttpServer())
         .post(`/care-plans/${carePlanId}/amend`)
         .set('Authorization', `Bearer ${doctorAToken}`)
@@ -415,6 +419,7 @@ describe('CORE-01 — Clinical Core Walking Skeleton (e2e)', () => {
           instructions: 'Điều chỉnh liều thuốc sau khi bệnh nhân phản hồi',
           followUpDate: '2026-09-05',
           reason: 'Bệnh nhân báo tác dụng phụ, cần đổi liều',
+          expectedCurrentVersionId: carePlanBefore.body.currentVersionId,
         })
         .expect(201);
       expect(res.body.versionNumber).toBe(2);

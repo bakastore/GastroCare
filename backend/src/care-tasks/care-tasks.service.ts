@@ -6,6 +6,8 @@ import {
 import { CareTask, CareTaskStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { RescheduleCareTaskDto } from './dto/reschedule-care-task.dto';
+import { CompleteCareTaskDto } from './dto/complete-care-task.dto';
 
 type CareTaskWithDerivedOverdue = CareTask & { overdue: boolean };
 
@@ -50,15 +52,35 @@ export class CareTasksService {
     tenantId: string,
     actorId: string,
     taskId: string,
+    dto?: CompleteCareTaskDto,
   ): Promise<CareTaskWithDerivedOverdue> {
     const task = await this.findOrThrow(tenantId, taskId);
     if (task.status !== CareTaskStatus.OPEN) {
       throw new ConflictException('Only an OPEN CareTask can be completed');
     }
 
+    const completedByEncounterId = dto?.completedByEncounterId;
+    if (completedByEncounterId) {
+      const encounter = await this.prisma.encounter.findFirst({
+        where: { id: completedByEncounterId, tenantId },
+      });
+      if (!encounter) {
+        throw new NotFoundException('Return Encounter not found');
+      }
+      if (encounter.patientId !== task.patientId) {
+        throw new ConflictException(
+          'Return Encounter must belong to the same patient as the CareTask',
+        );
+      }
+    }
+
     const updated = await this.prisma.careTask.update({
       where: { id: taskId },
-      data: { status: CareTaskStatus.COMPLETED, completedAt: new Date() },
+      data: {
+        status: CareTaskStatus.COMPLETED,
+        completedAt: new Date(),
+        ...(completedByEncounterId ? { completedByEncounterId } : {}),
+      },
     });
 
     await this.audit.record({
@@ -67,6 +89,43 @@ export class CareTasksService {
       action: 'CARE_TASK_COMPLETED',
       entityType: 'CareTask',
       entityId: taskId,
+      ...(completedByEncounterId
+        ? { metadata: { completedByEncounterId } }
+        : {}),
+    });
+
+    return withDerivedOverdue(updated);
+  }
+
+  async reschedule(
+    tenantId: string,
+    actorId: string,
+    taskId: string,
+    dto: RescheduleCareTaskDto,
+  ): Promise<CareTaskWithDerivedOverdue> {
+    const task = await this.findOrThrow(tenantId, taskId);
+    if (task.status !== CareTaskStatus.OPEN) {
+      throw new ConflictException('Only an OPEN CareTask can be rescheduled');
+    }
+
+    const oldDueDate = task.dueDate;
+    const newDueDate = new Date(dto.dueDate);
+
+    const updated = await this.prisma.careTask.update({
+      where: { id: taskId },
+      data: { dueDate: newDueDate },
+    });
+
+    await this.audit.record({
+      tenantId,
+      actorId,
+      action: 'CARE_TASK_RESCHEDULED',
+      entityType: 'CareTask',
+      entityId: taskId,
+      metadata: {
+        oldDueDate: oldDueDate.toISOString(),
+        newDueDate: newDueDate.toISOString(),
+      },
     });
 
     return withDerivedOverdue(updated);

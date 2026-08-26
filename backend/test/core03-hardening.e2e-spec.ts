@@ -360,7 +360,11 @@ describe('CORE-03 — Pilot Readiness & Operational Hardening (e2e)', () => {
       await request(app.getHttpServer())
         .post(`/care-plans/${carePlanAId}/amend`)
         .set('Authorization', `Bearer ${doctorBToken}`)
-        .send({ instructions: 'attacker edit', reason: 'attacker reason' })
+        .send({
+          instructions: 'attacker edit',
+          reason: 'attacker reason',
+          expectedCurrentVersionId: '00000000-0000-0000-0000-000000000000',
+        })
         .expect(404);
     });
 
