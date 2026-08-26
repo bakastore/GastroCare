@@ -1,6 +1,6 @@
 # GastroCare — Trạng thái dự án
 
-**Cập nhật:** 25/08/2026 — Vertical Slice 2 Discovery CLOSED; DEC-012 + Implementation Contract v0.1 OWNER LOCKED; Slice 2 AUTHORIZED FOR IMPLEMENTATION
+**Cập nhật:** 26/08/2026 — T4 Independent Codex Gate CLOSED — PASS (verified against HEAD `ca347bc2b043c6050b5635b2e58ef8cd977e320e`); current authorized task T7 TARGETED SYNTHETIC ACCEPTANCE
 
 **Loại dự án:** GREENFIELD
 
@@ -38,7 +38,7 @@ Quyết định Owner rõ ràng mới nhất
 | Product Refinement / UI-UX (tinh chỉnh sản phẩm/giao diện-trải nghiệm) | DEFERRED đến khi Clinical Core được chấp nhận |
 | AI Value-Added Layer | DEFERRED |
 | Hemorrhoid Vertical Slice 1 | `TECHNICALLY ACCEPTED` — Independent Codex Gate CLOSED; accepted baseline `2ea529ee200a0a37a77cebb9a750f70adde57618` |
-| Hemorrhoid Vertical Slice 2 | `AUTHORIZED FOR IMPLEMENTATION` — Diagnosis → Treatment Decision → CarePlan/Follow-up → Return Encounter; T4 focused Independent Codex Gate mandatory |
+| Hemorrhoid Vertical Slice 2 | `AUTHORIZED FOR IMPLEMENTATION` — Diagnosis → Treatment Decision → CarePlan/Follow-up → Return Encounter; T4 focused Independent Codex Gate `CLOSED — PASS` (2026-08-26); current task T7 |
 | Current product direction | `HEMORRHOID REAL-WORLD CLINICAL WORKFLOW` — active under DEC-010 + DEC-011 + DEC-012 |
 | CORE-05 | `CASE INTELLIGENCE` — giữ nguyên; chưa mở trong checkpoint này |
 
@@ -121,7 +121,12 @@ Vertical Slice 1: TECHNICALLY ACCEPTED
 Accepted baseline: 2ea529ee200a0a37a77cebb9a750f70adde57618
 Vertical Slice 2: AUTHORIZED FOR IMPLEMENTATION
 Vertical Slice 2 authority: DEC-012 + docs/11_HEMORRHOID_SLICE2_IMPLEMENTATION_CONTRACT.md
-T4 independent audit: MANDATORY FOCUSED CODEX GATE
+T4 independent audit: CLOSED — PASS (fresh Independent Codex READ-ONLY audit, 2026-08-26)
+T4 baseline: 1602b114ccb50482c890754d59a44e3958e61c59
+T4 verified against HEAD: ca347bc2b043c6050b5635b2e58ef8cd977e320e
+T4 audit results: READY FOR T4 ACCEPTANCE: YES; targeted real-PostgreSQL T4 E2E 22/22 PASS; C1-C4 PASS; Serializable transaction PASS; expectedCurrentVersionId/stale-write protection PASS; serialization/write conflict→409 PASS; no automatic retry PASS; CareTask 0..1 OPEN generic cardinality PASS; atomic audit PASS; rollback proof PASS; schema/migration NO CHANGE; blockers NONE; audit strict READ-ONLY, worktree unchanged
+T5/T6 were implemented after the T4 implementation baseline; the fresh Independent Codex READ-ONLY audit on 2026-08-26 verified that T5/T6 did not modify T4 production behavior.
+Current authorized task: T7 — TARGETED SYNTHETIC ACCEPTANCE
 Real-patient runtime: NOT AUTHORIZED
 ```
 ## 5. Giai đoạn và hướng tiếp theo
@@ -151,7 +156,11 @@ Hemorrhoid Examination
 
 Implementation được phép tuần tự T0 → T7 theo Contract.
 
-T4 là high-risk transaction/concurrency gate: sau implementation + targeted concurrency tests + ChatGPT source review PASS, bắt buộc fresh Independent Codex READ-ONLY audit chỉ cho T4.
+T1→T4 implemented tại `1602b114ccb50482c890754d59a44e3958e61c59`; T5 tại `39d263cee23e062122417b999ce102a7aced590b`; T6 tại `ca347bc2b043c6050b5635b2e58ef8cd977e320e`.
+
+T4 là high-risk transaction/concurrency gate: sau implementation + targeted concurrency tests + ChatGPT source review PASS, bắt buộc fresh Independent Codex READ-ONLY audit chỉ cho T4. T4 independent gate: `CLOSED — PASS`, fresh Independent Codex READ-ONLY audit ngày 2026-08-26, verified against HEAD `ca347bc2b043c6050b5635b2e58ef8cd977e320e`, `READY FOR T4 ACCEPTANCE: YES`, 22/22 targeted real-PostgreSQL T4 tests PASS, C1-C4 PASS, blockers NONE. T5/T6 không thay đổi T4 production behavior.
+
+Current authorized task: `T7 — TARGETED SYNTHETIC ACCEPTANCE`.
 
 Expected schema boundary: `NO PRISMA SCHEMA CHANGE / NO DATABASE MIGRATION`.
 Nếu cần migration, Diagnosis/TreatmentDecision entity hoặc clinical semantic mới: STOP và xin Owner Decision.
@@ -186,13 +195,16 @@ Chỉ được dùng synthetic data (dữ liệu giả lập) cho triển khai, 
 | Current work package | `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 2 IMPLEMENTATION` |
 | Current authority | `DEC-012 — OWNER LOCKED` |
 | Implementation Contract | `docs/11_HEMORRHOID_SLICE2_IMPLEMENTATION_CONTRACT.md — OWNER LOCKED` |
-| Current authorized task | `T0 → T7 IMPLEMENTATION SEQUENCE` |
+| Current authorized task | `T7 — TARGETED SYNTHETIC ACCEPTANCE` (T0→T6 implemented; T7 not yet executed) |
 | Slice 2 implementation | `AUTHORIZED FOR IMPLEMENTATION` |
+| T1–T4 baseline | `1602b114ccb50482c890754d59a44e3958e61c59` |
+| T5 baseline | `39d263cee23e062122417b999ce102a7aced590b` |
+| T6 baseline | `ca347bc2b043c6050b5635b2e58ef8cd977e320e` (= current HEAD) |
 | Diagnosis | `1 logical HEMORRHOID_DIAGNOSIS chain/Encounter; diagnosisSummary required free text; no coding v1` |
 | Treatment Decision | `1 logical HEMORRHOID_TREATMENT_DECISION chain/Encounter; decisionSummary required free text; no taxonomy v1` |
 | Follow-up | `0..1 next clinical follow-up target/CarePlan; explicit Return Encounter matching` |
 | T4 concurrency model | `SERIALIZABLE + expectedCurrentVersionId + no automatic retry + conflict → 409` |
-| T4 independent gate | `MANDATORY — fresh Codex READ-ONLY audit limited to T4 after implementation/tests/ChatGPT review PASS` |
+| T4 independent gate | `CLOSED — PASS`; fresh Independent Codex READ-ONLY audit 2026-08-26; verified against HEAD `ca347bc2b043c6050b5635b2e58ef8cd977e320e`; `READY FOR T4 ACCEPTANCE: YES`; 22/22 targeted real-PostgreSQL T4 tests PASS; C1-C4 PASS; blockers NONE; T5/T6 did not modify T4 production behavior |
 | Schema/migration expectation | `NO CHANGE / NO MIGRATION` |
 | Current authoritative Hemorrhoid SSOT | `docs/10_HEMORRHOID_CLINICAL_WORKFLOW_v1.0.md` |
 | Longo SSOT role | `docs/08_LONGO_CLINICAL_WORKFLOW_v1.0.md` — VERIFIED SUB-WORKFLOW BASELINE |

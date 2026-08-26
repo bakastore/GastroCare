@@ -1,0 +1,8 @@
+{
+  "name": "gastrocare-dev",
+  "description": "GastroCare governance guard — Startup Protocol, checkpoint preflight, contract-aware verification, schema/privacy guard hooks. Guard-first, không phải actor/automation.",
+  "version": "0.2.0",
+  "author": {
+    "name": "GastroCare Project"
+  }
+}
