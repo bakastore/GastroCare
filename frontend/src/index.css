@@ -177,6 +177,12 @@ select:focus-visible {
   cursor: not-allowed;
 }
 
+.btn-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-style: dashed;
+}
+
 /* Forms */
 form label {
   display: block;

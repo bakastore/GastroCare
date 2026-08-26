@@ -104,8 +104,18 @@ export const carePlansApi = {
 
 export const careTasksApi = {
   list: () => api.get<CareTask[]>('/care-tasks'),
-  complete: (id: string) => api.post<CareTask>(`/care-tasks/${id}/complete`),
+  /**
+   * Optional `completedByEncounterId` — explicit Return Encounter linkage
+   * (DEC-012 §16). Never inferred by the frontend; the doctor must pick the
+   * Encounter explicitly and the backend validates tenant/patient/OPEN.
+   */
+  complete: (id: string, completedByEncounterId?: string) =>
+    api.post<CareTask>(`/care-tasks/${id}/complete`, { completedByEncounterId }),
   cancel: (id: string) => api.post<CareTask>(`/care-tasks/${id}/cancel`),
+  /** Generic operational reschedule (DEC-012 §15) — distinct from the
+   * CarePlan.followUpDate signed clinical intent amended via carePlansApi.amend. */
+  reschedule: (id: string, dueDate: string) =>
+    api.post<CareTask>(`/care-tasks/${id}/reschedule`, { dueDate }),
 };
 
 export const clinicalFormsApi = {

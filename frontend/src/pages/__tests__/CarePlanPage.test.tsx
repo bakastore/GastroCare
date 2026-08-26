@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { CarePlanPage } from '../CarePlanPage';
-import { carePlansApi, patientsApi } from '../../api/resources';
+import { carePlansApi, careTasksApi, patientsApi } from '../../api/resources';
 
 vi.mock('../../api/resources', () => ({
   carePlansApi: {
@@ -12,10 +12,29 @@ vi.mock('../../api/resources', () => ({
     sign: vi.fn(),
     amend: vi.fn(),
   },
+  careTasksApi: {
+    list: vi.fn(),
+  },
   patientsApi: {
     getTimeline: vi.fn(),
   },
 }));
+
+const openGenericTask = {
+  id: 'task-1',
+  patientId: 'patient-1',
+  carePlanId: 'plan-1',
+  status: 'OPEN' as const,
+  dueDate: '2026-09-05T00:00:00.000Z',
+  createdAt: '2026-08-21T00:00:00.000Z',
+  completedAt: null,
+  cancelledAt: null,
+  overdue: false,
+  sourceEncounterId: null,
+  timepointCode: null,
+  completedByEncounterId: null,
+  scheduleReviewRequired: false,
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -23,6 +42,7 @@ beforeEach(() => {
     episodes: [],
     ungroupedEncounters: [],
   });
+  vi.mocked(careTasksApi.list).mockResolvedValue([]);
 });
 
 function renderCarePlanPage() {
@@ -105,5 +125,105 @@ describe('CarePlanPage — sign/amend UI state', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Sửa (tạo phiên bản mới)' }));
     expect(screen.getByLabelText('Lý do sửa')).toBeRequired();
+  });
+
+  it('displays the current OPEN generic CareTask due date distinctly from the signed CarePlan.followUpDate', async () => {
+    vi.mocked(carePlansApi.getById).mockResolvedValue({
+      id: 'plan-1',
+      encounterId: 'enc-1',
+      patientId: 'patient-1',
+      status: 'SIGNED',
+      instructions: 'Điều trị theo đơn',
+      followUpDate: '2026-09-05T00:00:00.000Z',
+      currentVersionId: 'version-1',
+      createdAt: '2026-08-21T00:00:00.000Z',
+      updatedAt: '2026-08-21T00:00:00.000Z',
+    });
+    vi.mocked(careTasksApi.list).mockResolvedValue([
+      { ...openGenericTask, dueDate: '2026-09-20T00:00:00.000Z' },
+    ]);
+
+    renderCarePlanPage();
+
+    expect(await screen.findByText(/Ngày hẹn hiện tại:/)).toBeInTheDocument();
+    // Signed clinical intent (5/9) and current operational schedule (20/9)
+    // must both be visible and distinguishable.
+    expect(screen.getByText(/5\/9\/2026/)).toBeInTheDocument();
+    expect(screen.getByText(/20\/9\/2026/)).toBeInTheDocument();
+  });
+
+  it('CD-08: changing followUpDate while an OPEN generic task exists requires a reconciliation action before submit', async () => {
+    vi.mocked(carePlansApi.getById).mockResolvedValue({
+      id: 'plan-1',
+      encounterId: 'enc-1',
+      patientId: 'patient-1',
+      status: 'SIGNED',
+      instructions: 'Điều trị theo đơn',
+      followUpDate: '2026-09-05T00:00:00.000Z',
+      currentVersionId: 'version-1',
+      createdAt: '2026-08-21T00:00:00.000Z',
+      updatedAt: '2026-08-21T00:00:00.000Z',
+    });
+    vi.mocked(careTasksApi.list).mockResolvedValue([openGenericTask]);
+
+    renderCarePlanPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Sửa (tạo phiên bản mới)' }));
+    await user.type(screen.getByLabelText('Lý do sửa'), 'Đổi lịch tái khám (synthetic)');
+
+    // No reconciliation control until the date actually changes.
+    expect(screen.queryByLabelText('Xử lý nhiệm vụ tái khám')).not.toBeInTheDocument();
+
+    await user.clear(screen.getByLabelText('Ngày tái khám mới (tùy chọn)'));
+    await user.type(screen.getByLabelText('Ngày tái khám mới (tùy chọn)'), '2026-09-20');
+
+    expect(screen.getByLabelText('Xử lý nhiệm vụ tái khám')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Lưu phiên bản mới' })).toBeDisabled();
+
+    await user.selectOptions(screen.getByLabelText('Xử lý nhiệm vụ tái khám'), 'RESCHEDULE');
+    expect(screen.getByRole('button', { name: 'Lưu phiên bản mới' })).toBeEnabled();
+
+    await user.click(screen.getByRole('button', { name: 'Lưu phiên bản mới' }));
+    await waitFor(() => {
+      expect(carePlansApi.amend).toHaveBeenCalledWith(
+        'plan-1',
+        expect.objectContaining({
+          followUpDate: '2026-09-20',
+          followUpTaskAction: 'RESCHEDULE',
+        }),
+      );
+    });
+  });
+
+  it('CD-08: KEEP_WITH_REASON requires a non-blank reason before submit is enabled', async () => {
+    vi.mocked(carePlansApi.getById).mockResolvedValue({
+      id: 'plan-1',
+      encounterId: 'enc-1',
+      patientId: 'patient-1',
+      status: 'SIGNED',
+      instructions: 'Điều trị theo đơn',
+      followUpDate: '2026-09-05T00:00:00.000Z',
+      currentVersionId: 'version-1',
+      createdAt: '2026-08-21T00:00:00.000Z',
+      updatedAt: '2026-08-21T00:00:00.000Z',
+    });
+    vi.mocked(careTasksApi.list).mockResolvedValue([openGenericTask]);
+
+    renderCarePlanPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Sửa (tạo phiên bản mới)' }));
+    await user.type(screen.getByLabelText('Lý do sửa'), 'x');
+    await user.clear(screen.getByLabelText('Ngày tái khám mới (tùy chọn)'));
+    await user.type(screen.getByLabelText('Ngày tái khám mới (tùy chọn)'), '2026-09-20');
+    await user.selectOptions(
+      screen.getByLabelText('Xử lý nhiệm vụ tái khám'),
+      'KEEP_WITH_REASON',
+    );
+
+    expect(screen.getByRole('button', { name: 'Lưu phiên bản mới' })).toBeDisabled();
+    await user.type(screen.getByLabelText('Lý do giữ nguyên'), 'BN xin giữ lịch cũ (synthetic)');
+    expect(screen.getByRole('button', { name: 'Lưu phiên bản mới' })).toBeEnabled();
   });
 });

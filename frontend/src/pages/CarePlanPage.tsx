@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { carePlansApi, patientsApi } from '../api/resources';
+import { carePlansApi, careTasksApi, patientsApi } from '../api/resources';
 import { useApiQuery } from '../api/useApiQuery';
 import { ApiError } from '../api/client';
 import { ErrorState, LoadingState } from '../components/AsyncStates';
 import { formatDate, formatDateTime } from '../lib/format';
 import { flattenTimeline } from '../types/domain';
+
+type FollowUpTaskAction = 'RESCHEDULE' | 'CANCEL' | 'KEEP_WITH_REASON';
 
 interface SignedVersion {
   versionNumber: number;
@@ -50,8 +52,24 @@ export function CarePlanPage() {
   const [amendInstructions, setAmendInstructions] = useState('');
   const [amendFollowUpDate, setAmendFollowUpDate] = useState('');
   const [amendReason, setAmendReason] = useState('');
+  const [amendTaskAction, setAmendTaskAction] = useState<FollowUpTaskAction | ''>('');
+  const [amendTaskReason, setAmendTaskReason] = useState('');
   const [amendError, setAmendError] = useState<string | null>(null);
   const [isSubmittingAmend, setIsSubmittingAmend] = useState(false);
+
+  // The current OPEN generic follow-up CareTask for this CarePlan, if any
+  // (DEC-012 §9-16). CareTask.dueDate = current operational schedule, kept
+  // distinct from CarePlan.followUpDate = signed clinical intent — see the
+  // "Lịch hẹn hiện tại" section below.
+  const openTaskQuery = useApiQuery(async () => {
+    const tasks = await careTasksApi.list();
+    return (
+      tasks.find(
+        (t) =>
+          t.carePlanId === carePlanId && t.status === 'OPEN' && t.timepointCode === null,
+      ) ?? null
+    );
+  }, [carePlanId]);
 
   if (carePlanQuery.isLoading) return <LoadingState />;
   if (carePlanQuery.error) return <ErrorState message={carePlanQuery.error} />;
@@ -61,6 +79,19 @@ export function CarePlanPage() {
   const currentInstructions = instructions ?? carePlan.instructions;
   const currentFollowUpDate =
     followUpDate ?? (carePlan.followUpDate ? carePlan.followUpDate.slice(0, 10) : '');
+
+  const signedFollowUpDate = carePlan.followUpDate ? carePlan.followUpDate.slice(0, 10) : '';
+  const followUpDateIsChanging =
+    isAmending && (amendFollowUpDate || '') !== signedFollowUpDate;
+  const requiresTaskReconciliation =
+    followUpDateIsChanging && Boolean(openTaskQuery.data);
+  const taskActionInvalidForNewDate =
+    amendTaskAction === 'CANCEL' && Boolean(amendFollowUpDate);
+  const amendBlocked =
+    requiresTaskReconciliation &&
+    (!amendTaskAction ||
+      taskActionInvalidForNewDate ||
+      (amendTaskAction === 'KEEP_WITH_REASON' && !amendTaskReason.trim()));
 
   async function saveDraft() {
     setActionError(null);
@@ -86,6 +117,7 @@ export function CarePlanPage() {
       await carePlansApi.sign(carePlanId as string);
       carePlanQuery.reload();
       timelineQuery.reload();
+      openTaskQuery.reload();
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : 'Không ký được kế hoạch.');
     } finally {
@@ -93,9 +125,22 @@ export function CarePlanPage() {
     }
   }
 
+  function startAmend() {
+    // Prefill from the currently signed content so "unchanged followUpDate"
+    // (CD-08 §12) is actually unchanged unless the doctor edits it, and so
+    // the reconciliation UI below only appears on a real date change.
+    setAmendInstructions(carePlan?.instructions ?? '');
+    setAmendFollowUpDate(signedFollowUpDate);
+    setAmendReason('');
+    setAmendTaskAction('');
+    setAmendTaskReason('');
+    setIsAmending(true);
+  }
+
   async function submitAmend(event: FormEvent) {
     event.preventDefault();
     setAmendError(null);
+    if (amendBlocked) return;
     setIsSubmittingAmend(true);
     try {
       await carePlansApi.amend(carePlanId as string, {
@@ -103,13 +148,23 @@ export function CarePlanPage() {
         followUpDate: amendFollowUpDate || undefined,
         reason: amendReason,
         expectedCurrentVersionId: carePlan?.currentVersionId as string,
+        followUpTaskAction: requiresTaskReconciliation
+          ? (amendTaskAction as FollowUpTaskAction)
+          : undefined,
+        followUpTaskReason:
+          requiresTaskReconciliation && amendTaskAction === 'KEEP_WITH_REASON'
+            ? amendTaskReason
+            : undefined,
       });
       setIsAmending(false);
       setAmendInstructions('');
       setAmendFollowUpDate('');
       setAmendReason('');
+      setAmendTaskAction('');
+      setAmendTaskReason('');
       carePlanQuery.reload();
       timelineQuery.reload();
+      openTaskQuery.reload();
     } catch (err) {
       setAmendError(err instanceof ApiError ? err.message : 'Không sửa được kế hoạch.');
     } finally {
@@ -184,8 +239,25 @@ export function CarePlanPage() {
               <strong>Điều trị / dặn dò:</strong> {carePlan.instructions}
             </p>
             <p>
-              <strong>Ngày tái khám:</strong> {formatDate(carePlan.followUpDate)}
+              <strong>Ngày tái khám (ý định lâm sàng đã ký):</strong>{' '}
+              {formatDate(carePlan.followUpDate)}
             </p>
+          </div>
+
+          <div className="signed-card">
+            <p className="signed-note">
+              Nhiệm vụ tái khám (lịch vận hành hiện tại) — có thể khác ngày tái khám đã ký ở trên
+              nếu đã được dời lịch thao tác.
+            </p>
+            {openTaskQuery.isLoading && <LoadingState />}
+            {!openTaskQuery.isLoading && !openTaskQuery.data && (
+              <p className="form-hint">Không có nhiệm vụ tái khám đang mở cho kế hoạch này.</p>
+            )}
+            {openTaskQuery.data && (
+              <p>
+                <strong>Ngày hẹn hiện tại:</strong> {formatDate(openTaskQuery.data.dueDate)}
+              </p>
+            )}
           </div>
 
           {actionError && (
@@ -196,7 +268,7 @@ export function CarePlanPage() {
 
           {!isAmending && (
             <div className="form-actions">
-              <button type="button" className="btn btn-ghost" onClick={() => setIsAmending(true)}>
+              <button type="button" className="btn btn-ghost" onClick={startAmend}>
                 Sửa (tạo phiên bản mới)
               </button>
             </div>
@@ -227,6 +299,41 @@ export function CarePlanPage() {
                 value={amendReason}
                 onChange={(e) => setAmendReason(e.target.value)}
               />
+
+              {requiresTaskReconciliation && (
+                <div className="inline-form">
+                  <p className="form-hint">
+                    Ngày tái khám thay đổi và đang có nhiệm vụ tái khám mở (ngày hẹn hiện tại:{' '}
+                    {formatDate(openTaskQuery.data?.dueDate ?? null)}). Chọn cách xử lý:
+                  </p>
+                  <label htmlFor="amendTaskAction">Xử lý nhiệm vụ tái khám</label>
+                  <select
+                    id="amendTaskAction"
+                    required
+                    value={amendTaskAction}
+                    onChange={(e) => setAmendTaskAction(e.target.value as FollowUpTaskAction | '')}
+                  >
+                    <option value="" disabled>
+                      Chọn cách xử lý
+                    </option>
+                    <option value="RESCHEDULE">Dời lịch nhiệm vụ theo ngày mới</option>
+                    <option value="KEEP_WITH_REASON">Giữ nguyên ngày hẹn hiện tại (có lý do)</option>
+                    {!amendFollowUpDate && <option value="CANCEL">Hủy nhiệm vụ tái khám</option>}
+                  </select>
+                  {amendTaskAction === 'KEEP_WITH_REASON' && (
+                    <>
+                      <label htmlFor="amendTaskReason">Lý do giữ nguyên</label>
+                      <input
+                        id="amendTaskReason"
+                        required
+                        value={amendTaskReason}
+                        onChange={(e) => setAmendTaskReason(e.target.value)}
+                      />
+                    </>
+                  )}
+                </div>
+              )}
+
               {amendError && (
                 <p className="form-error" role="alert">
                   {amendError}
@@ -236,7 +343,11 @@ export function CarePlanPage() {
                 <button type="button" className="btn btn-ghost" onClick={() => setIsAmending(false)}>
                   Hủy
                 </button>
-                <button type="submit" className="btn btn-primary" disabled={isSubmittingAmend}>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={isSubmittingAmend || amendBlocked}
+                >
                   {isSubmittingAmend ? 'Đang lưu...' : 'Lưu phiên bản mới'}
                 </button>
               </div>

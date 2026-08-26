@@ -27,6 +27,11 @@ const TEMPLATE_LABELS: Record<string, string> = {
   LONGO_TWO_WEEK_FOLLOWUP: 'Tái khám 2 tuần sau phẫu thuật Longo',
   ANAL_DILATION_ASSESSMENT: 'Đánh giá nong hậu môn',
   LONGO_LONG_TERM_FOLLOWUP: 'Tái khám dài hạn sau phẫu thuật Longo',
+  // Hemorrhoid Vertical Slice 2 (DEC-012 §6-7) — reuses this same
+  // schema-driven renderer rather than a new page, since both templates are
+  // a single required free-text field with no score/coding.
+  HEMORRHOID_DIAGNOSIS: 'Chẩn đoán',
+  HEMORRHOID_TREATMENT_DECISION: 'Quyết định điều trị',
 };
 
 export function LongoClinicalFormPage() {
