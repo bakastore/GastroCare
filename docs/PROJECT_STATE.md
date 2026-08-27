@@ -1,6 +1,6 @@
 # GastroCare — Trạng thái dự án
 
-**Cập nhật:** 26/08/2026 — T4 Independent Codex Gate CLOSED — PASS (verified against HEAD `ca347bc2b043c6050b5635b2e58ef8cd977e320e`); T7 TARGETED SYNTHETIC ACCEPTANCE = PASS (Owner-confirmed 2026-08-26); Hemorrhoid Vertical Slice 2 execution sequence T0→T7 = COMPLETE; Owner product acceptance NOT CLAIMED
+**Cập nhật:** 27/08/2026 — Hemorrhoid Vertical Slice 2 execution sequence T0→T7 = COMPLETE (T4 Independent Codex Gate CLOSED — PASS; T7 TARGETED SYNTHETIC ACCEPTANCE = PASS, Owner-confirmed 2026-08-26); Owner product acceptance NOT CLAIMED; Hemorrhoid Vertical Slice 3 (Continuous Care Loop) Contract v0.1 OWNER LOCKED dưới DEC-013 — T0 GOVERNANCE ACTIVATION
 
 **Loại dự án:** GREENFIELD
 
@@ -31,7 +31,7 @@ Quyết định Owner rõ ràng mới nhất
 | CORE-02 | CLOSED — OWNER ACCEPTED |
 | CORE-03 / Technical Core (lõi kỹ thuật) | CLOSED — OWNER ACCEPTED |
 | GastroCare Core tổng thể | IN PROGRESS |
-| Real-world Clinical Core implementation (triển khai lõi lâm sàng theo thực tế) | IN PROGRESS — Hemorrhoid Vertical Slice 1 TECHNICALLY ACCEPTED; Vertical Slice 2 AUTHORIZED FOR IMPLEMENTATION under DEC-012 |
+| Real-world Clinical Core implementation (triển khai lõi lâm sàng theo thực tế) | IN PROGRESS — Hemorrhoid Vertical Slice 1 TECHNICALLY ACCEPTED; Vertical Slice 2 T0→T7 EXECUTION COMPLETE (Owner product acceptance NOT CLAIMED); Vertical Slice 3 OWNER LOCKED under DEC-013 — T0 GOVERNANCE ACTIVATION |
 | Owner Synthetic Clinical Acceptance | Longo-only Gate G: RETIRED BY OWNER — không tiếp tục vì workflow sản phẩm đã đổi; không suy ra CORE-04 Owner product acceptance |
 | AUTHORIZED REAL-WORLD PILOT ACCEPTANCE | FUTURE GATE — chưa được phép mở |
 | Continuous Care (chăm sóc liên tục) | NOT COMPLETE |
@@ -39,7 +39,8 @@ Quyết định Owner rõ ràng mới nhất
 | AI Value-Added Layer | DEFERRED |
 | Hemorrhoid Vertical Slice 1 | `TECHNICALLY ACCEPTED` — Independent Codex Gate CLOSED; accepted baseline `2ea529ee200a0a37a77cebb9a750f70adde57618` |
 | Hemorrhoid Vertical Slice 2 | Execution sequence `T0→T7 COMPLETE` — Diagnosis → Treatment Decision → CarePlan/Follow-up → Return Encounter; T4 focused Independent Codex Gate `CLOSED — PASS` (2026-08-26); T7 TARGETED SYNTHETIC ACCEPTANCE `PASS` (Owner-confirmed 2026-08-26); Owner product acceptance NOT CLAIMED |
-| Current product direction | `HEMORRHOID REAL-WORLD CLINICAL WORKFLOW` — active under DEC-010 + DEC-011 + DEC-012 |
+| Hemorrhoid Vertical Slice 3 | `OWNER LOCKED` — Continuous Care Loop; Contract v0.1 `docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md`; authority DEC-013; current gate `T0 GOVERNANCE ACTIVATION`; implementation NOT STARTED |
+| Current product direction | `HEMORRHOID REAL-WORLD CLINICAL WORKFLOW` — active under DEC-010 + DEC-011 + DEC-012 + DEC-013 |
 | CORE-05 | `CASE INTELLIGENCE` — giữ nguyên; chưa mở trong checkpoint này |
 
 Không được diễn giải việc Technical Core đã đóng là toàn bộ GastroCare Core đã đóng.
@@ -130,6 +131,17 @@ T7 TARGETED SYNTHETIC ACCEPTANCE: PASS (Owner-confirmed 2026-08-26) — golden p
 Hemorrhoid Vertical Slice 2 execution sequence T0→T7: COMPLETE (technical execution). Owner product acceptance: NOT CLAIMED.
 Real-patient runtime: NOT AUTHORIZED
 ```
+
+### 4.3 Hemorrhoid Vertical Slice 3
+
+```text
+Status: OWNER LOCKED
+Authority: DEC-013
+Contract: docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md
+Current gate: T0 GOVERNANCE ACTIVATION
+Real-patient runtime: NOT AUTHORIZED
+CORE-05: NOT OPENED
+```
 ## 5. Giai đoạn và hướng tiếp theo
 
 **Giai đoạn hiện tại:** GASTROCARE CORE — IN PROGRESS
@@ -193,14 +205,17 @@ Chỉ được dùng synthetic data (dữ liệu giả lập) cho triển khai, 
 | Last technically accepted implementation | `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 1` at `2ea529ee200a0a37a77cebb9a750f70adde57618` |
 | Last completed work package | `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 2 IMPLEMENTATION` — T0→T7 execution sequence COMPLETE |
 | Discovery status | `CLOSED — OWNER ACCEPTED` |
-| Current work package | `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 2 IMPLEMENTATION` |
-| Current authority | `DEC-012 — OWNER LOCKED` |
-| Implementation Contract | `docs/11_HEMORRHOID_SLICE2_IMPLEMENTATION_CONTRACT.md — OWNER LOCKED` |
-| Current authorized task | `T7 — TARGETED SYNTHETIC ACCEPTANCE = PASS` (Owner-confirmed 2026-08-26); T0→T7 execution sequence COMPLETE |
-| Slice 2 implementation | `T0→T7 EXECUTION COMPLETE (TECHNICAL)` — OWNER ACCEPTED = NOT CLAIMED |
-| T1–T4 baseline | `1602b114ccb50482c890754d59a44e3958e61c59` |
-| T5 baseline | `39d263cee23e062122417b999ce102a7aced590b` |
-| T6 baseline | `ca347bc2b043c6050b5635b2e58ef8cd977e320e` (= current HEAD) |
+| Current work package | `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 3` |
+| Current authority | `DEC-013 — OWNER LOCKED` |
+| Implementation Contract | `docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md — OWNER LOCKED` |
+| Current authorized task | `T0 — GOVERNANCE ACTIVATION COMPLETE` |
+| Next gate | `T1 — Templates + ancestry/sequence` |
+| Slice 2 implementation (history) | `T0→T7 EXECUTION COMPLETE (TECHNICAL)` at HEAD `42910a46f606315169cdaaf9433b20bfe71b1201` — OWNER ACCEPTED = NOT CLAIMED |
+| Slice 2 T1–T4 baseline (history) | `1602b114ccb50482c890754d59a44e3958e61c59` |
+| Slice 2 T5 baseline (history) | `39d263cee23e062122417b999ce102a7aced590b` |
+| Slice 2 T6 baseline (history) | `ca347bc2b043c6050b5635b2e58ef8cd977e320e` |
+| Slice 2 T7 baseline (history) | `42910a46f606315169cdaaf9433b20bfe71b1201` |
+| Slice 3 governance baseline | `42910a46f606315169cdaaf9433b20bfe71b1201` |
 | Diagnosis | `1 logical HEMORRHOID_DIAGNOSIS chain/Encounter; diagnosisSummary required free text; no coding v1` |
 | Treatment Decision | `1 logical HEMORRHOID_TREATMENT_DECISION chain/Encounter; decisionSummary required free text; no taxonomy v1` |
 | Follow-up | `0..1 next clinical follow-up target/CarePlan; explicit Return Encounter matching` |

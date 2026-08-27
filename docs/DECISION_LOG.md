@@ -248,6 +248,42 @@ Owner quyết định:
 
 ---
 
+### DEC-013 — Hemorrhoid Vertical Slice 3 Continuous Care Loop
+
+**Ngày:** 2026-08-27
+
+**Trạng thái:** OWNER LOCKED
+
+**Thẩm quyền:** Explicit Owner Decision dated 2026-08-27.
+
+**Nguồn chuẩn:**
+
+- `docs/10_HEMORRHOID_CLINICAL_WORKFLOW_v1.0.md`;
+- `docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md`.
+
+Owner quyết định:
+
+1. Initial Hemorrhoid Encounter remains permanently ungrouped. No `episodeId` PATCH/backfill.
+2. `HEMORRHOID_TREATMENT` CareEpisode starts only at first Return Encounter. Resolve ACTIVE episode by tenant + patient + episodeType. `0` ACTIVE = create; `1` ACTIVE = reuse; `>1` ACTIVE = 409.
+3. Follow-up uses `HEMORRHOID_FOLLOW_UP_ASSESSMENT` with required free-text `responseSummary`. No outcome taxonomy in v1.
+4. Next clinical decision uses `HEMORRHOID_NEXT_CLINICAL_DECISION` with required free-text `decisionSummary`. Do not reuse initial `HEMORRHOID_TREATMENT_DECISION`.
+5. CareEpisode close is explicit DOCTOR action only and requires at least one completed Follow-up Assessment belonging to that episode. No automatic close.
+6. A new clinical decision on a Return Encounter may create a NEW CarePlan anchored to that Return Encounter. Do not amend an old CarePlan merely to represent a new clinical occurrence.
+
+Cũng ghi nhận:
+
+- Slice 3 Contract v0.1 = OWNER LOCKED.
+- T0 governance activation được ủy quyền.
+- Chi tiết thiết kế kỹ thuật/concurrency nằm trong Contract, không nằm trong Decision Log.
+- Implementation/test/acceptance: SYNTHETIC DATA ONLY.
+- Real-patient runtime: NOT AUTHORIZED.
+- `CORE-05 = CASE INTELLIGENCE — NOT OPENED`.
+- Procedure/generic Surgery/Investigation/AI nằm ngoài phạm vi Slice 3.
+
+**Căn cứ:** Owner explicit authorization dated 2026-08-27; DEC-012 làm nền cho Slice 2; Slice 3 mở rộng sang continuous-care loop dưới cùng clinical SSOT `docs/10_HEMORRHOID_CLINICAL_WORKFLOW_v1.0.md`.
+
+---
+
 ## WORKING ASSUMPTIONS
 
 | ID | Nội dung | Nguồn gốc | Trạng thái |

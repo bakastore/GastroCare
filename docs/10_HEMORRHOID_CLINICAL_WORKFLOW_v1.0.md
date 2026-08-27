@@ -125,3 +125,20 @@ Synthetic data only. Real patient data/runtime NOT AUTHORIZED. Production NOT AU
 
 ## 20. Change Control
 Không nâng AI recommendation thành clinical fact hoặc working assumption thành Owner Decision nếu không có authority phù hợp.
+
+## 21. Vertical Slice 3 — Continuous Care Loop — OWNER LOCKED
+
+Authority: DEC-013 — OWNER LOCKED.
+
+Contract: `docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md`.
+
+- Continuous-care loop mở rộng workflow sau Return Encounter.
+- Initial Hemorrhoid Encounter tiếp tục ungrouped (`episodeId = null`) vĩnh viễn; không PATCH/backfill.
+- `HEMORRHOID_TREATMENT` CareEpisode chỉ bắt đầu tại Return Encounter đầu tiên.
+- Follow-up Assessment = `HEMORRHOID_FOLLOW_UP_ASSESSMENT` với `responseSummary` free-text bắt buộc.
+- Next Clinical Decision = `HEMORRHOID_NEXT_CLINICAL_DECISION` với `decisionSummary` free-text bắt buộc.
+- Return Encounter có thể tạo CarePlan mới sau khi Next Clinical Decision hoàn tất.
+- Các Return Encounter sau tái sử dụng cùng một ACTIVE Hemorrhoid episode.
+- CareEpisode close là hành động tường minh và yêu cầu ít nhất một Follow-up Assessment đã COMPLETED.
+- Không tự động suy luận lâm sàng hoặc taxonomy kết quả.
+- Synthetic data only; real-patient runtime NOT AUTHORIZED.
