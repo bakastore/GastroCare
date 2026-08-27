@@ -1,6 +1,6 @@
 # GastroCare — Trạng thái dự án
 
-**Cập nhật:** 27/08/2026 — Hemorrhoid Vertical Slice 2 execution sequence T0→T7 = COMPLETE (T4 Independent Codex Gate CLOSED — PASS; T7 TARGETED SYNTHETIC ACCEPTANCE = PASS, Owner-confirmed 2026-08-26); Owner product acceptance NOT CLAIMED; Hemorrhoid Vertical Slice 3 (Continuous Care Loop) Contract v0.1 OWNER LOCKED dưới DEC-013 — T0 GOVERNANCE ACTIVATION
+**Cập nhật:** 27/08/2026 — Hemorrhoid Vertical Slice 2 T0→T7 = COMPLETE (technical execution; Owner product acceptance NOT CLAIMED); Hemorrhoid Vertical Slice 3 T0→T7 = TECHNICAL EXECUTION COMPLETE under DEC-013; T4 CLOSED — PASS; T7 CLOSED — PASS; final reviewed HEAD `24b4abec7b932acd329d711f7cb9ca3773b204f3`; merge to `main` PENDING OWNER AUTHORIZATION.
 
 **Loại dự án:** GREENFIELD
 
@@ -31,7 +31,7 @@ Quyết định Owner rõ ràng mới nhất
 | CORE-02 | CLOSED — OWNER ACCEPTED |
 | CORE-03 / Technical Core (lõi kỹ thuật) | CLOSED — OWNER ACCEPTED |
 | GastroCare Core tổng thể | IN PROGRESS |
-| Real-world Clinical Core implementation (triển khai lõi lâm sàng theo thực tế) | IN PROGRESS — Hemorrhoid Vertical Slice 1 TECHNICALLY ACCEPTED; Vertical Slice 2 T0→T7 EXECUTION COMPLETE (Owner product acceptance NOT CLAIMED); Vertical Slice 3 OWNER LOCKED under DEC-013 — T0 GOVERNANCE ACTIVATION |
+| Real-world Clinical Core implementation (triển khai lõi lâm sàng theo thực tế) | IN PROGRESS — Hemorrhoid Vertical Slice 1 TECHNICALLY ACCEPTED; Vertical Slice 2 T0→T7 EXECUTION COMPLETE (Owner product acceptance NOT CLAIMED); Vertical Slice 3 T0→T7 TECHNICAL EXECUTION COMPLETE under DEC-013; T4/T7 CLOSED — PASS; merge to `main` PENDING OWNER AUTHORIZATION |
 | Owner Synthetic Clinical Acceptance | Longo-only Gate G: RETIRED BY OWNER — không tiếp tục vì workflow sản phẩm đã đổi; không suy ra CORE-04 Owner product acceptance |
 | AUTHORIZED REAL-WORLD PILOT ACCEPTANCE | FUTURE GATE — chưa được phép mở |
 | Continuous Care (chăm sóc liên tục) | NOT COMPLETE |
@@ -39,7 +39,7 @@ Quyết định Owner rõ ràng mới nhất
 | AI Value-Added Layer | DEFERRED |
 | Hemorrhoid Vertical Slice 1 | `TECHNICALLY ACCEPTED` — Independent Codex Gate CLOSED; accepted baseline `2ea529ee200a0a37a77cebb9a750f70adde57618` |
 | Hemorrhoid Vertical Slice 2 | Execution sequence `T0→T7 COMPLETE` — Diagnosis → Treatment Decision → CarePlan/Follow-up → Return Encounter; T4 focused Independent Codex Gate `CLOSED — PASS` (2026-08-26); T7 TARGETED SYNTHETIC ACCEPTANCE `PASS` (Owner-confirmed 2026-08-26); Owner product acceptance NOT CLAIMED |
-| Hemorrhoid Vertical Slice 3 | `OWNER LOCKED` — Continuous Care Loop; Contract v0.1 `docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md`; authority DEC-013; current gate `T0 GOVERNANCE ACTIVATION`; implementation NOT STARTED |
+| Hemorrhoid Vertical Slice 3 | `OWNER LOCKED` — Continuous Care Loop; Contract v0.1 `docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md`; authority DEC-013; T0→T7 TECHNICAL EXECUTION COMPLETE; T4/T7 CLOSED — PASS; final reviewed HEAD `24b4abec7b932acd329d711f7cb9ca3773b204f3`; merge to `main` PENDING OWNER AUTHORIZATION |
 | Current product direction | `HEMORRHOID REAL-WORLD CLINICAL WORKFLOW` — active under DEC-010 + DEC-011 + DEC-012 + DEC-013 |
 | CORE-05 | `CASE INTELLIGENCE` — giữ nguyên; chưa mở trong checkpoint này |
 
@@ -138,53 +138,58 @@ Real-patient runtime: NOT AUTHORIZED
 Status: OWNER LOCKED
 Authority: DEC-013
 Contract: docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md
-T1-T6: IMPLEMENTATION COMPLETE
-T4 independent audit: CLOSED — PASS (fresh Independent Codex READ-ONLY audit)
-T4 verified against HEAD: 69808c6a52b4b6ec364b338fdeab39e5719487f6
+T0→T7: TECHNICAL EXECUTION COMPLETE
+T4: CLOSED — PASS
+T4 independent audit baseline: 69808c6a52b4b6ec364b338fdeab39e5719487f6
 T4 audit results: 12/12 C1-C4 real-PostgreSQL concurrency tests PASS; blockers NONE
-Current gate: T7 — TARGETED SYNTHETIC ACCEPTANCE
+T7: CLOSED — PASS
+T7 backend regression: 241/241 PASS
+Frontend unit/component tests: 37/37 PASS
+Slice 3 focused Playwright browser acceptance: 1/1 PASS ×2
+Existing browser regression: 7/7 PASS
+T7 implementation/final-review HEAD: 24b4abec7b932acd329d711f7cb9ca3773b204f3
+Schema/migration: NO CHANGE
+Blockers: NONE
+Owner product acceptance: NOT CLAIMED
+Merge to main: PENDING OWNER AUTHORIZATION
 Real-patient runtime: NOT AUTHORIZED
 CORE-05: NOT OPENED
 ```
+
 ## 5. Giai đoạn và hướng tiếp theo
 
 **Giai đoạn hiện tại:** GASTROCARE CORE — IN PROGRESS
 
 **Hướng sản phẩm hiện tại:** HEMORRHOID REAL-WORLD CLINICAL WORKFLOW
 
-**Last completed checkpoint:** `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 2 IMPLEMENTATION` — T0→T7 execution sequence COMPLETE (T7 TARGETED SYNTHETIC ACCEPTANCE PASS, Owner-confirmed 2026-08-26)
+**Last completed checkpoint:** `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 3` — T0→T7 TECHNICAL EXECUTION COMPLETE tại HEAD `24b4abec7b932acd329d711f7cb9ca3773b204f3`.
 
-Discovery Gate CLOSED: Diagnosis/Treatment Decision/CarePlan/follow-up/Return Encounter semantics, concurrency model, schema impact, RBAC, audit, Timeline và acceptance criteria đều RESOLVED; unresolved Owner questions = 0.
+**Current work package:** `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 3` — TECHNICAL EXECUTION COMPLETE; pending Owner merge decision.
 
-**Work package hiện tại:** `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 2 IMPLEMENTATION`
+**Authority:** DEC-013 + `docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md` — OWNER LOCKED.
 
-**Authority:** DEC-012 + `docs/11_HEMORRHOID_SLICE2_IMPLEMENTATION_CONTRACT.md`, đều OWNER LOCKED.
+Final technical evidence:
 
-Target:
+- Slice 3 T0→T7: TECHNICAL EXECUTION COMPLETE.
+- T4 concurrency gate: CLOSED — PASS.
+- T4 independent Codex READ-ONLY audit: PASS; 12/12 C1-C4 real-PostgreSQL tests PASS; blockers NONE.
+- T7 targeted synthetic acceptance: CLOSED — PASS.
+- Backend regression: 241/241 PASS.
+- Frontend unit/component tests: 37/37 PASS.
+- Focused Slice 3 Playwright browser acceptance: 1/1 PASS ×2.
+- Existing browser regression: 7/7 PASS.
+- Final implementation/review HEAD: `24b4abec7b932acd329d711f7cb9ca3773b204f3`.
+- Schema/migration: NO CHANGE.
+- Blockers: NONE.
 
-```text
-Hemorrhoid Examination
-→ Diagnosis
-→ Treatment Decision
-→ CarePlan
-→ Follow-up
-→ Return Encounter
-```
+Slice 2 remains historical evidence only.
 
-Implementation được phép tuần tự T0 → T7 theo Contract.
-
-T1→T4 implemented tại `1602b114ccb50482c890754d59a44e3958e61c59`; T5 tại `39d263cee23e062122417b999ce102a7aced590b`; T6 tại `ca347bc2b043c6050b5635b2e58ef8cd977e320e`.
-
-T4 là high-risk transaction/concurrency gate: sau implementation + targeted concurrency tests + ChatGPT source review PASS, bắt buộc fresh Independent Codex READ-ONLY audit chỉ cho T4. T4 independent gate: `CLOSED — PASS`, fresh Independent Codex READ-ONLY audit ngày 2026-08-26, verified against HEAD `ca347bc2b043c6050b5635b2e58ef8cd977e320e`, `READY FOR T4 ACCEPTANCE: YES`, 22/22 targeted real-PostgreSQL T4 tests PASS, C1-C4 PASS, blockers NONE. T5/T6 không thay đổi T4 production behavior.
-
-T7 — TARGETED SYNTHETIC ACCEPTANCE: `PASS` (Owner-confirmed 2026-08-26). Slice 2 execution sequence `T0→T7 COMPLETE` (technical execution; Owner product acceptance NOT CLAIMED).
-
-Expected schema boundary: `NO PRISMA SCHEMA CHANGE / NO DATABASE MIGRATION`.
-Nếu cần migration, Diagnosis/TreatmentDecision entity hoặc clinical semantic mới: STOP và xin Owner Decision.
-
-Implementation/test/acceptance: SYNTHETIC DATA ONLY.
+Owner product acceptance: NOT CLAIMED.
+Merge to `main`: PENDING OWNER AUTHORIZATION.
+Implementation/test/acceptance data: SYNTHETIC DATA ONLY.
+Real-patient runtime and production: NOT AUTHORIZED.
 `CORE-05 = CASE INTELLIGENCE — NOT OPENED`.
-Real-patient runtime và production: `NOT AUTHORIZED`.
+
 ## 6. Ranh giới vận hành và an toàn
 
 | Hạng mục | Trạng thái |
@@ -206,16 +211,19 @@ Chỉ được dùng synthetic data (dữ liệu giả lập) cho triển khai, 
 | Current branch | `discovery/hemorrhoid-real-world-workflow` |
 | Discovery baseline | `eeadfc31ed9819e06fb80c545573a4bba76d952a` |
 | Current phase | `GASTROCARE CORE — IN PROGRESS` |
-| Last technically accepted implementation | `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 1` at `2ea529ee200a0a37a77cebb9a750f70adde57618` |
-| Last completed work package | `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 2 IMPLEMENTATION` — T0→T7 execution sequence COMPLETE |
+| Last technically accepted implementation | `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 3` at `24b4abec7b932acd329d711f7cb9ca3773b204f3` |
+| Last completed work package | `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 3` — T0→T7 TECHNICAL EXECUTION COMPLETE |
 | Discovery status | `CLOSED — OWNER ACCEPTED` |
 | Current work package | `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 3` |
 | Current authority | `DEC-013 — OWNER LOCKED` |
 | Implementation Contract | `docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md — OWNER LOCKED` |
 | Slice 3 T4 gate status | `T4 — CLOSED — PASS` |
-| Current authorized task | `T7 — TARGETED SYNTHETIC ACCEPTANCE` |
-| Next gate | `T7 — TARGETED SYNTHETIC ACCEPTANCE` |
-| Slice 3 T1-T6 | `IMPLEMENTATION COMPLETE` |
+| Slice 3 T7 gate status | `T7 — CLOSED — PASS` |
+| Slice 3 final reviewed HEAD | `24b4abec7b932acd329d711f7cb9ca3773b204f3` |
+| Slice 3 T7 evidence | backend 241/241 PASS; frontend 37/37 PASS; focused Playwright 1/1 PASS ×2; existing browser regression 7/7 PASS; blockers NONE |
+| Current authorized task | `SLICE 3 MERGE DECISION — OWNER CHECKPOINT` |
+| Next gate | `OWNER MERGE DECISION` |
+| Slice 3 T0→T7 | `TECHNICAL EXECUTION COMPLETE` |
 | Slice 3 T4 independent gate | `CLOSED — PASS`; fresh Independent Codex READ-ONLY audit; verified against HEAD `69808c6a52b4b6ec364b338fdeab39e5719487f6`; 12/12 C1-C4 real-PostgreSQL concurrency tests PASS; blockers NONE |
 | Slice 2 implementation (history) | `T0→T7 EXECUTION COMPLETE (TECHNICAL)` at HEAD `42910a46f606315169cdaaf9433b20bfe71b1201` — OWNER ACCEPTED = NOT CLAIMED |
 | Slice 2 T1–T4 baseline (history) | `1602b114ccb50482c890754d59a44e3958e61c59` |
