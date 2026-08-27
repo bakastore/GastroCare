@@ -32,6 +32,10 @@ const TEMPLATE_LABELS: Record<string, string> = {
   // a single required free-text field with no score/coding.
   HEMORRHOID_DIAGNOSIS: 'Chẩn đoán',
   HEMORRHOID_TREATMENT_DECISION: 'Quyết định điều trị',
+  // Hemorrhoid Vertical Slice 3 continuous-care loop (DEC-013 §D-§E) — same
+  // schema-driven renderer, single required free-text field each.
+  HEMORRHOID_FOLLOW_UP_ASSESSMENT: 'Đánh giá tái khám',
+  HEMORRHOID_NEXT_CLINICAL_DECISION: 'Quyết định điều trị tiếp theo',
 };
 
 export function LongoClinicalFormPage() {

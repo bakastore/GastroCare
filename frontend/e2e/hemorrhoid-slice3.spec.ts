@@ -1,0 +1,205 @@
+import { test, expect, request as playwrightRequest } from '@playwright/test';
+
+// Hemorrhoid Vertical Slice 3 — T7 focused browser acceptance (DEC-013;
+// docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md). Synthetic data
+// only. Requires the disposable test PostgreSQL + backend + frontend
+// preview server to already be running and seeded — see
+// frontend/e2e/run-e2e.sh (same runtime as gastrocare.spec.ts).
+//
+// Scope: this file proves the CONTINUOUS-CARE loop (Return Encounter,
+// Follow-up Assessment, Next Clinical Decision, episode reuse, close) in a
+// real rendered browser. The initial branch (Examination -> Diagnosis ->
+// Treatment Decision -> CarePlan #1 -> sign) is already covered by existing
+// generic-form browser/unit/e2e coverage elsewhere and is NOT re-proven
+// here — it is driven directly via the backend API (same token the UI
+// login just placed in localStorage) purely as setup, so this spec's
+// browser interactions focus entirely on what is new in Slice 3.
+
+const DOCTOR_EMAIL = 'doctor.a@example.test';
+const DOCTOR_PASSWORD = 'CoreDoctorE2E-Pass1!';
+const API_URL = process.env.E2E_API_URL ?? 'http://localhost:3100';
+
+const PATIENT_NAME = 'Trần Thị Hồng';
+const uniquePhone = `08${Date.now().toString().slice(-8)}`;
+
+test.describe('Hemorrhoid Vertical Slice 3 — continuous-care browser golden path', () => {
+  test('Return Encounter, Assessment/Next Decision/CarePlan sequence, episode reuse, and close all render correctly', async ({
+    page,
+  }) => {
+    // 1. Login as Doctor (real rendered browser).
+    await page.goto('/login');
+    await page.getByLabel('Email').fill(DOCTOR_EMAIL);
+    await page.getByLabel('Mật khẩu').fill(DOCTOR_PASSWORD);
+    await page.getByRole('button', { name: 'Đăng nhập' }).click();
+    await expect(page).toHaveURL(/\/today$/);
+
+    const accessToken = await page.evaluate(() =>
+      window.localStorage.getItem('gastrocare.accessToken'),
+    );
+    expect(accessToken).toBeTruthy();
+    const api = await playwrightRequest.newContext({
+      baseURL: API_URL,
+      extraHTTPHeaders: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    // 2. Create synthetic Patient via the real UI.
+    await page.getByRole('link', { name: 'Bệnh nhân' }).click();
+    await expect(page).toHaveURL(/\/patients$/);
+    await page.getByRole('button', { name: '+ Bệnh nhân mới' }).click();
+    await page.getByLabel('Họ tên').fill(PATIENT_NAME);
+    await page.getByLabel('Ngày sinh').fill('1975-02-02');
+    await page.getByLabel('Điện thoại').fill(uniquePhone);
+    await page.getByRole('button', { name: 'Tạo bệnh nhân mới' }).click();
+    await expect(page).toHaveURL(/\/patients\/[^/]+$/);
+    const patientId = page.url().split('/patients/')[1];
+
+    // 3. Drive the initial branch through to a signed CarePlan #1 + OPEN
+    // follow-up task via the API — this exact sequence is already proven
+    // in a real rendered browser by gastrocare.spec.ts's own golden path
+    // and by the Slice 2/3 backend acceptance suites; re-driving every
+    // generic form field here would not add new evidence.
+    async function apiCreateEncounter(reasonForVisit: string) {
+      const res = await api.post('/encounters', {
+        data: { patientId, occurredAt: new Date().toISOString(), reasonForVisit },
+      });
+      expect(res.ok()).toBeTruthy();
+      return (await res.json()).id as string;
+    }
+    async function apiCreateSubmission(
+      encounterId: string,
+      templateKey: string,
+      responses: Record<string, unknown>,
+    ) {
+      const res = await api.post('/clinical-forms', {
+        data: { encounterId, templateKey, responses },
+      });
+      expect(res.ok()).toBeTruthy();
+      return (await res.json()).id as string;
+    }
+    async function apiComplete(id: string) {
+      const res = await api.post(`/clinical-forms/${id}/complete`);
+      expect(res.ok()).toBeTruthy();
+    }
+
+    const initialEncounterId = await apiCreateEncounter('Khám trĩ (browser T7, synthetic)');
+    await apiComplete(await apiCreateSubmission(initialEncounterId, 'HEMORRHOID_EXAMINATION', {}));
+    await apiComplete(
+      await apiCreateSubmission(initialEncounterId, 'HEMORRHOID_DIAGNOSIS', {
+        diagnosisSummary: 'Trĩ nội độ II (browser T7, synthetic)',
+      }),
+    );
+    await apiComplete(
+      await apiCreateSubmission(initialEncounterId, 'HEMORRHOID_TREATMENT_DECISION', {
+        decisionSummary: 'Điều trị nội khoa (browser T7, synthetic)',
+      }),
+    );
+    const carePlan1Res = await api.post('/care-plans', {
+      data: {
+        encounterId: initialEncounterId,
+        instructions: 'Tái khám theo lịch (browser T7, synthetic)',
+        followUpDate: '2026-11-10',
+      },
+    });
+    expect(carePlan1Res.ok()).toBeTruthy();
+    const carePlan1Id = (await carePlan1Res.json()).id as string;
+    const sign1Res = await api.post(`/care-plans/${carePlan1Id}/sign`);
+    expect(sign1Res.ok()).toBeTruthy();
+    const task1Id = (await sign1Res.json()).careTask.id as string;
+
+    // 4. Reload the browser and verify (Contract §S/§I): the OPEN generic
+    // follow-up task shows "Bắt đầu tái khám" — no HEMORRHOID_TREATMENT
+    // episode exists yet, so this renders in the ungrouped section.
+    await page.goto(`/patients/${patientId}`);
+    await expect(page.getByRole('button', { name: 'Bắt đầu tái khám' })).toBeVisible();
+    // No Hemorrhoid episode card should exist before the first Return.
+    await expect(page.getByText('Đợt theo dõi trĩ')).toHaveCount(0);
+
+    // 5. Submit the Return Encounter form via the browser (Contract §H):
+    // succeeds, reloads timeline, task becomes completed/linked, new Return
+    // Encounter appears.
+    await page.getByRole('button', { name: 'Bắt đầu tái khám' }).click();
+    await page.getByLabel('Lý do khám').fill('Tái khám lần 1 (browser T7, synthetic)');
+    await page.getByRole('button', { name: 'Xác nhận tái khám' }).click();
+
+    // Required proof 1: HEMORRHOID_TREATMENT episode header wording.
+    await expect(page.getByText('Đợt theo dõi trĩ')).toBeVisible();
+    // Required proof 2: no Longo-only controls leak onto this card.
+    await expect(
+      page.getByRole('link', { name: '+ Lượt khám trong đợt điều trị' }),
+    ).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Đóng đợt điều trị' })).toHaveCount(0);
+    await expect(page.getByText('Hàng đợi tái khám (kế hoạch so với thực tế)')).toHaveCount(0);
+    // Required proof: new Return Encounter appears, task shows completed.
+    await expect(page.getByText('Lượt tái khám', { exact: true })).toBeVisible();
+    await expect(page.getByText('COMPLETED')).toBeVisible();
+    await expect(page.getByText(/Hoàn thành qua lượt tái khám/)).toBeVisible();
+
+    // 6. On the Return Encounter: Follow-up Assessment -> Next Clinical
+    // Decision -> new CarePlan sequence, driven in the rendered browser.
+    await page.getByRole('link', { name: 'Đánh giá tái khám' }).click();
+    await expect(page).toHaveURL(/\/clinical-forms\/HEMORRHOID_FOLLOW_UP_ASSESSMENT$/);
+    await page.getByRole('button', { name: 'Bắt đầu biểu mẫu' }).click();
+    await page.getByLabel('Đánh giá tái khám').fill('Cải thiện một phần (browser T7, synthetic)');
+    await page.getByRole('button', { name: 'Lưu bản nháp' }).click();
+    await page.getByRole('button', { name: 'Hoàn tất' }).click();
+    await expect(page.getByText('Đã hoàn tất', { exact: false })).toBeVisible();
+
+    await page.goBack();
+    await expect(page).toHaveURL(/\/patients\/[^/]+$/);
+    await page.getByRole('link', { name: 'Quyết định điều trị tiếp theo' }).click();
+    await expect(page).toHaveURL(/\/clinical-forms\/HEMORRHOID_NEXT_CLINICAL_DECISION$/);
+    await page.getByRole('button', { name: 'Bắt đầu biểu mẫu' }).click();
+    await page
+      .getByLabel('Quyết định điều trị tiếp theo')
+      .fill('Tiếp tục theo dõi (browser T7, synthetic)');
+    await page.getByRole('button', { name: 'Lưu bản nháp' }).click();
+    await page.getByRole('button', { name: 'Hoàn tất' }).click();
+    await expect(page.getByText('Đã hoàn tất', { exact: false })).toBeVisible();
+
+    await page.goBack();
+    await expect(page).toHaveURL(/\/patients\/[^/]+$/);
+    await page.getByRole('link', { name: 'Tạo kế hoạch chăm sóc' }).click();
+    await expect(page).toHaveURL(/\/care-plan\/new/);
+    await page.getByLabel('Điều trị / dặn dò').fill('Kế hoạch #2 (browser T7, synthetic)');
+    await page.getByLabel('Ngày tái khám (tùy chọn)').fill('2026-12-10');
+    await page.getByRole('button', { name: 'Lưu bản nháp' }).click();
+    await expect(page).toHaveURL(/\/care-plans\/[^/]+$/);
+    await page.getByRole('button', { name: 'Ký kế hoạch' }).click();
+    await page.getByRole('button', { name: 'Xác nhận ký' }).click();
+    await expect(page.getByText('Đã ký', { exact: true })).toBeVisible();
+
+    // 7. Second Return Encounter reuses the same Hemorrhoid episode — only
+    // one "Đợt theo dõi trĩ" card exists throughout.
+    await page.goto(`/patients/${patientId}`);
+    await expect(page.getByText('Đợt theo dõi trĩ')).toHaveCount(1);
+    await page.getByRole('button', { name: 'Bắt đầu tái khám' }).click();
+    await page.getByLabel('Lý do khám').fill('Tái khám lần 2 (browser T7, synthetic)');
+    await page.getByRole('button', { name: 'Xác nhận tái khám' }).click();
+    await expect(page.getByText('Đợt theo dõi trĩ')).toHaveCount(1);
+
+    // 8. Explicit close (Contract §Q) — triggered via the already-audited
+    // T4 backend endpoint (no dedicated close button exists in the UI for
+    // Hemorrhoid episodes yet — see FINDINGS in the T7 report; this only
+    // proves the existing generic ACTIVE/CLOSED badge rendering correctly
+    // reflects a closed Hemorrhoid episode and preserves its history, which
+    // needs no Hemorrhoid-specific UI code). First complete a second
+    // Assessment on this Return Encounter so the close prerequisite is met.
+    // The Assessment already completed on Return #1 already satisfies the
+    // close prerequisite (>=1 COMPLETED Assessment anywhere in the
+    // episode) — close directly.
+    const timelineRes = await api.get(`/patients/${patientId}/timeline`);
+    expect(timelineRes.ok()).toBeTruthy();
+    const timeline = await timelineRes.json();
+    const episodeId = timeline.episodes[0].episode.id as string;
+    const closeRes = await api.post(`/care-episodes/${episodeId}/close`);
+    expect(closeRes.ok()).toBeTruthy();
+
+    await page.reload();
+    await expect(page.getByText('ĐÃ ĐÓNG')).toBeVisible();
+    // History is preserved after close, still visible in the same card.
+    await expect(page.getByText('Lượt tái khám', { exact: true })).toHaveCount(2);
+    await expect(page.getByText('Cải thiện một phần (browser T7, synthetic)')).toBeVisible();
+
+    await api.dispose();
+  });
+});

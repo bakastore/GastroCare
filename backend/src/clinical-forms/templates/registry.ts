@@ -9,6 +9,8 @@ import { longoLongTermFollowupV1 } from './longo-long-term-followup.v1';
 import { hemorrhoidExaminationV1 } from './hemorrhoid-examination.v1';
 import { hemorrhoidDiagnosisV1 } from './hemorrhoid-diagnosis.v1';
 import { hemorrhoidTreatmentDecisionV1 } from './hemorrhoid-treatment-decision.v1';
+import { hemorrhoidFollowUpAssessmentV1 } from './hemorrhoid-follow-up-assessment.v1';
+import { hemorrhoidNextClinicalDecisionV1 } from './hemorrhoid-next-clinical-decision.v1';
 
 const TEMPLATES: ClinicalFormTemplate[] = [
   hemorrhoidLongoFollowupV1,
@@ -21,6 +23,8 @@ const TEMPLATES: ClinicalFormTemplate[] = [
   hemorrhoidExaminationV1,
   hemorrhoidDiagnosisV1,
   hemorrhoidTreatmentDecisionV1,
+  hemorrhoidFollowUpAssessmentV1,
+  hemorrhoidNextClinicalDecisionV1,
 ];
 
 /** Latest version per templateKey — new submissions are created against this. */

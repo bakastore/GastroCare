@@ -59,6 +59,20 @@ export const encountersApi = {
     api.get<ClinicianAssignmentHistoryEntry[]>(
       `/encounters/${id}/clinician-history`,
     ),
+  /**
+   * Dedicated atomic Return Encounter orchestration — Hemorrhoid Vertical
+   * Slice 3 T2 (DEC-013; docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md
+   * §H). Deliberately does not accept patientId/episodeId/clinicalNote/
+   * assessment — the backend derives patientId from the CareTask and
+   * resolves/creates the CareEpisode itself.
+   */
+  createHemorrhoidReturn: (dto: {
+    careTaskId: string;
+    occurredAt: string;
+    reasonForVisit: string;
+    responsibleClinicianId?: string;
+    roomId?: string;
+  }) => api.post<Encounter>('/encounters/hemorrhoid-return', dto),
 };
 
 /** Facility lookup/management (DEC-010 §C). */
