@@ -138,7 +138,11 @@ Real-patient runtime: NOT AUTHORIZED
 Status: OWNER LOCKED
 Authority: DEC-013
 Contract: docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md
-Current gate: T0 GOVERNANCE ACTIVATION
+T1-T6: IMPLEMENTATION COMPLETE
+T4 independent audit: CLOSED — PASS (fresh Independent Codex READ-ONLY audit)
+T4 verified against HEAD: 69808c6a52b4b6ec364b338fdeab39e5719487f6
+T4 audit results: 12/12 C1-C4 real-PostgreSQL concurrency tests PASS; blockers NONE
+Current gate: T7 — TARGETED SYNTHETIC ACCEPTANCE
 Real-patient runtime: NOT AUTHORIZED
 CORE-05: NOT OPENED
 ```
@@ -208,8 +212,11 @@ Chỉ được dùng synthetic data (dữ liệu giả lập) cho triển khai, 
 | Current work package | `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 3` |
 | Current authority | `DEC-013 — OWNER LOCKED` |
 | Implementation Contract | `docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md — OWNER LOCKED` |
-| Current authorized task | `T0 — GOVERNANCE ACTIVATION COMPLETE` |
-| Next gate | `T1 — Templates + ancestry/sequence` |
+| Slice 3 T4 gate status | `T4 — CLOSED — PASS` |
+| Current authorized task | `T7 — TARGETED SYNTHETIC ACCEPTANCE` |
+| Next gate | `T7 — TARGETED SYNTHETIC ACCEPTANCE` |
+| Slice 3 T1-T6 | `IMPLEMENTATION COMPLETE` |
+| Slice 3 T4 independent gate | `CLOSED — PASS`; fresh Independent Codex READ-ONLY audit; verified against HEAD `69808c6a52b4b6ec364b338fdeab39e5719487f6`; 12/12 C1-C4 real-PostgreSQL concurrency tests PASS; blockers NONE |
 | Slice 2 implementation (history) | `T0→T7 EXECUTION COMPLETE (TECHNICAL)` at HEAD `42910a46f606315169cdaaf9433b20bfe71b1201` — OWNER ACCEPTED = NOT CLAIMED |
 | Slice 2 T1–T4 baseline (history) | `1602b114ccb50482c890754d59a44e3958e61c59` |
 | Slice 2 T5 baseline (history) | `39d263cee23e062122417b999ce102a7aced590b` |
