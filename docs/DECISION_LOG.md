@@ -1,6 +1,6 @@
 # GastroCare — Decision Log
 
-Cập nhật: 2026-08-25
+Cập nhật: 2026-08-27
 
 Đây là Decision Log hiện hành và là nguồn chuẩn cho Owner Decisions
 và Working Assumptions của GastroCare.
@@ -281,6 +281,41 @@ Cũng ghi nhận:
 - Procedure/generic Surgery/Investigation/AI nằm ngoài phạm vi Slice 3.
 
 **Căn cứ:** Owner explicit authorization dated 2026-08-27; DEC-012 làm nền cho Slice 2; Slice 3 mở rộng sang continuous-care loop dưới cùng clinical SSOT `docs/10_HEMORRHOID_CLINICAL_WORKFLOW_v1.0.md`.
+
+---
+
+### DEC-014 — Close Hemorrhoid Vertical Slice 3 Technical Execution and move to Owner Synthetic Product Acceptance
+
+**Ngày:** 2026-08-27
+
+**Trạng thái:** `DRAFT — NOT OWNER LOCKED`
+
+Đây là draft, chưa phải Owner Decision có hiệu lực. Không được diễn giải là OWNER LOCKED cho đến khi có Owner lock rõ ràng.
+
+Nội dung/quyết định đề xuất:
+
+1. Ghi nhận PR #5 (`discovery/hemorrhoid-real-world-workflow` → `main`) đã merge vào `main` tại `4a73a0c8764558d2776adffcf1d26092f6456634`.
+2. Ghi nhận Hemorrhoid Vertical Slice 3 T0→T7 technical execution là `COMPLETE`.
+3. Ghi nhận raw evidence checkpoints:
+   - T4 independent Codex READ-ONLY audit PASS tại HEAD `69808c6a52b4b6ec364b338fdeab39e5719487f6`; 12/12 C1-C4 real-PostgreSQL concurrency tests PASS; blockers NONE.
+   - T7 re-verified tại HEAD `24b4abec7b932acd329d711f7cb9ca3773b204f3` sau final implementation checkpoint; targeted T7 acceptance file có 3 `it()` blocks (1 golden-path scenario with internal assertions covering all 22 steps + 2 negative tests).
+   - T7 re-confirmed against merged `main` HEAD `4a73a0c8764558d2776adffcf1d26092f6456634`.
+4. Ghi nhận T7 raw re-verification thực hiện trực tiếp trên merged `main`:
+   - targeted T7 acceptance: 3/3 PASS;
+   - backend E2E: 331/331 PASS;
+   - frontend unit/component: 37/37 PASS;
+   - backend build: PASS;
+   - frontend build/typecheck: PASS;
+   - Prisma migrations: current, không có migration pending;
+   - worktree: clean (trước và sau khi chạy).
+5. Nêu rõ: technical acceptance KHÔNG đồng nghĩa với Owner product acceptance.
+6. Chuyển current gate sang `OWNER SYNTHETIC PRODUCT ACCEPTANCE — Slice 1→3`.
+7. Gate này yêu cầu xác nhận rõ ràng từ Owner/BS Thái và không thể tự đóng bởi GPT, Claude Code, Codex, hoặc automated tests.
+8. DEC-014 KHÔNG cấp phép: Slice 4; CORE-05; real-patient runtime; production; Procedure; generic Surgery; Investigation; AI functionality.
+9. Current work package sau Slice 3: `NONE` — chờ Owner Synthetic Product Acceptance.
+10. Real-patient runtime: `NOT AUTHORIZED`; Production: `NOT AUTHORIZED`; CORE-05: `NOT OPENED`.
+
+**Owner lock:** CHƯA có. DEC-014 vẫn là DRAFT cho đến khi Owner khóa rõ ràng.
 
 ---
 

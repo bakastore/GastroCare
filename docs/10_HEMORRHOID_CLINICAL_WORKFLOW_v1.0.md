@@ -31,7 +31,11 @@ Core manual-first, không phụ thuộc AI.
 ## 4. Implementation map
 Vertical Slice 1: TECHNICALLY ACCEPTED. Initial `d67e1014...`; accepted correction baseline `2ea529ee200a0a37a77cebb9a750f70adde57618`. Independent Codex audit FAIL (2 blockers) → correction → focused re-check PASS.
 
-Vertical Slice 2: `AUTHORIZED FOR IMPLEMENTATION` under DEC-012 and `docs/11_HEMORRHOID_SLICE2_IMPLEMENTATION_CONTRACT.md`.
+Vertical Slice 2: TECHNICAL EXECUTION COMPLETE under DEC-012 and `docs/11_HEMORRHOID_SLICE2_IMPLEMENTATION_CONTRACT.md`.
+
+Vertical Slice 3: TECHNICAL EXECUTION COMPLETE / MERGED — DEC-013 và `docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md`. PR #5 (`discovery/hemorrhoid-real-world-workflow` → `main`) MERGED tại `4a73a0c8764558d2776adffcf1d26092f6456634`.
+
+Owner product acceptance (cả ba Vertical Slice): NOT CLAIMED.
 
 ## 5. Encounter Context
 Patient, Tenant, Facility/Room khi có, responsible clinician, `occurredAt`, provenance actor. `Encounter.episodeId` nullable. Không tự tạo/suy luận CareEpisode.
@@ -102,7 +106,7 @@ Completed/amended historical revisions không bị che mất.
 
 ## 17. Vertical Slice 2 Implementation Authority
 
-Status: `AUTHORIZED FOR IMPLEMENTATION`.
+Status: `TECHNICAL EXECUTION COMPLETE`.
 
 Authority:
 - DEC-012 — OWNER LOCKED;
