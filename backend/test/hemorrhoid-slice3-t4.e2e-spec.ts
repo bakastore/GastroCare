@@ -529,8 +529,32 @@ describe('Hemorrhoid Vertical Slice 3 — T4 episode lifecycle/concurrency (e2e)
     });
 
     it('C4 — rollback proof: a forced failure late in the Return Encounter transaction leaves no orphan episode/encounter/history, and the CareTask remains OPEN', async () => {
+      const partialEventActions = [
+        'CARE_EPISODE_STARTED',
+        'ENCOUNTER_CREATED',
+        'CARE_TASK_COMPLETED',
+      ] as const;
+
       const patient = await createPatient('C4');
       const careTaskId = await readyOpenFollowUpTask(patient);
+
+      // T4 source review correction: the three transactional audit events
+      // use three DIFFERENT entityIds (CareEpisode id / Encounter id /
+      // CareTask id) — the CareEpisode and Encounter ids are never known
+      // here because the rolled-back attempt never returns them (the
+      // request response is a 500 with no created-resource body). A single
+      // entityId filter therefore cannot prove "no partial AuditEvents" for
+      // all three action types. Instead, take an authoritative before/after
+      // COUNT snapshot per action, tenant-scoped, taken immediately around
+      // the single injected-failure call (this test runs `--runInBand`, so
+      // nothing else can concurrently write these same tenant-scoped
+      // actions in between) — any partial commit from the failed attempt
+      // would show up as a nonzero delta on at least one of the three.
+      const beforeCounts = await Promise.all(
+        partialEventActions.map((action) =>
+          prisma.auditEvent.count({ where: { tenantId, action } }),
+        ),
+      );
 
       const originalRecord = auditService.record.bind(auditService);
       const recordSpy = jest
@@ -546,6 +570,13 @@ describe('Hemorrhoid Vertical Slice 3 — T4 episode lifecycle/concurrency (e2e)
       expect(res.status).toBe(500);
 
       recordSpy.mockRestore();
+
+      const afterCounts = await Promise.all(
+        partialEventActions.map((action) =>
+          prisma.auditEvent.count({ where: { tenantId, action } }),
+        ),
+      );
+      expect(afterCounts).toEqual(beforeCounts);
 
       const episodes = await prisma.careEpisode.findMany({
         where: { tenantId, patientId: patient, episodeType: 'HEMORRHOID_TREATMENT' },
@@ -572,15 +603,6 @@ describe('Hemorrhoid Vertical Slice 3 — T4 episode lifecycle/concurrency (e2e)
       });
       expect(task.status).toBe(CareTaskStatus.OPEN);
       expect(task.completedByEncounterId).toBeNull();
-
-      const partialEvents = await prisma.auditEvent.findMany({
-        where: {
-          tenantId,
-          action: { in: ['CARE_EPISODE_STARTED', 'ENCOUNTER_CREATED', 'CARE_TASK_COMPLETED'] },
-          entityId: careTaskId,
-        },
-      });
-      expect(partialEvents).toHaveLength(0);
     });
   });
 });
