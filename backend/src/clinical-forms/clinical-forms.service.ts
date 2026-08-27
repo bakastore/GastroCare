@@ -285,11 +285,18 @@ export class ClinicalFormsService {
       submission.templateKey,
       encounter,
     );
+    // T7 correction: amend() of an already-COMPLETED historical revision
+    // must not require the episode to still be ACTIVE — see
+    // assertHemorrhoidContinuousCareEpisodeAncestry's requireActive
+    // parameter doc for why (Contract §Q: close must not rewrite completed
+    // forms, which implies their own legitimate correction stays available
+    // afterward). Ancestry (tenant/patient/episodeType) is still enforced.
     await assertHemorrhoidContinuousCareEpisodeAncestry(
       this.prisma,
       tenantId,
       submission.templateKey,
       encounter,
+      false,
     );
 
     const existingSuccessor =

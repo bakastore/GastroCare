@@ -23,19 +23,35 @@ export const HEMORRHOID_CONTINUOUS_CARE_ANCESTRY_TEMPLATE_KEYS: readonly string[
 
 /**
  * Enforced on create/complete/amend for HEMORRHOID_FOLLOW_UP_ASSESSMENT only
- * (Contract §N): the Encounter must belong to an ACTIVE
- * HEMORRHOID_TREATMENT CareEpisode of the same tenant + patient. This
- * excludes both the permanently-ungrouped initial Hemorrhoid Encounter
- * (episodeId null — Contract §B) and any Longo/unrelated/CLOSED episode.
- * Does not duplicate episodeId onto ClinicalFormSubmission — ancestry is
- * re-verified through the Encounter each time, mirroring the existing Longo
- * guard (assertLongoEpisodeAncestry).
+ * (Contract §N): the Encounter must belong to a HEMORRHOID_TREATMENT
+ * CareEpisode of the same tenant + patient. This excludes both the
+ * permanently-ungrouped initial Hemorrhoid Encounter (episodeId null —
+ * Contract §B) and any Longo/unrelated episode. Does not duplicate
+ * episodeId onto ClinicalFormSubmission — ancestry is re-verified through
+ * the Encounter each time, mirroring the existing Longo guard
+ * (assertLongoEpisodeAncestry).
+ *
+ * `requireActive` (default true) additionally requires the episode to
+ * currently be ACTIVE — the correct requirement for create()/complete(),
+ * which establish a NEW completed record and so must happen within the
+ * live continuous-care window. T7 correction: amend() of an
+ * already-COMPLETED historical revision must pass `requireActive: false` —
+ * Contract §Q explicitly protects completed forms from being rewritten by
+ * close, which only makes sense if their own legitimate correction
+ * (amendment, never a rewrite of the original) remains available
+ * afterward, exactly as Diagnosis/Treatment Decision amendment already
+ * works regardless of anything downstream in Slice 2. Requiring ACTIVE at
+ * amend time was an unintended side effect of reusing this same guard
+ * across all three call sites before CareEpisode close existed (T1, before
+ * T4) — tenant/patient/episodeType ancestry is still fully verified at
+ * amend; only the ACTIVE-status requirement is scoped out.
  */
 export async function assertHemorrhoidContinuousCareEpisodeAncestry(
   prisma: PrismaService,
   tenantId: string,
   templateKey: string,
   encounter: Pick<Encounter, 'id' | 'tenantId' | 'patientId' | 'episodeId'>,
+  requireActive = true,
 ): Promise<void> {
   if (!HEMORRHOID_CONTINUOUS_CARE_ANCESTRY_TEMPLATE_KEYS.includes(templateKey)) {
     return;
@@ -43,7 +59,7 @@ export async function assertHemorrhoidContinuousCareEpisodeAncestry(
 
   if (!encounter.episodeId) {
     throw new ForbiddenException(
-      `Encounter must belong to an ACTIVE ${HEMORRHOID_TREATMENT_EPISODE_TYPE} CareEpisode for template ${templateKey}`,
+      `Encounter must belong to a ${HEMORRHOID_TREATMENT_EPISODE_TYPE} CareEpisode for template ${templateKey}`,
     );
   }
 
@@ -53,13 +69,15 @@ export async function assertHemorrhoidContinuousCareEpisodeAncestry(
       tenantId,
       patientId: encounter.patientId,
       episodeType: HEMORRHOID_TREATMENT_EPISODE_TYPE,
-      status: CareEpisodeStatus.ACTIVE,
+      ...(requireActive ? { status: CareEpisodeStatus.ACTIVE } : {}),
     },
     select: { id: true },
   });
   if (!episode) {
     throw new ForbiddenException(
-      `Encounter CareEpisode must be an ACTIVE ${HEMORRHOID_TREATMENT_EPISODE_TYPE} episode of the same tenant and patient`,
+      requireActive
+        ? `Encounter CareEpisode must be an ACTIVE ${HEMORRHOID_TREATMENT_EPISODE_TYPE} episode of the same tenant and patient`
+        : `Encounter CareEpisode must be a ${HEMORRHOID_TREATMENT_EPISODE_TYPE} episode of the same tenant and patient`,
     );
   }
 }
