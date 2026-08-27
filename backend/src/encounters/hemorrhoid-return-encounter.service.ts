@@ -156,6 +156,34 @@ export class HemorrhoidReturnEncounterService {
             episodeCreated = true;
           }
 
+          // T4 — close-vs-Return concurrency guard (Contract §R): a plain
+          // re-read of `episode` inside this same transaction would not
+          // observe a concurrent close() committed after this transaction's
+          // snapshot was taken (Postgres SERIALIZABLE uses one consistent
+          // snapshot for reads throughout the transaction). Converting this
+          // into a genuine WRITE against the same episode row — even a
+          // no-op status write when reusing an existing episode — forces a
+          // real row-level conflict against a concurrent close() UPDATE on
+          // that same row, so at most one of {this Return Encounter, that
+          // close} can commit; the loser gets 409, never silently
+          // proceeding into a concurrently-closed episode. For a
+          // newly-created episode this is a trivial always-1-row update
+          // (nothing else could concurrently touch a row that did not exist
+          // before this transaction).
+          const episodeGuard = await tx.careEpisode.updateMany({
+            where: {
+              id: episode.id,
+              tenantId,
+              status: CareEpisodeStatus.ACTIVE,
+            },
+            data: { status: CareEpisodeStatus.ACTIVE },
+          });
+          if (episodeGuard.count !== 1) {
+            throw new ConflictException(
+              `${HEMORRHOID_TREATMENT_EPISODE_TYPE} episode was closed concurrently; reload and retry`,
+            );
+          }
+
           // 7. Create Return Encounter with episodeId AT CREATION.
           const encounter = await tx.encounter.create({
             data: {
