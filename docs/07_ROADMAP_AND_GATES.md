@@ -1,6 +1,6 @@
 # GastroCare — Roadmap và Acceptance Gates
 
-**Cập nhật:** 25/08/2026
+**Cập nhật:** 27/08/2026
 
 Roadmap này được điều khiển bởi năng lực, không có mốc tuần/tháng cố định. Một phase (giai đoạn) chỉ hoàn thành khi acceptance gate (cổng chấp nhận) tương ứng được thỏa.
 
@@ -26,9 +26,11 @@ FOUNDATION
 | Real-world evidence alignment | COMPLETE |
 | Clinical architecture | LOCKED |
 | Longo Clinical Workflow v1.0 | OWNER LOCKED |
-| Real-world Clinical Core implementation | IN PROGRESS — Hemorrhoid Vertical Slice 1 TECHNICALLY ACCEPTED |
-| Hemorrhoid Vertical Slice 1 | CLOSED — TECHNICAL ACCEPTANCE at `2ea529ee200a0a37a77cebb9a750f70adde57618` |
-| Hemorrhoid Vertical Slice 2 | IMPLEMENTATION AUTHORIZED — DEC-012 + Contract v0.1 OWNER LOCKED |
+| Real-world Clinical Core implementation | IN PROGRESS — Hemorrhoid Vertical Slice 1 TECHNICALLY ACCEPTED; Vertical Slice 2 technical execution complete (historical); Vertical Slice 3 technical execution complete và đã MERGED vào `main` |
+| Hemorrhoid Vertical Slice 1 | CLOSED — TECHNICAL ACCEPTANCE at `2ea529ee200a0a37a77cebb9a750f70adde57618` (historical) |
+| Hemorrhoid Vertical Slice 2 | TECHNICAL EXECUTION COMPLETE (historical completed work package) — DEC-012 + Contract v0.1 OWNER LOCKED; Owner product acceptance NOT CLAIMED |
+| Hemorrhoid Vertical Slice 3 | TECHNICAL EXECUTION COMPLETE và đã MERGED vào `main` tại `4a73a0c8764558d2776adffcf1d26092f6456634` — DEC-013 + Contract `docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md` OWNER LOCKED; Owner product acceptance NOT CLAIMED |
+| Current checkpoint | POST-SLICE-3 OWNER SYNTHETIC PRODUCT ACCEPTANCE — technical PASS không đồng nghĩa Owner product acceptance; chỉ đóng bằng xác nhận rõ ràng của Owner/BS Thái |
 | GASTROCARE CORE tổng thể | IN PROGRESS |
 | CONTINUOUS CARE | NOT COMPLETE |
 | PRODUCT REFINEMENT / UI-UX | NOT STARTED — bị chặn đến khi Clinical Core được chấp nhận |
@@ -62,9 +64,9 @@ Technical Core đã đóng tại SHA `1a95f57f0b19bddbfcd817101d5c0c1135d90686`,
 - CORE-04 Longo: independently verified technical/clinical baseline; Longo-only Gate G đã RETIRED BY OWNER.
 - Hemorrhoid Real-World Workflow — Vertical Slice 1: TECHNICALLY ACCEPTED tại `2ea529ee200a0a37a77cebb9a750f70adde57618`.
 
-### 3.2 Work package hiện tại
+### 3.2 Historical completed work package — Hemorrhoid Vertical Slice 2
 
-**HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 2 IMPLEMENTATION**
+**HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 2 IMPLEMENTATION** — `TECHNICAL EXECUTION COMPLETE` (không còn là work package hiện tại; giữ lại làm hồ sơ lịch sử).
 
 Authority:
 - DEC-012 — OWNER LOCKED;
@@ -89,6 +91,35 @@ Sequence:
 Expected boundary: `NO PRISMA SCHEMA CHANGE / NO DATABASE MIGRATION`.
 Synthetic data only. Real-patient runtime `NOT AUTHORIZED`.
 Procedure/Surgery/Investigation/AI/CORE-05 không được mở.
+
+Owner product acceptance: NOT CLAIMED.
+
+### 3.2.1 Historical completed work package — Hemorrhoid Vertical Slice 3 (MERGED)
+
+**HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 3 (CONTINUOUS CARE LOOP)** — `TECHNICAL EXECUTION COMPLETE` và đã `MERGED` vào `main` (không còn là work package hiện tại).
+
+Authority: DEC-013 — OWNER LOCKED; [`12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md`](12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md) — OWNER LOCKED.
+
+PR #5 (`discovery/hemorrhoid-real-world-workflow` → `main`): MERGED. Merged main baseline: `4a73a0c8764558d2776adffcf1d26092f6456634`. Final T7 implementation commit (lịch sử): `24b4abec7b932acd329d711f7cb9ca3773b204f3`.
+
+T4/T7 gates: CLOSED — PASS (xem chi tiết tại §3.4.1 và `docs/PROJECT_STATE.md` §4.3). Schema/migration: NO CHANGE. Owner product acceptance: NOT CLAIMED.
+
+### 3.2.2 Current checkpoint — Post-Slice-3 Owner Synthetic Product Acceptance
+
+Sau khi Slice 3 đạt technical execution complete và đã merge vào `main`, checkpoint hiện tại là **OWNER SYNTHETIC PRODUCT ACCEPTANCE**.
+
+**Technical PASS (build/test/audit/browser acceptance ở mọi gate T0-T7) không đồng nghĩa với Owner product acceptance.** Đây là hai khái niệm tách biệt theo authority hierarchy của roadmap này.
+
+Gate này chỉ được đóng bằng xác nhận rõ ràng, tường minh từ Owner/BS Thái — không được tự suy ra, không được tự đóng bởi kết quả kỹ thuật, và không được Claude Code/AI tự ghi nhận PASS.
+
+Cho đến khi Owner/BS Thái xác nhận:
+
+- `GASTROCARE CORE` tiếp tục `IN PROGRESS` (không đóng).
+- `CONTINUOUS CARE` tiếp tục `NOT COMPLETE` (không mở).
+- `PRODUCT REFINEMENT` tiếp tục `DEFERRED` (không mở).
+- `CORE-05` tiếp tục `NOT OPENED` (không mở).
+- Real-patient runtime và production tiếp tục `NOT AUTHORIZED`.
+
 ### 3.3 Preserved Longo Clinical Core baseline
 
 CORE-04 Longo tiếp tục là preserved verified baseline, không phải active product gate.
@@ -113,6 +144,17 @@ Longo-only Owner Synthetic Clinical Acceptance Gate G đã `RETIRED BY OWNER` th
 T4 independent audit là mandatory focused gate, không phải full-Slice audit.
 Nếu T4 production code thay đổi sau PASS, T4 independent gate mở lại cho affected delta.
 Nếu cần schema/migration: STOP trước scope expansion.
+
+### 3.4.1 Hemorrhoid Vertical Slice 3 Gates (technical execution complete, MERGED)
+
+**Governance Gate:** T0 CLOSED — DEC-013 OWNER LOCKED; Contract v0.1 OWNER LOCKED.
+
+**Implementation gates:** T1 (templates/ancestry/sequence) PASS; T2 (atomic Return Encounter orchestration) PASS; T3 (two-branch CarePlan enforcement + continuous loop) PASS; T4 (episode lifecycle/concurrency, C1-C4 real-PostgreSQL) `CLOSED — PASS`, fresh Independent Codex READ-ONLY audit PASS; T5 (Timeline/backend integration) PASS; T6 (frontend) PASS; T7 (targeted synthetic acceptance, backend + focused Playwright browser acceptance) `CLOSED — PASS`.
+
+**Merge:** PR #5 (`discovery/hemorrhoid-real-world-workflow` → `main`) MERGED at `4a73a0c8764558d2776adffcf1d26092f6456634`. T7 raw re-verified directly on merged main: targeted 3/3 PASS, backend 331/331 PASS, frontend 37/37 PASS, builds PASS, worktree CLEAN, blockers NONE.
+
+Slice 3 technical execution complete và merge sequence hoàn tất không tự động đóng `OWNER SYNTHETIC PRODUCT ACCEPTANCE` (§3.2.2) — hai gate này tách biệt.
+
 ### 3.5 AUTHORIZED REAL-WORLD PILOT ACCEPTANCE — FUTURE GATE
 
 Gate này chỉ được mở sau khi đồng thời thỏa các điều kiện:

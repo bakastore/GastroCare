@@ -1,6 +1,6 @@
 # GastroCare — Trạng thái dự án
 
-**Cập nhật:** 27/08/2026 — Hemorrhoid Vertical Slice 2 T0→T7 = COMPLETE (technical execution; Owner product acceptance NOT CLAIMED); Hemorrhoid Vertical Slice 3 T0→T7 = TECHNICAL EXECUTION COMPLETE under DEC-013; T4 CLOSED — PASS; T7 CLOSED — PASS; final reviewed HEAD `24b4abec7b932acd329d711f7cb9ca3773b204f3`; merge to `main` PENDING OWNER AUTHORIZATION.
+**Cập nhật:** 27/08/2026 — Hemorrhoid Vertical Slice 2 T0→T7 = COMPLETE (technical execution; Owner product acceptance NOT CLAIMED, historical completed work package); Hemorrhoid Vertical Slice 3 T0→T7 = TECHNICAL EXECUTION COMPLETE under DEC-013; T4 CLOSED — PASS; T7 CLOSED — PASS; **PR #5 (`discovery/hemorrhoid-real-world-workflow` → `main`) MERGED**; merged main baseline `4a73a0c8764558d2776adffcf1d26092f6456634`; T7 raw re-verified directly on merged main (targeted 3/3 PASS, backend 331/331 PASS, frontend 37/37 PASS, builds PASS, worktree CLEAN); Owner product acceptance NOT CLAIMED; next gate = OWNER SYNTHETIC PRODUCT ACCEPTANCE — Slice 1→3 (requires explicit Owner/BS Thái confirmation, not yet PASS).
 
 **Loại dự án:** GREENFIELD
 
@@ -31,7 +31,7 @@ Quyết định Owner rõ ràng mới nhất
 | CORE-02 | CLOSED — OWNER ACCEPTED |
 | CORE-03 / Technical Core (lõi kỹ thuật) | CLOSED — OWNER ACCEPTED |
 | GastroCare Core tổng thể | IN PROGRESS |
-| Real-world Clinical Core implementation (triển khai lõi lâm sàng theo thực tế) | IN PROGRESS — Hemorrhoid Vertical Slice 1 TECHNICALLY ACCEPTED; Vertical Slice 2 T0→T7 EXECUTION COMPLETE (Owner product acceptance NOT CLAIMED); Vertical Slice 3 T0→T7 TECHNICAL EXECUTION COMPLETE under DEC-013; T4/T7 CLOSED — PASS; merge to `main` PENDING OWNER AUTHORIZATION |
+| Real-world Clinical Core implementation (triển khai lõi lâm sàng theo thực tế) | IN PROGRESS — Hemorrhoid Vertical Slice 1 TECHNICALLY ACCEPTED (historical); Vertical Slice 2 T0→T7 EXECUTION COMPLETE (historical, Owner product acceptance NOT CLAIMED); Vertical Slice 3 T0→T7 TECHNICAL EXECUTION COMPLETE under DEC-013; T4/T7 CLOSED — PASS; PR #5 MERGED to `main` at `4a73a0c8764558d2776adffcf1d26092f6456634`; Owner product acceptance NOT CLAIMED |
 | Owner Synthetic Clinical Acceptance | Longo-only Gate G: RETIRED BY OWNER — không tiếp tục vì workflow sản phẩm đã đổi; không suy ra CORE-04 Owner product acceptance |
 | AUTHORIZED REAL-WORLD PILOT ACCEPTANCE | FUTURE GATE — chưa được phép mở |
 | Continuous Care (chăm sóc liên tục) | NOT COMPLETE |
@@ -39,7 +39,7 @@ Quyết định Owner rõ ràng mới nhất
 | AI Value-Added Layer | DEFERRED |
 | Hemorrhoid Vertical Slice 1 | `TECHNICALLY ACCEPTED` — Independent Codex Gate CLOSED; accepted baseline `2ea529ee200a0a37a77cebb9a750f70adde57618` |
 | Hemorrhoid Vertical Slice 2 | Execution sequence `T0→T7 COMPLETE` — Diagnosis → Treatment Decision → CarePlan/Follow-up → Return Encounter; T4 focused Independent Codex Gate `CLOSED — PASS` (2026-08-26); T7 TARGETED SYNTHETIC ACCEPTANCE `PASS` (Owner-confirmed 2026-08-26); Owner product acceptance NOT CLAIMED |
-| Hemorrhoid Vertical Slice 3 | `OWNER LOCKED` — Continuous Care Loop; Contract v0.1 `docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md`; authority DEC-013; T0→T7 TECHNICAL EXECUTION COMPLETE; T4/T7 CLOSED — PASS; final reviewed HEAD `24b4abec7b932acd329d711f7cb9ca3773b204f3`; merge to `main` PENDING OWNER AUTHORIZATION |
+| Hemorrhoid Vertical Slice 3 | `OWNER LOCKED` — Continuous Care Loop; Contract v0.1 `docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md`; authority DEC-013; T0→T7 TECHNICAL EXECUTION COMPLETE; T4/T7 CLOSED — PASS; final T7 implementation commit `24b4abec7b932acd329d711f7cb9ca3773b204f3` (historical implementation evidence); PR #5 MERGED to `main` at `4a73a0c8764558d2776adffcf1d26092f6456634`; T7 raw re-verified on merged main; Owner product acceptance NOT CLAIMED; next gate `OWNER SYNTHETIC PRODUCT ACCEPTANCE — Slice 1→3` |
 | Current product direction | `HEMORRHOID REAL-WORLD CLINICAL WORKFLOW` — active under DEC-010 + DEC-011 + DEC-012 + DEC-013 |
 | CORE-05 | `CASE INTELLIGENCE` — giữ nguyên; chưa mở trong checkpoint này |
 
@@ -120,8 +120,8 @@ Status: OWNER LOCKED
 Version: 1.0
 Vertical Slice 1: TECHNICALLY ACCEPTED
 Accepted baseline: 2ea529ee200a0a37a77cebb9a750f70adde57618
-Vertical Slice 2: AUTHORIZED FOR IMPLEMENTATION
-Vertical Slice 2 authority: DEC-012 + docs/11_HEMORRHOID_SLICE2_IMPLEMENTATION_CONTRACT.md
+Vertical Slice 2: TECHNICAL EXECUTION COMPLETE
+Vertical Slice 2 authority (historical, DEC-012 authorized implementation): DEC-012 + docs/11_HEMORRHOID_SLICE2_IMPLEMENTATION_CONTRACT.md
 T4 independent audit: CLOSED — PASS (fresh Independent Codex READ-ONLY audit, 2026-08-26)
 T4 baseline: 1602b114ccb50482c890754d59a44e3958e61c59
 T4 verified against HEAD: ca347bc2b043c6050b5635b2e58ef8cd977e320e
@@ -143,15 +143,34 @@ T4: CLOSED — PASS
 T4 independent audit baseline: 69808c6a52b4b6ec364b338fdeab39e5719487f6
 T4 audit results: 12/12 C1-C4 real-PostgreSQL concurrency tests PASS; blockers NONE
 T7: CLOSED — PASS
-T7 backend regression: 241/241 PASS
+T7 backend regression (pre-merge, Slice 3 scope): 241/241 PASS
+T7 backend regression 241/241 scope reconciliation: command literal/source artifact UNVERIFIED in repo/git docs; count matches targeted backend E2E subset excluding Gate 2 foundation and CORE-04 Longo specs: clinical-forms.e2e-spec.ts 35; core01-clinical-walking-skeleton.e2e-spec.ts 42; core03-hardening.e2e-spec.ts 24; hemorrhoid-slice1.e2e-spec.ts 36 runtime cases (34 static it() + one it.each with 2 cases); hemorrhoid-slice2-t7-acceptance.e2e-spec.ts 7; hemorrhoid-slice2.e2e-spec.ts 57; hemorrhoid-slice3-t1.e2e-spec.ts 12; hemorrhoid-slice3-t2.e2e-spec.ts 7; hemorrhoid-slice3-t3.e2e-spec.ts 5; hemorrhoid-slice3-t4.e2e-spec.ts 12; hemorrhoid-slice3-t5.e2e-spec.ts 1; hemorrhoid-slice3-t7-acceptance.e2e-spec.ts 3; total 241.
 Frontend unit/component tests: 37/37 PASS
 Slice 3 focused Playwright browser acceptance: 1/1 PASS ×2
 Existing browser regression: 7/7 PASS
-T7 implementation/final-review HEAD: 24b4abec7b932acd329d711f7cb9ca3773b204f3
+Final T7 implementation commit (historical implementation evidence): 24b4abec7b932acd329d711f7cb9ca3773b204f3
 Schema/migration: NO CHANGE
+
+--- Post-merge reconciliation (2026-08-27) ---
+PR #5 (discovery/hemorrhoid-real-world-workflow -> main): MERGED
+PR feature head: acb1eb2be03dd633a93afde99a5e8a5bd1b03c5a
+Merged main baseline: 4a73a0c8764558d2776adffcf1d26092f6456634
+Diff 24b4abec -> acb1eb2: docs/PROJECT_STATE.md only (1 file changed, 46 insertions(+), 38 deletions(-))
+Diff acb1eb2 -> 4a73a0c: no file-content difference (merge commit only)
+T7 raw re-verification executed locally directly on merged main:
+  targeted T7 acceptance: 3/3 PASS
+  full backend E2E regression: 331/331 PASS
+  backend 331/331 scope reconciliation: `npm run test:e2e` from `backend/` maps to `jest --config ./test/jest-e2e.json --runInBand`, which includes every `backend/test/*.e2e-spec.ts`; static source count is 311 `it()` blocks plus 20 runtime-expanded cases from 5 `it.each([...])` blocks, total 331.
+  frontend unit/component: 37/37 PASS
+  backend build: PASS
+  frontend build/typecheck: PASS
+  9 Prisma migrations found; no pending migrations
+  git diff --check: PASS
+  pre/post-run worktree: CLEAN
+  the two "C4 injected failure (test-only, synthetic)" log lines are intentional negative-path rollback tests; their suites PASS
 Blockers: NONE
 Owner product acceptance: NOT CLAIMED
-Merge to main: PENDING OWNER AUTHORIZATION
+Next gate: OWNER SYNTHETIC PRODUCT ACCEPTANCE — Slice 1→3 — requires explicit Owner/BS Thái confirmation; NOT yet PASS
 Real-patient runtime: NOT AUTHORIZED
 CORE-05: NOT OPENED
 ```
@@ -162,9 +181,9 @@ CORE-05: NOT OPENED
 
 **Hướng sản phẩm hiện tại:** HEMORRHOID REAL-WORLD CLINICAL WORKFLOW
 
-**Last completed checkpoint:** `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 3` — T0→T7 TECHNICAL EXECUTION COMPLETE tại HEAD `24b4abec7b932acd329d711f7cb9ca3773b204f3`.
+**Last completed checkpoint:** `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 3` — T0→T7 TECHNICAL EXECUTION COMPLETE, MERGED to `main` (PR #5) at baseline `4a73a0c8764558d2776adffcf1d26092f6456634`.
 
-**Current work package:** `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 3` — TECHNICAL EXECUTION COMPLETE; pending Owner merge decision.
+**Current work package:** NONE. Slice 3 technical execution is complete and merged; no new implementation work package is authorized by this reconciliation.
 
 **Authority:** DEC-013 + `docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md` — OWNER LOCKED.
 
@@ -174,18 +193,24 @@ Final technical evidence:
 - T4 concurrency gate: CLOSED — PASS.
 - T4 independent Codex READ-ONLY audit: PASS; 12/12 C1-C4 real-PostgreSQL tests PASS; blockers NONE.
 - T7 targeted synthetic acceptance: CLOSED — PASS.
-- Backend regression: 241/241 PASS.
+- Pre-merge Slice 3-scope backend regression: 241/241 PASS.
 - Frontend unit/component tests: 37/37 PASS.
 - Focused Slice 3 Playwright browser acceptance: 1/1 PASS ×2.
 - Existing browser regression: 7/7 PASS.
-- Final implementation/review HEAD: `24b4abec7b932acd329d711f7cb9ca3773b204f3`.
+- Final T7 implementation commit (historical implementation evidence): `24b4abec7b932acd329d711f7cb9ca3773b204f3`.
+- PR #5 (`discovery/hemorrhoid-real-world-workflow` → `main`): MERGED. Feature head `acb1eb2be03dd633a93afde99a5e8a5bd1b03c5a`; merged main baseline `4a73a0c8764558d2776adffcf1d26092f6456634`.
+- T7 raw re-verification executed locally directly on merged main: targeted 3/3 PASS; full backend E2E regression 331/331 PASS; frontend unit/component 37/37 PASS; backend build PASS; frontend build/typecheck PASS; 9 Prisma migrations found, no pending migrations; `git diff --check` PASS; pre/post-run worktree CLEAN.
 - Schema/migration: NO CHANGE.
 - Blockers: NONE.
 
-Slice 2 remains historical evidence only.
+Slice 2 remains historical evidence only (technical execution complete, historical completed work package).
 
-Owner product acceptance: NOT CLAIMED.
-Merge to `main`: PENDING OWNER AUTHORIZATION.
+Owner product acceptance: NOT CLAIMED. Technical PASS at every gate above does not equal Owner product acceptance.
+
+**Next gate: OWNER SYNTHETIC PRODUCT ACCEPTANCE — Slice 1→3.** This gate requires explicit Owner/BS Thái judgment and confirmation — it is NOT yet PASS and cannot be self-closed by any technical evidence in this document.
+
+GastroCare Core: IN PROGRESS (unchanged). Continuous Care: NOT COMPLETE (unchanged). Product Refinement: DEFERRED (unchanged). `CORE-05 = CASE INTELLIGENCE — NOT OPENED` (unchanged).
+
 Implementation/test/acceptance data: SYNTHETIC DATA ONLY.
 Real-patient runtime and production: NOT AUTHORIZED.
 `CORE-05 = CASE INTELLIGENCE — NOT OPENED`.
@@ -208,22 +233,26 @@ Chỉ được dùng synthetic data (dữ liệu giả lập) cho triển khai, 
 
 | Thuộc tính | Giá trị |
 |---|---|
-| Current branch | `discovery/hemorrhoid-real-world-workflow` |
-| Discovery baseline | `eeadfc31ed9819e06fb80c545573a4bba76d952a` |
+| Current branch | `main` |
+| PR #5 (`discovery/hemorrhoid-real-world-workflow` → `main`) | `MERGED` |
+| PR feature head | `acb1eb2be03dd633a93afde99a5e8a5bd1b03c5a` |
+| Discovery baseline (history) | `eeadfc31ed9819e06fb80c545573a4bba76d952a` |
 | Current phase | `GASTROCARE CORE — IN PROGRESS` |
-| Last technically accepted implementation | `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 3` at `24b4abec7b932acd329d711f7cb9ca3773b204f3` |
-| Last completed work package | `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 3` — T0→T7 TECHNICAL EXECUTION COMPLETE |
+| Last technically accepted implementation | `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 3` — MERGED to `main` at `4a73a0c8764558d2776adffcf1d26092f6456634` |
+| Last completed work package | `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 3` — T0→T7 TECHNICAL EXECUTION COMPLETE / MERGED |
 | Discovery status | `CLOSED — OWNER ACCEPTED` |
-| Current work package | `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 3` |
+| Current work package | `NONE` — no new implementation work package authorized by this reconciliation |
 | Current authority | `DEC-013 — OWNER LOCKED` |
 | Implementation Contract | `docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md — OWNER LOCKED` |
 | Slice 3 T4 gate status | `T4 — CLOSED — PASS` |
 | Slice 3 T7 gate status | `T7 — CLOSED — PASS` |
-| Slice 3 final reviewed HEAD | `24b4abec7b932acd329d711f7cb9ca3773b204f3` |
-| Slice 3 T7 evidence | backend 241/241 PASS; frontend 37/37 PASS; focused Playwright 1/1 PASS ×2; existing browser regression 7/7 PASS; blockers NONE |
-| Current authorized task | `SLICE 3 MERGE DECISION — OWNER CHECKPOINT` |
-| Next gate | `OWNER MERGE DECISION` |
-| Slice 3 T0→T7 | `TECHNICAL EXECUTION COMPLETE` |
+| Final T7 implementation commit (history) | `24b4abec7b932acd329d711f7cb9ca3773b204f3` |
+| Merged main baseline | `4a73a0c8764558d2776adffcf1d26092f6456634` |
+| Slice 3 T7 evidence (pre-merge, Slice 3 scope) | backend 241/241 PASS; scope = targeted backend E2E subset excluding Gate 2 foundation and CORE-04 Longo specs; exact command/source artifact UNVERIFIED; frontend 37/37 PASS; focused Playwright 1/1 PASS ×2; existing browser regression 7/7 PASS; blockers NONE |
+| Slice 3 T7 raw re-verification (post-merge, on `main`) | targeted 3/3 PASS; backend 331/331 PASS via full `backend/` `npm run test:e2e` scope (`backend/test/*.e2e-spec.ts`: 311 static `it()` + 20 expanded `it.each` runtime cases); frontend 37/37 PASS; builds PASS; 9 Prisma migrations found, none pending; `git diff --check` PASS; worktree CLEAN; blockers NONE |
+| Current authorized task | `NONE — AWAITING OWNER SYNTHETIC PRODUCT ACCEPTANCE` |
+| Next gate | `OWNER SYNTHETIC PRODUCT ACCEPTANCE — Slice 1→3` — requires explicit Owner/BS Thái judgment/confirmation; NOT yet PASS |
+| Slice 3 T0→T7 | `TECHNICAL EXECUTION COMPLETE / MERGED` |
 | Slice 3 T4 independent gate | `CLOSED — PASS`; fresh Independent Codex READ-ONLY audit; verified against HEAD `69808c6a52b4b6ec364b338fdeab39e5719487f6`; 12/12 C1-C4 real-PostgreSQL concurrency tests PASS; blockers NONE |
 | Slice 2 implementation (history) | `T0→T7 EXECUTION COMPLETE (TECHNICAL)` at HEAD `42910a46f606315169cdaaf9433b20bfe71b1201` — OWNER ACCEPTED = NOT CLAIMED |
 | Slice 2 T1–T4 baseline (history) | `1602b114ccb50482c890754d59a44e3958e61c59` |
