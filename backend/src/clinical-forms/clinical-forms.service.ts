@@ -13,6 +13,7 @@ import { getLatestTemplate, getTemplate } from './templates/registry';
 import { computeScores, validateResponses } from './templates/validation';
 import { assertLongoEpisodeAncestry } from './templates/longo-episode-invariant';
 import { assertHemorrhoidSequencePrerequisite } from './templates/hemorrhoid-sequence';
+import { assertHemorrhoidContinuousCareEpisodeAncestry } from './templates/hemorrhoid-continuous-care';
 import { ClinicalFormResponses } from './templates/types';
 import { FollowUpTasksService } from '../follow-up-tasks/follow-up-tasks.service';
 
@@ -66,6 +67,12 @@ export class ClinicalFormsService {
     }
 
     await assertLongoEpisodeAncestry(
+      this.prisma,
+      tenantId,
+      template.templateKey,
+      encounter,
+    );
+    await assertHemorrhoidContinuousCareEpisodeAncestry(
       this.prisma,
       tenantId,
       template.templateKey,
@@ -185,6 +192,12 @@ export class ClinicalFormsService {
       submission.templateKey,
       encounter,
     );
+    await assertHemorrhoidContinuousCareEpisodeAncestry(
+      this.prisma,
+      tenantId,
+      submission.templateKey,
+      encounter,
+    );
 
     const responses = submission.responses as ClinicalFormResponses;
     validateResponses(template, responses, true);
@@ -267,6 +280,12 @@ export class ClinicalFormsService {
       submission.encounterId,
     );
     await assertLongoEpisodeAncestry(
+      this.prisma,
+      tenantId,
+      submission.templateKey,
+      encounter,
+    );
+    await assertHemorrhoidContinuousCareEpisodeAncestry(
       this.prisma,
       tenantId,
       submission.templateKey,

@@ -1,15 +1,39 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { AuthRole } from '@prisma/client';
 import { EncountersService } from './encounters.service';
+import { HemorrhoidReturnEncounterService } from './hemorrhoid-return-encounter.service';
 import { CreateEncounterDto } from './dto/create-encounter.dto';
 import { HandoverEncounterDto } from './dto/handover-encounter.dto';
+import { CreateHemorrhoidReturnEncounterDto } from './dto/create-hemorrhoid-return-encounter.dto';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/current-user.decorator';
 import { Roles } from '../auth/roles.decorator';
 
 @Controller('encounters')
 export class EncountersController {
-  constructor(private readonly encountersService: EncountersService) {}
+  constructor(
+    private readonly encountersService: EncountersService,
+    private readonly hemorrhoidReturnEncounterService: HemorrhoidReturnEncounterService,
+  ) {}
+
+  /**
+   * Dedicated atomic Return Encounter orchestration — Hemorrhoid Vertical
+   * Slice 3 T2 (DEC-013 §H; docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md
+   * §H). Declared before the generic `:id` routes below so this literal
+   * segment is never captured as a param.
+   */
+  @Roles(AuthRole.DOCTOR)
+  @Post('hemorrhoid-return')
+  createHemorrhoidReturn(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateHemorrhoidReturnEncounterDto,
+  ) {
+    return this.hemorrhoidReturnEncounterService.create(
+      user.tenantId,
+      user.userId,
+      dto,
+    );
+  }
 
   /**
    * DEC-010 §B: a Receptionist may create the Encounter Context (assigning a

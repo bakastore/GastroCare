@@ -248,6 +248,10 @@ export class PatientsService {
     const summaryFieldByTemplateKey: Record<string, string> = {
       HEMORRHOID_DIAGNOSIS: 'diagnosisSummary',
       HEMORRHOID_TREATMENT_DECISION: 'decisionSummary',
+      // Hemorrhoid Slice 3 continuous-care loop (DEC-013;
+      // docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md §U).
+      HEMORRHOID_FOLLOW_UP_ASSESSMENT: 'responseSummary',
+      HEMORRHOID_NEXT_CLINICAL_DECISION: 'decisionSummary',
     };
 
     for (const submission of completedClinicalForms) {

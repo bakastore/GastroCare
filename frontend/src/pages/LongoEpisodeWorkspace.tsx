@@ -1,11 +1,20 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { careEpisodesApi, followUpTasksApi, patientsApi } from '../api/resources';
+import { careEpisodesApi, encountersApi, followUpTasksApi, patientsApi } from '../api/resources';
 import { useApiQuery } from '../api/useApiQuery';
 import { ApiError } from '../api/client';
 import { EmptyState, ErrorState, LoadingState } from '../components/AsyncStates';
 import { formatDate, formatDateTime } from '../lib/format';
 import type { CareEpisode, TimelineEvent } from '../types/domain';
+
+// Hemorrhoid Vertical Slice 3 continuous-care loop (DEC-013;
+// docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md §C). This episode
+// type is never started via the generic "+ start episode" flow below (that
+// remains Longo-only, DOCTOR manual action) — a HEMORRHOID_TREATMENT episode
+// only ever starts as a side effect of the backend-authoritative dedicated
+// Return Encounter endpoint (T2), the first time a patient's generic
+// Hemorrhoid follow-up CareTask is completed.
+const HEMORRHOID_TREATMENT_EPISODE_TYPE = 'HEMORRHOID_TREATMENT';
 
 // CORE-04 T14 — functional (not redesigned) UI for the Longo Episode
 // workflow: explicit start/close/reopen, the six Longo forms reachable from
@@ -156,13 +165,19 @@ export function LongoEpisodeWorkspace({ patientId }: { patientId: string }) {
                 (e) => e.type === 'ENCOUNTER' && e.data.id === task.sourceEncounterId,
               ),
           )}
+          onReloadAll={reloadAll}
         />
       ))}
 
       {(timelineQuery.data?.ungroupedEncounters.filter((e) => e.type === 'ENCOUNTER').length ?? 0) > 0 && (
         <div className="episode-card">
           <h3>Lượt khám ngoài đợt điều trị</h3>
-          <TimelineEventList events={timelineQuery.data?.ungroupedEncounters ?? []} patientId={patientId} />
+          <TimelineEventList
+            events={timelineQuery.data?.ungroupedEncounters ?? []}
+            patientId={patientId}
+            episodeType={null}
+            onReloadAll={reloadAll}
+          />
         </div>
       )}
     </div>
@@ -182,6 +197,7 @@ function EpisodeCard({
   onConfirmReopen,
   events,
   followUpTasks,
+  onReloadAll,
 }: {
   episode: CareEpisode;
   patientId: string;
@@ -195,11 +211,16 @@ function EpisodeCard({
   onConfirmReopen: () => void;
   events: TimelineEvent[];
   followUpTasks: import('../types/domain').CareTask[];
+  onReloadAll: () => void;
 }) {
+  const isHemorrhoidContinuousCare = episode.episodeType === HEMORRHOID_TREATMENT_EPISODE_TYPE;
   return (
     <div className="episode-card">
       <h3>
-        Đợt điều trị Longo — bắt đầu {formatDate(episode.startedAt)}{' '}
+        {isHemorrhoidContinuousCare
+          ? 'Đợt theo dõi trĩ (tái khám liên tục)'
+          : 'Đợt điều trị Longo'}{' '}
+        — bắt đầu {formatDate(episode.startedAt)}{' '}
         {episode.status === 'ACTIVE' ? (
           <span className="badge badge-open">ĐANG ĐIỀU TRỊ</span>
         ) : (
@@ -207,28 +228,35 @@ function EpisodeCard({
         )}
       </h3>
 
-      <div className="form-actions">
-        {episode.status === 'ACTIVE' && (
-          <>
-            <Link
-              className="btn btn-primary"
-              to={`/patients/${patientId}/encounters/new?episodeId=${episode.id}`}
-            >
-              + Lượt khám trong đợt điều trị
-            </Link>
-            <button type="button" className="btn btn-ghost" disabled={isPending} onClick={onClose}>
-              Đóng đợt điều trị
+      {/* Hemorrhoid Slice 3 (DEC-013): this episode only ever starts/reuses
+          via the dedicated Return Encounter endpoint (T2) — there is no
+          manual "+ new encounter in this episode" or close/reopen action
+          here yet (explicit close/reopen concurrency-safety is T4, not yet
+          implemented). Longo controls below are unaffected. */}
+      {!isHemorrhoidContinuousCare && (
+        <div className="form-actions">
+          {episode.status === 'ACTIVE' && (
+            <>
+              <Link
+                className="btn btn-primary"
+                to={`/patients/${patientId}/encounters/new?episodeId=${episode.id}`}
+              >
+                + Lượt khám trong đợt điều trị
+              </Link>
+              <button type="button" className="btn btn-ghost" disabled={isPending} onClick={onClose}>
+                Đóng đợt điều trị
+              </button>
+            </>
+          )}
+          {episode.status === 'CLOSED' && !isReopening && (
+            <button type="button" className="btn btn-ghost" onClick={onStartReopen}>
+              Mở lại đợt điều trị
             </button>
-          </>
-        )}
-        {episode.status === 'CLOSED' && !isReopening && (
-          <button type="button" className="btn btn-ghost" onClick={onStartReopen}>
-            Mở lại đợt điều trị
-          </button>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
-      {isReopening && (
+      {!isHemorrhoidContinuousCare && isReopening && (
         <div className="inline-form">
           <label htmlFor={`reopenReason-${episode.id}`}>Lý do mở lại</label>
           <input
@@ -249,43 +277,52 @@ function EpisodeCard({
       )}
 
       <h4>Dòng thời gian trong đợt điều trị</h4>
-      <TimelineEventList events={events} patientId={patientId} />
+      <TimelineEventList
+        events={events}
+        patientId={patientId}
+        episodeType={episode.episodeType}
+        onReloadAll={onReloadAll}
+      />
 
-      <h4>Hàng đợi tái khám (kế hoạch so với thực tế)</h4>
-      {followUpTasks.length === 0 ? (
-        <EmptyState message="Chưa có nhiệm vụ tái khám (được sinh tự động sau khi hoàn tất biên bản mổ)." />
-      ) : (
-        <div className="table-scroll">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Mốc</th>
-                <th>Ngày dự kiến</th>
-                <th>Trạng thái</th>
-              </tr>
-            </thead>
-            <tbody>
-              {followUpTasks
-                .slice()
-                .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
-                .map((task) => (
-                  <tr key={task.id}>
-                    <td>{TIMEPOINT_LABELS[task.timepointCode ?? ''] ?? task.timepointCode}</td>
-                    <td>{formatDate(task.dueDate)}</td>
-                    <td>
-                      {task.status === 'COMPLETED' ? (
-                        <span className="badge badge-signed">Đã tái khám (thực tế)</span>
-                      ) : task.overdue ? (
-                        <span className="badge badge-overdue">Quá hạn (kế hoạch)</span>
-                      ) : (
-                        <span className="badge badge-open">Kế hoạch</span>
-                      )}
-                    </td>
+      {!isHemorrhoidContinuousCare && (
+        <>
+          <h4>Hàng đợi tái khám (kế hoạch so với thực tế)</h4>
+          {followUpTasks.length === 0 ? (
+            <EmptyState message="Chưa có nhiệm vụ tái khám (được sinh tự động sau khi hoàn tất biên bản mổ)." />
+          ) : (
+            <div className="table-scroll">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Mốc</th>
+                    <th>Ngày dự kiến</th>
+                    <th>Trạng thái</th>
                   </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody>
+                  {followUpTasks
+                    .slice()
+                    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+                    .map((task) => (
+                      <tr key={task.id}>
+                        <td>{TIMEPOINT_LABELS[task.timepointCode ?? ''] ?? task.timepointCode}</td>
+                        <td>{formatDate(task.dueDate)}</td>
+                        <td>
+                          {task.status === 'COMPLETED' ? (
+                            <span className="badge badge-signed">Đã tái khám (thực tế)</span>
+                          ) : task.overdue ? (
+                            <span className="badge badge-overdue">Quá hạn (kế hoạch)</span>
+                          ) : (
+                            <span className="badge badge-open">Kế hoạch</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -308,7 +345,31 @@ const HEMORRHOID_SEQUENCE: { templateKey: string; label: string }[] = [
   { templateKey: 'HEMORRHOID_TREATMENT_DECISION', label: 'Quyết định điều trị' },
 ];
 
-function TimelineEventList({ events, patientId }: { events: TimelineEvent[]; patientId: string }) {
+// Hemorrhoid Vertical Slice 3 continuous-care branch (DEC-013 §D-§E, §G;
+// docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md). Every Encounter
+// inside a HEMORRHOID_TREATMENT episode bucket is a Return Encounter (the
+// permanently-ungrouped initial Encounter never has an episodeId) — this
+// chain applies to all of them, with no Examination step (Contract §N/§O).
+const HEMORRHOID_CONTINUOUS_PREREQ_CHAIN = [
+  'HEMORRHOID_FOLLOW_UP_ASSESSMENT',
+  'HEMORRHOID_NEXT_CLINICAL_DECISION',
+];
+const HEMORRHOID_CONTINUOUS_SEQUENCE: { templateKey: string; label: string }[] = [
+  { templateKey: 'HEMORRHOID_FOLLOW_UP_ASSESSMENT', label: 'Đánh giá tái khám' },
+  { templateKey: 'HEMORRHOID_NEXT_CLINICAL_DECISION', label: 'Quyết định điều trị tiếp theo' },
+];
+
+function TimelineEventList({
+  events,
+  patientId,
+  episodeType,
+  onReloadAll,
+}: {
+  events: TimelineEvent[];
+  patientId: string;
+  episodeType: string | null;
+  onReloadAll: () => void;
+}) {
   if (events.length === 0) {
     return <EmptyState message="Chưa có sự kiện." />;
   }
@@ -344,6 +405,8 @@ function TimelineEventList({ events, patientId }: { events: TimelineEvent[]; pat
             patientId={patientId}
             completedByEncounter={completedByEncounter}
             encounterById={encounterById}
+            episodeType={episodeType}
+            onReloadAll={onReloadAll}
           />
         </li>
       ))}
@@ -356,15 +419,89 @@ function EpisodeTimelineEventBody({
   patientId,
   completedByEncounter,
   encounterById,
+  episodeType,
+  onReloadAll,
 }: {
   event: TimelineEvent;
   patientId: string;
   completedByEncounter: Map<string, Set<string>>;
   encounterById: Map<string, { reasonForVisit: string; occurredAt: string }>;
+  episodeType: string | null;
+  onReloadAll: () => void;
 }) {
   if (event.type === 'ENCOUNTER') {
     const encounterId = String(event.data.id);
     const completed = completedByEncounter.get(encounterId) ?? new Set<string>();
+    const isHemorrhoidContinuousCare = episodeType === HEMORRHOID_TREATMENT_EPISODE_TYPE;
+    // F2 — an Encounter is 1:1 with CarePlan; once one exists (DRAFT or
+    // SIGNED) the sequence must offer to view it, never re-offer creation.
+    const carePlanId = event.data.carePlanId as string | null;
+
+    if (isHemorrhoidContinuousCare) {
+      // Hemorrhoid Slice 3 continuous-care branch (DEC-013 §D-§G): every
+      // Encounter here is a Return Encounter — Assessment -> Next Clinical
+      // Decision -> optional new CarePlan, never the initial-branch
+      // Examination/Diagnosis/Treatment-Decision links or Longo form links.
+      const nextChainIndex = HEMORRHOID_CONTINUOUS_PREREQ_CHAIN.findIndex(
+        (key) => !completed.has(key),
+      );
+      const nextDecisionDone = completed.has('HEMORRHOID_NEXT_CLINICAL_DECISION');
+      return (
+        <div>
+          <strong>Lượt tái khám</strong> — {String(event.data.reasonForVisit)}
+          <div className="row-actions">
+            {HEMORRHOID_CONTINUOUS_SEQUENCE.map((step, index) => {
+              const isDone = completed.has(step.templateKey);
+              const isNext = index === nextChainIndex;
+              if (!isDone && !isNext) {
+                return (
+                  <span
+                    key={step.templateKey}
+                    className="btn btn-ghost btn-small btn-disabled"
+                    aria-disabled="true"
+                    title="Cần hoàn tất bước trước"
+                  >
+                    {step.label}
+                  </span>
+                );
+              }
+              return (
+                <Link
+                  key={step.templateKey}
+                  className={isDone ? 'btn btn-ghost btn-small' : 'btn btn-primary btn-small'}
+                  to={`/patients/${patientId}/encounters/${encounterId}/clinical-forms/${step.templateKey}`}
+                >
+                  {isDone ? `${step.label} ✓` : step.label}
+                </Link>
+              );
+            })}
+            {carePlanId ? (
+              <Link className="btn btn-ghost btn-small" to={`/care-plans/${carePlanId}`}>
+                Xem kế hoạch chăm sóc
+              </Link>
+            ) : nextDecisionDone ? (
+              <Link
+                className="btn btn-primary btn-small"
+                to={`/patients/${patientId}/care-plan/new?encounterId=${encounterId}`}
+              >
+                Tạo kế hoạch chăm sóc
+              </Link>
+            ) : (
+              <span
+                className="btn btn-ghost btn-small btn-disabled"
+                aria-disabled="true"
+                title="Cần hoàn tất Quyết định điều trị tiếp theo"
+              >
+                Tạo kế hoạch chăm sóc
+              </span>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // Initial-branch / Longo Encounter (never inside a HEMORRHOID_TREATMENT
+    // episode bucket — that case is handled above).
     // Next unblocked step in the Examination -> Diagnosis -> Treatment
     // Decision chain, plus whether CarePlan creation is reachable — guidance
     // only, see HEMORRHOID_SEQUENCE comment above. Index within the full
@@ -374,9 +511,6 @@ function EpisodeTimelineEventBody({
       (key) => !completed.has(key),
     );
     const treatmentDecisionDone = completed.has('HEMORRHOID_TREATMENT_DECISION');
-    // F2 — an Encounter is 1:1 with CarePlan; once one exists (DRAFT or
-    // SIGNED) the sequence must offer to view it, never re-offer creation.
-    const carePlanId = event.data.carePlanId as string | null;
     return (
       <div>
         <strong>Lượt khám</strong> — {String(event.data.reasonForVisit)}
@@ -474,18 +608,23 @@ function EpisodeTimelineEventBody({
       );
     }
     // HEMORRHOID_DIAGNOSIS / HEMORRHOID_TREATMENT_DECISION (DEC-012 §6-7,
-    // §17) — the backend Timeline projection (F3 data minimization) exposes
-    // only this named `summary` field, never the full
+    // §17) and, for the Slice 3 continuous-care branch,
+    // HEMORRHOID_FOLLOW_UP_ASSESSMENT / HEMORRHOID_NEXT_CLINICAL_DECISION
+    // (DEC-013 §D-§E) — the backend Timeline projection (F3 data
+    // minimization) exposes only this named `summary` field, never the full
     // ClinicalFormSubmission.responses object.
-    if (
-      event.data.templateKey === 'HEMORRHOID_DIAGNOSIS' ||
-      event.data.templateKey === 'HEMORRHOID_TREATMENT_DECISION'
-    ) {
-      const isDiagnosis = event.data.templateKey === 'HEMORRHOID_DIAGNOSIS';
+    const SUMMARY_LABEL_BY_TEMPLATE_KEY: Record<string, string> = {
+      HEMORRHOID_DIAGNOSIS: 'Chẩn đoán',
+      HEMORRHOID_TREATMENT_DECISION: 'Quyết định điều trị',
+      HEMORRHOID_FOLLOW_UP_ASSESSMENT: 'Đánh giá tái khám',
+      HEMORRHOID_NEXT_CLINICAL_DECISION: 'Quyết định điều trị tiếp theo',
+    };
+    const summaryLabel = SUMMARY_LABEL_BY_TEMPLATE_KEY[String(event.data.templateKey)];
+    if (summaryLabel) {
       const summary = event.data.summary;
       return (
         <div>
-          <strong>{isDiagnosis ? 'Chẩn đoán' : 'Quyết định điều trị'}</strong>
+          <strong>{summaryLabel}</strong>
           {' '}(phiên bản {String(event.data.revisionNumber)})
           {summary ? <p>{String(summary)}</p> : null}
           {event.data.amendmentReason ? <span> — Sửa: {String(event.data.amendmentReason)}</span> : null}
@@ -526,6 +665,9 @@ function EpisodeTimelineEventBody({
     const completingEncounter = completedByEncounterId
       ? encounterById.get(completedByEncounterId)
       : undefined;
+    const taskId = String(event.data.id);
+    const isOpenGenericFollowUp =
+      event.data.status === 'OPEN' && event.data.timepointCode == null;
     return (
       <div>
         <strong>Nhiệm vụ theo dõi</strong> — {String(event.data.status)}
@@ -537,8 +679,95 @@ function EpisodeTimelineEventBody({
               : completedByEncounterId}
           </p>
         )}
+        {/* Hemorrhoid Slice 3 T2 (DEC-013 §H): the only way to complete this
+            generic follow-up task via a real visit is the dedicated,
+            backend-authoritative atomic Return Encounter endpoint — never a
+            plain "mark completed" action, and never a client-supplied
+            patientId/episodeId. */}
+        {isOpenGenericFollowUp && (
+          <HemorrhoidReturnEncounterTrigger careTaskId={taskId} onCreated={onReloadAll} />
+        )}
       </div>
     );
   }
   return null;
+}
+
+/**
+ * Inline trigger for `POST /encounters/hemorrhoid-return` (DEC-013 §H;
+ * docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md §H). Only
+ * occurredAt/reasonForVisit are collected here — patientId is derived
+ * server-side from the CareTask and episodeId is resolved server-side; this
+ * component never sends either.
+ */
+function HemorrhoidReturnEncounterTrigger({
+  careTaskId,
+  onCreated,
+}: {
+  careTaskId: string;
+  onCreated: () => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [occurredAt, setOccurredAt] = useState('');
+  const [reasonForVisit, setReasonForVisit] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit() {
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      await encountersApi.createHemorrhoidReturn({
+        careTaskId,
+        occurredAt: occurredAt ? new Date(occurredAt).toISOString() : new Date().toISOString(),
+        reasonForVisit: reasonForVisit.trim() || 'Tái khám',
+      });
+      setIsOpen(false);
+      setOccurredAt('');
+      setReasonForVisit('');
+      onCreated();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Không tạo được lượt tái khám.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  if (!isOpen) {
+    return (
+      <div className="form-actions">
+        <button type="button" className="btn btn-primary btn-small" onClick={() => setIsOpen(true)}>
+          Bắt đầu tái khám
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="inline-form">
+      {error && <ErrorState message={error} />}
+      <label htmlFor={`returnOccurredAt-${careTaskId}`}>Thời điểm tái khám</label>
+      <input
+        id={`returnOccurredAt-${careTaskId}`}
+        type="datetime-local"
+        value={occurredAt}
+        onChange={(e) => setOccurredAt(e.target.value)}
+      />
+      <label htmlFor={`returnReason-${careTaskId}`}>Lý do khám</label>
+      <input
+        id={`returnReason-${careTaskId}`}
+        value={reasonForVisit}
+        onChange={(e) => setReasonForVisit(e.target.value)}
+        placeholder="Tái khám"
+      />
+      <div className="form-actions">
+        <button type="button" className="btn btn-ghost" onClick={() => setIsOpen(false)} disabled={isSubmitting}>
+          Hủy
+        </button>
+        <button type="button" className="btn btn-primary" onClick={submit} disabled={isSubmitting}>
+          Xác nhận tái khám
+        </button>
+      </div>
+    </div>
+  );
 }
