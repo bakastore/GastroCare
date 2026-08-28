@@ -201,6 +201,10 @@ export class PatientsService {
           // fetched 1:1 with Encounter above.
           carePlanId: encounter.carePlan?.id ?? null,
           carePlanStatus: encounter.carePlan?.status ?? null,
+          // DEC-015 — explicit persisted workflow discriminator, read
+          // straight from the column. 'HEMORRHOID_INITIAL' | null. Never
+          // inferred from reasonForVisit / clinical text / form existence.
+          workflowKind: encounter.workflowKind ?? null,
         },
       });
 
@@ -235,6 +239,14 @@ export class PatientsService {
               timepointCode: task.timepointCode,
               completedAt: task.completedAt,
               completedByEncounterId: task.completedByEncounterId,
+              // C4-E — authoritative source of this generic follow-up task:
+              // the Encounter its CarePlan belongs to (CareTask -> CarePlan
+              // -> Encounter, an explicit relation, never a heuristic), plus
+              // that Encounter's persisted DEC-015 workflowKind. The
+              // frontend uses these + the episode bucket type to decide
+              // whether the dedicated Hemorrhoid Return trigger applies.
+              sourceEncounterId: encounter.id,
+              sourceWorkflowKind: encounter.workflowKind ?? null,
             },
           });
         }

@@ -319,6 +319,46 @@ Nội dung/quyết định đề xuất:
 
 ---
 
+### DEC-015 — Encounter Workflow Discriminator v1
+
+**Ngày:** 2026-08-27
+
+**Trạng thái:** OWNER LOCKED
+
+Owner khóa:
+
+1. `Encounter.workflowKind` là persisted nullable workflow discriminator.
+2. v1 chỉ định nghĩa `HEMORRHOID_INITIAL`.
+3. `workflowKind` là generic extension point của `Encounter`; việc v1 chỉ có
+   `HEMORRHOID_INITIAL` không hàm ý Core vĩnh viễn chỉ dùng field này cho
+   Hemorrhoid.
+4. Generic ungrouped Encounter giữ `workflowKind = NULL`.
+5. Initial Hemorrhoid Encounter phải được tạo tường minh với
+   `workflowKind = HEMORRHOID_INITIAL`.
+6. Longo Encounter và Hemorrhoid Return tiếp tục lấy workflow identity từ
+   `CareEpisode.episodeType`; không duplicate identity vào `workflowKind`.
+7. Không suy luận `workflowKind` từ `reasonForVisit`, clinical text,
+   ClinicalForm existence, CareTask existence, URL, frontend state hoặc
+   heuristic khác.
+8. Existing rows giữ `NULL`; không heuristic backfill.
+9. Timeline read projection phải expose `workflowKind`.
+10. Synthetic data only tại gate này; quyết định không cấp phép
+    real-patient runtime hoặc production.
+
+**DEC-015 M0 migration checkpoint:** `CLOSED — PASS`.
+
+Verified:
+- seeded PRE migration Encounter count = 10;
+- APPLY #1 PASS;
+- existing 10/10 Encounter giữ workflowKind NULL;
+- real DB restore về pre-migration PASS;
+- DEC-015 trở lại pending sau restore;
+- APPLY #2 PASS;
+- backup/restore regression PASS trên 10-migration history;
+- no heuristic backfill/data loss.
+
+---
+
 ## WORKING ASSUMPTIONS
 
 | ID | Nội dung | Nguồn gốc | Trạng thái |

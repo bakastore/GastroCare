@@ -10,6 +10,7 @@ import type {
   ClinicalFormTemplateDef,
   CreatePatientResult,
   Encounter,
+  EncounterWorkflowKind,
   Facility,
   Patient,
   PatientTimeline,
@@ -50,6 +51,12 @@ export const encountersApi = {
      * clinical content yet (DEC-010 §B/§D). */
     clinicalNote?: string;
     assessment?: string;
+    /**
+     * DEC-015 — only the initial Hemorrhoid Encounter sets this
+     * ('HEMORRHOID_INITIAL'). Generic new-encounter flows must NOT send it;
+     * never combined with episodeId (backend rejects 400).
+     */
+    workflowKind?: EncounterWorkflowKind;
   }) => api.post<Encounter>('/encounters', dto),
   getById: (id: string) => api.get<Encounter>(`/encounters/${id}`),
   /** Clinician handover — DOCTOR-only (DEC-010 §B). */

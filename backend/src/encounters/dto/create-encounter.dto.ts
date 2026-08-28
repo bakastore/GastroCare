@@ -1,10 +1,12 @@
 import {
+  IsEnum,
   IsISO8601,
   IsOptional,
   IsString,
   IsUUID,
   MinLength,
 } from 'class-validator';
+import { EncounterWorkflowKind } from '@prisma/client';
 
 export class CreateEncounterDto {
   @IsUUID()
@@ -57,4 +59,17 @@ export class CreateEncounterDto {
   @IsOptional()
   @IsString()
   assessment?: string;
+
+  /**
+   * DEC-015 — explicit, persisted Encounter workflow discriminator. Optional.
+   * v1 only value: HEMORRHOID_INITIAL (the initial Hemorrhoid Encounter).
+   * A generic ungrouped Encounter omits it (persisted NULL). It is NEVER
+   * combined with episodeId — an episode-bound Encounter derives workflow
+   * identity from CareEpisode.episodeType (rejected 400 in EncountersService).
+   * Uses the Prisma-generated enum as the single source of truth; arbitrary
+   * strings are rejected by IsEnum.
+   */
+  @IsOptional()
+  @IsEnum(EncounterWorkflowKind)
+  workflowKind?: EncounterWorkflowKind;
 }

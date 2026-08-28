@@ -17,10 +17,20 @@ export interface CreatePatientResult {
   possibleDuplicates: Patient[];
 }
 
+/**
+ * DEC-015 — persisted, explicit Encounter workflow discriminator. v1 value:
+ * 'HEMORRHOID_INITIAL' (the initial Hemorrhoid Encounter). Generic ungrouped
+ * Encounters, Longo Encounters and Hemorrhoid Return Encounters are all
+ * `null` (the latter two derive identity from CareEpisode.episodeType).
+ * Never inferred from text / form existence / URL / frontend state.
+ */
+export type EncounterWorkflowKind = 'HEMORRHOID_INITIAL';
+
 export interface Encounter {
   id: string;
   patientId: string;
   episodeId: string | null;
+  workflowKind: EncounterWorkflowKind | null;
   /**
    * The clinician clinically responsible for this Encounter — DEC-010 §A.
    * Distinct from provenance (who created the row); may change over time

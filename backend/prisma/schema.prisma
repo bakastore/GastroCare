@@ -133,6 +133,18 @@ model Patient {
   @@map("patients")
 }
 
+/// DEC-015 — a generic, nullable Encounter workflow-identity extension
+/// point. v1 defines exactly one value; that this value is Hemorrhoid-
+/// specific does NOT make Core permanently Hemorrhoid-specific — future
+/// workflows may add their own values here. Longo and Hemorrhoid Return
+/// continue to derive workflow identity from CareEpisode.episodeType and
+/// must NOT be duplicated into this field. workflowKind is NEVER inferred
+/// from reasonForVisit / clinical text / ClinicalForm existence / URL /
+/// task existence / frontend state. Existing rows remain NULL (no backfill).
+enum EncounterWorkflowKind {
+  HEMORRHOID_INITIAL
+}
+
 /// Encounter — one manual clinical visit. ClinicalNote in CORE-01 is content
 /// belonging to Encounter (reasonForVisit/clinicalNote/assessment fields),
 /// not an independent entity — see docs/04_CORE_DOMAIN_MODEL.md. There is
@@ -174,11 +186,15 @@ model Encounter {
   /// Context (DEC-010 §B) has no clinical content to record yet — the
   /// Hemorrhoid Examination clinical form captures that later. Defaults to
   /// empty string, never fabricated.
-  clinicalNote   String   @default("")
-  assessment     String   @default("")
-  source         String   @default("MANUAL")
+  clinicalNote   String                 @default("")
+  assessment     String                 @default("")
+  source         String                 @default("MANUAL")
+  /// DEC-015 M0 — nullable; set explicitly by future application code only
+  /// (initial Hemorrhoid Encounter -> HEMORRHOID_INITIAL). No default, no
+  /// backfill; existing rows stay NULL.
+  workflowKind   EncounterWorkflowKind?
   occurredAt     DateTime
-  createdAt      DateTime @default(now())
+  createdAt      DateTime               @default(now())
 
   carePlan                   CarePlan?
   clinicalFormSubmissions    ClinicalFormSubmission[]

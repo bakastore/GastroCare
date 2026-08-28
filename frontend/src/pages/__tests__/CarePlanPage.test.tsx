@@ -85,6 +85,131 @@ describe('CarePlanPage — sign/amend UI state', () => {
     });
   });
 
+  // Correction batch C1 — the dirty-draft sign guard. signPlan() only signs
+  // the persisted server state, so a DRAFT with unsaved edits must not be
+  // signable until "Lưu bản nháp" clears the dirty flag.
+  it('C1: editing a DRAFT field disables signing and shows an unsaved-changes hint', async () => {
+    vi.mocked(carePlansApi.getById).mockResolvedValue({
+      id: 'plan-1',
+      encounterId: 'enc-1',
+      patientId: 'patient-1',
+      status: 'DRAFT',
+      instructions: 'Điều trị theo đơn',
+      followUpDate: '2026-09-05T00:00:00.000Z',
+      currentVersionId: null,
+      createdAt: '2026-08-21T00:00:00.000Z',
+      updatedAt: '2026-08-21T00:00:00.000Z',
+    });
+
+    renderCarePlanPage();
+    const user = userEvent.setup();
+
+    await screen.findByLabelText('Điều trị / dặn dò');
+    // Clean persisted draft: signing is available.
+    expect(screen.getByRole('button', { name: 'Ký kế hoạch' })).toBeEnabled();
+
+    await user.type(screen.getByLabelText('Điều trị / dặn dò'), ' - thêm dặn dò');
+
+    // Dirty: sign button disabled + hint, sign API never called.
+    expect(screen.getByRole('button', { name: 'Ký kế hoạch' })).toBeDisabled();
+    expect(
+      screen.getByText('Có thay đổi chưa lưu. Hãy lưu bản nháp trước khi ký.'),
+    ).toBeInTheDocument();
+    expect(carePlansApi.sign).not.toHaveBeenCalled();
+
+    // Save clears the dirty state → signing becomes available again.
+    vi.mocked(carePlansApi.updateDraft).mockResolvedValue({} as never);
+    await user.click(screen.getByRole('button', { name: 'Lưu bản nháp' }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Ký kế hoạch' })).toBeEnabled();
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Ký kế hoạch' }));
+    await user.click(screen.getByRole('button', { name: 'Xác nhận ký' }));
+    await waitFor(() => {
+      expect(carePlansApi.sign).toHaveBeenCalledWith('plan-1');
+    });
+  });
+
+  it('R1: while "Lưu bản nháp" is in flight, draft fields are disabled and signing is unavailable; both recover after it resolves', async () => {
+    vi.mocked(carePlansApi.getById).mockResolvedValue({
+      id: 'plan-1',
+      encounterId: 'enc-1',
+      patientId: 'patient-1',
+      status: 'DRAFT',
+      instructions: 'Điều trị theo đơn',
+      followUpDate: null,
+      currentVersionId: null,
+      createdAt: '2026-08-21T00:00:00.000Z',
+      updatedAt: '2026-08-21T00:00:00.000Z',
+    });
+
+    let resolveSave!: (v: unknown) => void;
+    vi.mocked(carePlansApi.updateDraft).mockReturnValue(
+      new Promise((resolve) => {
+        resolveSave = resolve;
+      }) as never,
+    );
+
+    renderCarePlanPage();
+    const user = userEvent.setup();
+
+    const textarea = await screen.findByLabelText('Điều trị / dặn dò');
+    await user.type(textarea, ' - sửa');
+    await user.click(screen.getByRole('button', { name: 'Lưu bản nháp' }));
+
+    // Save in flight: fields disabled, no visible mutation possible, signing blocked.
+    expect(screen.getByLabelText('Điều trị / dặn dò')).toBeDisabled();
+    expect(screen.getByLabelText('Ngày tái khám (tùy chọn)')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Ký kế hoạch' })).toBeDisabled();
+    expect(carePlansApi.sign).not.toHaveBeenCalled();
+
+    // Resolve the save.
+    resolveSave({});
+    await waitFor(() => {
+      expect(screen.getByLabelText('Điều trị / dặn dò')).toBeEnabled();
+    });
+
+    // Signing is now available and signs the saved visible state.
+    expect(screen.getByRole('button', { name: 'Ký kế hoạch' })).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: 'Ký kế hoạch' }));
+    await user.click(screen.getByRole('button', { name: 'Xác nhận ký' }));
+    await waitFor(() => {
+      expect(carePlansApi.sign).toHaveBeenCalledWith('plan-1');
+    });
+  });
+
+  it('C1: editing a field after opening the sign confirmation cannot sign stale server data', async () => {
+    vi.mocked(carePlansApi.getById).mockResolvedValue({
+      id: 'plan-1',
+      encounterId: 'enc-1',
+      patientId: 'patient-1',
+      status: 'DRAFT',
+      instructions: 'Điều trị theo đơn',
+      followUpDate: null,
+      currentVersionId: null,
+      createdAt: '2026-08-21T00:00:00.000Z',
+      updatedAt: '2026-08-21T00:00:00.000Z',
+    });
+
+    renderCarePlanPage();
+    const user = userEvent.setup();
+
+    await screen.findByLabelText('Điều trị / dặn dò');
+    await user.click(screen.getByRole('button', { name: 'Ký kế hoạch' }));
+    expect(screen.getByRole('button', { name: 'Xác nhận ký' })).toBeInTheDocument();
+
+    // Change a field while the confirmation is open.
+    await user.type(screen.getByLabelText('Điều trị / dặn dò'), ' - sửa nữa');
+
+    // The confirm button is gone; signing is blocked with the hint.
+    expect(screen.queryByRole('button', { name: 'Xác nhận ký' })).not.toBeInTheDocument();
+    expect(
+      screen.getByText('Có thay đổi chưa lưu. Hãy lưu bản nháp trước khi ký.'),
+    ).toBeInTheDocument();
+    expect(carePlansApi.sign).not.toHaveBeenCalled();
+  });
+
   it('SIGNED plans render immutable content (no editable draft textarea) and offer Amend', async () => {
     vi.mocked(carePlansApi.getById).mockResolvedValue({
       id: 'plan-1',

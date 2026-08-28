@@ -14,7 +14,7 @@
 // No real patient data.
 import { NestFactory } from '@nestjs/core';
 import * as bcrypt from 'bcrypt';
-import { AuthRole, PrismaClient } from '@prisma/client';
+import { AuthRole, EncounterWorkflowKind, PrismaClient } from '@prisma/client';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { PatientsService } from '../src/patients/patients.service';
@@ -504,6 +504,11 @@ export async function seedPilotDataset(): Promise<void> {
         roomId: examRoom.id,
         occurredAt: '2026-08-18T02:00:00.000Z',
         reasonForVisit: 'Khám trĩ (dữ liệu tổng hợp)',
+        // DEC-015 — this IS the initial Hemorrhoid Encounter for this
+        // synthetic patient (mirrors NewHemorrhoidEncounterPage). The later
+        // "Tái khám trĩ" Encounter and every generic / Longo-episode-bound
+        // Encounter in this seed keep workflowKind = NULL.
+        workflowKind: EncounterWorkflowKind.HEMORRHOID_INITIAL,
       },
     );
 

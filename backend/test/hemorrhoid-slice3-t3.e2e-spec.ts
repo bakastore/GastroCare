@@ -65,6 +65,7 @@ describe('Hemorrhoid Vertical Slice 3 — T3 two-branch CarePlan enforcement + c
         patientId: patient,
         occurredAt: new Date().toISOString(),
         reasonForVisit,
+        workflowKind: 'HEMORRHOID_INITIAL',
       })
       .expect(201);
     return res.body.id as string;

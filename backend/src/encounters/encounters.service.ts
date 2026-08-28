@@ -72,6 +72,18 @@ export class EncountersService {
       }
     }
 
+    // DEC-015 §B — workflowKind and episodeId are mutually exclusive on
+    // create. An episode-bound Encounter (Longo, Hemorrhoid Return) derives
+    // its workflow identity from CareEpisode.episodeType; also stamping a
+    // workflowKind would create a duplicate/competing workflow identity.
+    // Reject 400 BEFORE any write — no Encounter is created.
+    if (dto.workflowKind != null && dto.episodeId != null) {
+      throw new BadRequestException(
+        'workflowKind may not be combined with episodeId — an episode-bound ' +
+          'Encounter derives its workflow identity from CareEpisode.episodeType',
+      );
+    }
+
     const patient = await this.prisma.patient.findFirst({
       where: { id: dto.patientId, tenantId },
     });
@@ -120,6 +132,9 @@ export class EncountersService {
           clinicalNote: dto.clinicalNote ?? '',
           assessment: dto.assessment ?? '',
           occurredAt: new Date(dto.occurredAt),
+          // DEC-015 — explicit persisted discriminator; never inferred,
+          // never normalised. Omitted -> NULL (generic Encounter).
+          workflowKind: dto.workflowKind ?? null,
         },
       });
 

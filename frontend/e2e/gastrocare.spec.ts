@@ -306,6 +306,12 @@ test.describe('CORE-04 T15 — full Longo Episode pathway golden path', () => {
     await page.getByRole('button', { name: 'Xác nhận bắt đầu' }).click();
     await expect(page.getByText('ĐANG ĐIỀU TRỊ')).toBeVisible();
 
+    // Correction batch C4/H — no Hemorrhoid continuous-care wording or
+    // action leaks into the Longo episode workspace.
+    await expect(page.getByText('Đợt theo dõi trĩ')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Kết thúc đợt theo dõi' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Mở lại đợt theo dõi' })).toHaveCount(0);
+
     async function createEpisodeEncounter(occurredAt: string, reasonForVisit: string) {
       await page.getByRole('link', { name: '+ Lượt khám trong đợt điều trị' }).click();
       await expect(page).toHaveURL(/\/encounters\/new\?episodeId=/);

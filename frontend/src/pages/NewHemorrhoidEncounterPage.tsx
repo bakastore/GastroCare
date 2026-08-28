@@ -63,6 +63,11 @@ export function NewHemorrhoidEncounterPage() {
         // configured pilot default clinician (DEC-010 §B), never a
         // hardcoded id here.
         responsibleClinicianId: responsibleClinicianId || undefined,
+        // DEC-015 — this IS the initial Hemorrhoid Encounter entrypoint, so
+        // stamp the explicit persisted discriminator. The generic
+        // "+ Lượt khám mới (ngoài đợt điều trị)" flow (NewEncounterPage)
+        // must never send this.
+        workflowKind: 'HEMORRHOID_INITIAL',
       });
       setCreated(encounter);
     } catch (err) {

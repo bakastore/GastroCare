@@ -58,9 +58,17 @@ test.describe('Hemorrhoid Vertical Slice 3 — continuous-care browser golden pa
     // in a real rendered browser by gastrocare.spec.ts's own golden path
     // and by the Slice 2/3 backend acceptance suites; re-driving every
     // generic form field here would not add new evidence.
+    // DEC-015 — this helper only ever creates the INITIAL Hemorrhoid
+    // Encounter for this spec, so it stamps the explicit persisted
+    // discriminator (mirrors NewHemorrhoidEncounterPage).
     async function apiCreateEncounter(reasonForVisit: string) {
       const res = await api.post('/encounters', {
-        data: { patientId, occurredAt: new Date().toISOString(), reasonForVisit },
+        data: {
+          patientId,
+          occurredAt: new Date().toISOString(),
+          reasonForVisit,
+          workflowKind: 'HEMORRHOID_INITIAL',
+        },
       });
       expect(res.ok()).toBeTruthy();
       return (await res.json()).id as string;
@@ -146,6 +154,18 @@ test.describe('Hemorrhoid Vertical Slice 3 — continuous-care browser golden pa
 
     await page.goBack();
     await expect(page).toHaveURL(/\/patients\/[^/]+$/);
+
+    // Correction batch C3 — once the Return Encounter Assessment is
+    // COMPLETED and the episode is ACTIVE, BOTH explicit paths are offered:
+    // Continue ("Quyết định điều trị tiếp theo") and Terminate ("Kết thúc
+    // đợt theo dõi"). Neither is inferred from the responseSummary.
+    await expect(
+      page.getByRole('link', { name: 'Quyết định điều trị tiếp theo' }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Kết thúc đợt theo dõi' }).first(),
+    ).toBeVisible();
+
     await page.getByRole('link', { name: 'Quyết định điều trị tiếp theo' }).click();
     await expect(page).toHaveURL(/\/clinical-forms\/HEMORRHOID_NEXT_CLINICAL_DECISION$/);
     await page.getByRole('button', { name: 'Bắt đầu biểu mẫu' }).click();
@@ -177,28 +197,55 @@ test.describe('Hemorrhoid Vertical Slice 3 — continuous-care browser golden pa
     await page.getByRole('button', { name: 'Xác nhận tái khám' }).click();
     await expect(page.getByText('Đợt theo dõi trĩ')).toHaveCount(1);
 
-    // 8. Explicit close (Contract §Q) — triggered via the already-audited
-    // T4 backend endpoint (no dedicated close button exists in the UI for
-    // Hemorrhoid episodes yet — see FINDINGS in the T7 report; this only
-    // proves the existing generic ACTIVE/CLOSED badge rendering correctly
-    // reflects a closed Hemorrhoid episode and preserves its history, which
-    // needs no Hemorrhoid-specific UI code). First complete a second
-    // Assessment on this Return Encounter so the close prerequisite is met.
-    // The Assessment already completed on Return #1 already satisfies the
-    // close prerequisite (>=1 COMPLETED Assessment anywhere in the
-    // episode) — close directly.
-    const timelineRes = await api.get(`/patients/${patientId}/timeline`);
-    expect(timelineRes.ok()).toBeTruthy();
-    const timeline = await timelineRes.json();
-    const episodeId = timeline.episodes[0].episode.id as string;
-    const closeRes = await api.post(`/care-episodes/${episodeId}/close`);
-    expect(closeRes.ok()).toBeTruthy();
+    // 8. Correction batch R2 — termination is decided on the CURRENT Return
+    // Encounter, only after ITS OWN Follow-up Assessment is COMPLETED. On
+    // the freshly-created Return #2 there is no Terminate action yet.
+    await expect(page.getByRole('button', { name: 'Kết thúc đợt theo dõi' })).toHaveCount(0);
 
-    await page.reload();
+    // Complete Assessment #2 on Return #2 via the browser (Return #1's link
+    // now reads "Đánh giá tái khám ✓", so match exactly).
+    await page.getByRole('link', { name: 'Đánh giá tái khám', exact: true }).click();
+    await expect(page).toHaveURL(/\/clinical-forms\/HEMORRHOID_FOLLOW_UP_ASSESSMENT$/);
+    await page.getByRole('button', { name: 'Bắt đầu biểu mẫu' }).click();
+    await page.getByLabel('Đánh giá tái khám').fill('Ổn định, ngừng theo dõi (browser T7, synthetic)');
+    await page.getByRole('button', { name: 'Lưu bản nháp' }).click();
+    await page.getByRole('button', { name: 'Hoàn tất' }).click();
+    await expect(page.getByText('Đã hoàn tất', { exact: false })).toBeVisible();
+    await page.goBack();
+    await expect(page).toHaveURL(/\/patients\/[^/]+$/);
+
+    // Termination branch: Assessment #2 COMPLETED -> explicit "Kết thúc đợt
+    // theo dõi" with NO Next Clinical Decision #2 and NO CarePlan #3.
+    await page.getByRole('button', { name: 'Kết thúc đợt theo dõi' }).click();
     await expect(page.getByText('ĐÃ ĐÓNG')).toBeVisible();
     // History is preserved after close, still visible in the same card.
     await expect(page.getByText('Lượt tái khám', { exact: true })).toHaveCount(2);
     await expect(page.getByText('Cải thiện một phần (browser T7, synthetic)')).toBeVisible();
+    // No Longo close/reopen wording on a Hemorrhoid episode.
+    await expect(page.getByRole('button', { name: 'Đóng đợt điều trị' })).toHaveCount(0);
+
+    // The termination created neither a second Next Clinical Decision nor a
+    // third CarePlan — assert against the authoritative Timeline projection.
+    const closedTimeline = await (await api.get(`/patients/${patientId}/timeline`)).json();
+    const episodeEvents = closedTimeline.episodes[0].events as Array<{
+      type: string;
+      data: Record<string, unknown>;
+    }>;
+    expect(
+      episodeEvents.filter(
+        (e) =>
+          e.type === 'CLINICAL_FORM_SUBMITTED' &&
+          e.data.templateKey === 'HEMORRHOID_NEXT_CLINICAL_DECISION',
+      ),
+    ).toHaveLength(1);
+    expect(episodeEvents.filter((e) => e.type === 'CARE_PLAN_SIGNED')).toHaveLength(1);
+
+    // 9. Correction batch C2/§D — explicit reopen with a required reason via
+    // the existing (T4-audited) careEpisodesApi.reopen.
+    await page.getByRole('button', { name: 'Mở lại đợt theo dõi' }).click();
+    await page.getByLabel('Lý do mở lại').fill('Cần theo dõi thêm (browser, synthetic)');
+    await page.getByRole('button', { name: 'Xác nhận mở lại' }).click();
+    await expect(page.getByText('ĐANG ĐIỀU TRỊ')).toBeVisible();
 
     await api.dispose();
   });
