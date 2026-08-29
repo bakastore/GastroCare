@@ -17,6 +17,7 @@ vi.mock('../../api/resources', () => ({
   },
   patientsApi: {
     getTimeline: vi.fn(),
+    getById: vi.fn(),
   },
 }));
 
@@ -42,6 +43,10 @@ beforeEach(() => {
     episodes: [],
     ungroupedEncounters: [],
   });
+  vi.mocked(patientsApi.getById).mockResolvedValue({
+    id: 'patient-1',
+    fullName: 'BN Kế Hoạch',
+  } as never);
   vi.mocked(careTasksApi.list).mockResolvedValue([]);
 });
 

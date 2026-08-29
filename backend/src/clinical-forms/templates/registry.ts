@@ -1,3 +1,4 @@
+import { hemorrhoidTreatmentDecisionV2 } from './hemorrhoid-treatment-decision.v2';
 import { ClinicalFormTemplate } from './types';
 import { hemorrhoidLongoFollowupV1 } from './hemorrhoid-longo-followup.v1';
 import { longoPreopAssessmentV1 } from './longo-preop-assessment.v1';
@@ -23,6 +24,7 @@ const TEMPLATES: ClinicalFormTemplate[] = [
   hemorrhoidExaminationV1,
   hemorrhoidDiagnosisV1,
   hemorrhoidTreatmentDecisionV1,
+  hemorrhoidTreatmentDecisionV2,
   hemorrhoidFollowUpAssessmentV1,
   hemorrhoidNextClinicalDecisionV1,
 ];

@@ -1,0 +1,33 @@
+{
+  "status": "PASS",
+  "baselineHead": "c0dfe1a4f774bef334dd2c2e0eac45f89a2e106b",
+  "baselineChecksums": {
+    "backend/prisma/schema.prisma": "b36cb0b71b9aedfbed7d2995fa0393c81bef793c57ad877458768cd2077733e1",
+    "backend/prisma/migrations/20260821073408_foundation_init/migration.sql": "0c60ea6f9eebdc7b1c439b75be2dc36d0b31c7d7e2718c5ba1afcf9d7676c34a",
+    "backend/prisma/migrations/20260821081250_core01_clinical_walking_skeleton/migration.sql": "2a769cf5cdb19f107fd18f68fb303ce142cd330241ab20bfe23aa4399cddd2ed",
+    "backend/prisma/migrations/20260822141912_clinical_forms/migration.sql": "61f94a77449c0f8eedfb1e3ca259ee43320549ad40f468ef607e98ead01df826",
+    "backend/prisma/migrations/20260823090000_core04_t1_expand/migration.sql": "cebc1ea958e965a99307b2232940ac15293e23d8d19655b103f02e4b3120f822",
+    "backend/prisma/migrations/20260823090100_core04_t1_contract/migration.sql": "646981285a1516ef01615315bf21b5eb1c8aaa3f5279b80c7df57de34fc55ec1",
+    "backend/prisma/migrations/20260823100000_core04_t2_amendment_lineage/migration.sql": "c2ef7ca6535f6947b9d38f01053901d83cb221f4d0f1fd9eb151c914719630dc",
+    "backend/prisma/migrations/20260823110000_core04_t10_follow_up_scheduling/migration.sql": "09b84e7ff902716c393c3493b037b3308e32ce3e98b4d91bc5c3a8c37c604ea3",
+    "backend/prisma/migrations/20260824090000_core04_t16_r1_audit_event_seq/migration.sql": "2a1bc1b73b199b0b26d03485e03ce44fa509c26bdb388902da057aa3c87db98b",
+    "backend/prisma/migrations/20260824100000_hemorrhoid_slice1_facility_room_responsible_clinician/migration.sql": "a0fc03d45ca1b991217688bd9c6365580cb36333ad269032bd64fd7a8d0bdd67",
+    "backend/prisma/migrations/20260827000000_dec015_encounter_workflow_kind/migration.sql": "ad0d69a432ef2bec9e342173f7467e0f11ede0f62574628a4d4827eb17e21a04",
+    "backend/prisma/migrations/migration_lock.toml": "99836963713b4f5b269ad49af0ed3d7b0b2e336115c2f92dc9ac683d139d0900"
+  },
+  "fixture": "synthetic Run2-shape, NOT actual Owner Run2 data",
+  "backupSha256": "41b1060c6974f674ed24ede0fe68d94ae8c5f18fd249cc7d0fec4cf67a86738a",
+  "preSignature": "c168f8894d4d6ba78dfc12a53ce8ce5a3488bc7a3737d493f9b00f6ba8d96f55",
+  "postSignature": "a9f1b4a274b66fd99d66f15a055c7fc905b0c2d18135de82820d92e26e0260e7",
+  "proofs": [
+    "Run2 A/B/C/D/E/E1/E2 mapping",
+    "0/1/>1 candidates",
+    "full legacy row and timestamp preservation",
+    "audit and amendment lineage preserved",
+    "no fabricated clinical records",
+    "idempotency",
+    "destroy + PRE restore",
+    "deterministic reapply"
+  ],
+  "artifactDirectory": "/tmp/gastrocare-dec016-m0-1787910286429"
+}

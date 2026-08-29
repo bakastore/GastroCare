@@ -1,6 +1,6 @@
 # GastroCare — Roadmap và Acceptance Gates
 
-**Cập nhật:** 27/08/2026
+**Cập nhật:** 28/08/2026
 
 Roadmap này được điều khiển bởi năng lực, không có mốc tuần/tháng cố định. Một phase (giai đoạn) chỉ hoàn thành khi acceptance gate (cổng chấp nhận) tương ứng được thỏa.
 
@@ -30,7 +30,7 @@ FOUNDATION
 | Hemorrhoid Vertical Slice 1 | CLOSED — TECHNICAL ACCEPTANCE at `2ea529ee200a0a37a77cebb9a750f70adde57618` (historical) |
 | Hemorrhoid Vertical Slice 2 | TECHNICAL EXECUTION COMPLETE (historical completed work package) — DEC-012 + Contract v0.1 OWNER LOCKED; Owner product acceptance NOT CLAIMED |
 | Hemorrhoid Vertical Slice 3 | TECHNICAL EXECUTION COMPLETE và đã MERGED vào `main` tại `4a73a0c8764558d2776adffcf1d26092f6456634` — DEC-013 + Contract `docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md` OWNER LOCKED; Owner product acceptance NOT CLAIMED |
-| Current checkpoint | POST-SLICE-3 OWNER SYNTHETIC PRODUCT ACCEPTANCE — technical PASS không đồng nghĩa Owner product acceptance; chỉ đóng bằng xác nhận rõ ràng của Owner/BS Thái |
+| Current checkpoint | DEC-016 Session A T0→M7 technical execution PASS; next: FRESH CODEX SESSION B — INDEPENDENT READ-ONLY AUDIT; chưa commit; Owner product acceptance NOT CLAIMED |
 | GASTROCARE CORE tổng thể | IN PROGRESS |
 | CONTINUOUS CARE | NOT COMPLETE |
 | PRODUCT REFINEMENT / UI-UX | NOT STARTED — bị chặn đến khi Clinical Core được chấp nhận |
@@ -104,9 +104,9 @@ PR #5 (`discovery/hemorrhoid-real-world-workflow` → `main`): MERGED. Merged ma
 
 T4/T7 gates: CLOSED — PASS (xem chi tiết tại §3.4.1 và `docs/PROJECT_STATE.md` §4.3). Schema/migration: NO CHANGE. Owner product acceptance: NOT CLAIMED.
 
-### 3.2.2 Current checkpoint — Post-Slice-3 Owner Synthetic Product Acceptance
+### 3.2.2 Historical gate — Post-Slice-3 Owner Synthetic Product Acceptance
 
-Sau khi Slice 3 đạt technical execution complete và đã merge vào `main`, checkpoint hiện tại là **OWNER SYNTHETIC PRODUCT ACCEPTANCE**.
+Sau khi Slice 3 đã merge vào `main`, Owner Synthetic Product Acceptance từng là current checkpoint. DEC-016 mở work package mới bên dưới; điều kiện product acceptance sau đây vẫn giữ nguyên.
 
 **Technical PASS (build/test/audit/browser acceptance ở mọi gate T0-T7) không đồng nghĩa với Owner product acceptance.** Đây là hai khái niệm tách biệt theo authority hierarchy của roadmap này.
 
@@ -119,6 +119,12 @@ Cho đến khi Owner/BS Thái xác nhận:
 - `PRODUCT REFINEMENT` tiếp tục `DEFERRED` (không mở).
 - `CORE-05` tiếp tục `NOT OPENED` (không mở).
 - Real-patient runtime và production tiếp tục `NOT AUTHORIZED`.
+
+### 3.2.3 Current package — DEC-016 Case / Pathway / Investigation
+
+Authority: [DEC016_OWNER_AUTHORITY.md](DEC016_OWNER_AUTHORITY.md), Owner cho phép Session A thực hiện liên tục T0 → M0 schema/reconciliation proof → M1 Case → M2 TreatmentPathway/Longo → M3 Initial/Return → M4 Decision v2 → M5 Investigation → M6 workspace → M7 synthetic acceptance. Toàn bộ technical execution PASS, chưa commit/push.
+
+Next gate: **FRESH CODEX SESSION B — INDEPENDENT READ-ONLY AUDIT**. Session A không phải independent audit. [Bằng chứng implementation](13_DEC016_CASE_PATHWAY_IMPLEMENTATION.md). Clinical Core chưa Owner product accepted; CORE-05, AI, real-patient runtime, production và PDF/image storage không mở. Giới hạn Procedure/Surgery/Investigation của package cũ không phủ quyết phạm vi DEC-016 đã được Owner khóa mới hơn.
 
 ### 3.3 Preserved Longo Clinical Core baseline
 

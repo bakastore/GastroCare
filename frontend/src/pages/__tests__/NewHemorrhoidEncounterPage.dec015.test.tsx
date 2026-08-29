@@ -8,6 +8,7 @@ import {
   cliniciansApi,
   encountersApi,
   facilitiesApi,
+  patientsApi,
   roomsApi,
 } from '../../api/resources';
 
@@ -19,6 +20,7 @@ vi.mock('../../api/resources', () => ({
   facilitiesApi: { list: vi.fn() },
   cliniciansApi: { list: vi.fn() },
   roomsApi: { listByFacility: vi.fn() },
+  patientsApi: { getById: vi.fn() },
 }));
 
 vi.mock('../../auth/AuthContext', () => ({
@@ -34,6 +36,10 @@ beforeEach(() => {
   vi.mocked(facilitiesApi.list).mockResolvedValue([]);
   vi.mocked(cliniciansApi.list).mockResolvedValue([]);
   vi.mocked(roomsApi.listByFacility).mockResolvedValue([]);
+  vi.mocked(patientsApi.getById).mockResolvedValue({
+    id: 'p1',
+    fullName: 'BN DEC015',
+  } as never);
 });
 
 describe('DEC-015 — Encounter create discriminator (frontend entrypoints)', () => {

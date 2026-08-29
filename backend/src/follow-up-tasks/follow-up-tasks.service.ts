@@ -1,4 +1,9 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { assertLongoEpisodeAncestry } from '../clinical-forms/templates/longo-episode-invariant';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   CareTask,
   CareTaskStatus,
@@ -101,42 +106,30 @@ export class FollowUpTasksService {
     tenantId: string,
     sourceEncounter: Pick<
       Encounter,
-      'id' | 'tenantId' | 'patientId' | 'episodeId'
+      'id' | 'tenantId' | 'patientId' | 'episodeId' | 'treatmentPathwayId'
     >,
   ): Promise<void> {
     if (sourceEncounter.tenantId !== tenantId) {
       throw new NotFoundException('Encounter not found');
     }
-    if (!sourceEncounter.episodeId) {
-      throw new ForbiddenException(
-        'Encounter must belong to a LONGO_TREATMENT CareEpisode to anchor follow-up generation',
-      );
-    }
+    await assertLongoEpisodeAncestry(
+      this.prisma,
+      tenantId,
+      'LONGO_INTRAOP_RECORD',
+      sourceEncounter,
+    );
 
-    const episode = await this.prisma.careEpisode.findFirst({
-      where: {
-        id: sourceEncounter.episodeId,
-        tenantId,
-        patientId: sourceEncounter.patientId,
-        episodeType: 'LONGO_TREATMENT',
+    const completedIntraop = await this.prisma.clinicalFormSubmission.findFirst(
+      {
+        where: {
+          tenantId,
+          encounterId: sourceEncounter.id,
+          templateKey: 'LONGO_INTRAOP_RECORD',
+          status: ClinicalFormStatus.COMPLETED,
+        },
+        select: { id: true },
       },
-      select: { id: true },
-    });
-    if (!episode) {
-      throw new ForbiddenException(
-        'Encounter CareEpisode must be a same-tenant, same-patient LONGO_TREATMENT episode',
-      );
-    }
-
-    const completedIntraop = await this.prisma.clinicalFormSubmission.findFirst({
-      where: {
-        tenantId,
-        encounterId: sourceEncounter.id,
-        templateKey: 'LONGO_INTRAOP_RECORD',
-        status: ClinicalFormStatus.COMPLETED,
-      },
-      select: { id: true },
-    });
+    );
     if (!completedIntraop) {
       throw new ForbiddenException(
         'Encounter does not carry a completed LONGO_INTRAOP_RECORD — not a valid surgery milestone',
@@ -149,7 +142,12 @@ export class FollowUpTasksService {
     actorId: string,
     sourceEncounter: Pick<
       Encounter,
-      'id' | 'tenantId' | 'patientId' | 'occurredAt' | 'episodeId'
+      | 'id'
+      | 'tenantId'
+      | 'patientId'
+      | 'occurredAt'
+      | 'episodeId'
+      | 'treatmentPathwayId'
     >,
   ): Promise<CareTaskWithDerivedOverdue[]> {
     await this.assertValidSurgeryAnchor(tenantId, sourceEncounter);
@@ -212,11 +210,17 @@ export class FollowUpTasksService {
   async matchCompletion(
     tenantId: string,
     actorId: string,
-    completingEncounter: Pick<Encounter, 'id' | 'tenantId' | 'episodeId'>,
+    completingEncounter: Pick<
+      Encounter,
+      'id' | 'tenantId' | 'episodeId' | 'patientId' | 'treatmentPathwayId'
+    >,
     templateKey: string,
     responses: Record<string, unknown>,
   ): Promise<void> {
-    if (!completingEncounter.episodeId) {
+    if (
+      !completingEncounter.episodeId ||
+      !completingEncounter.treatmentPathwayId
+    ) {
       return;
     }
     const timepoint = resolveCompletionTimepoint(templateKey, responses);
@@ -232,6 +236,8 @@ export class FollowUpTasksService {
         sourceEncounter: {
           tenantId,
           episodeId: completingEncounter.episodeId,
+          patientId: completingEncounter.patientId,
+          treatmentPathwayId: completingEncounter.treatmentPathwayId,
         },
       },
     });

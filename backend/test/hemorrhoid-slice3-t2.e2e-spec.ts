@@ -1,3 +1,4 @@
+import { decisionFixture } from './dec016-fixtures';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthRole, CareEpisodeStatus, CareTaskStatus } from '@prisma/client';
@@ -28,12 +29,16 @@ describe('Hemorrhoid Vertical Slice 3 — T2 atomic Return Encounter orchestrati
 
   async function resetTables() {
     await prisma.auditEvent.deleteMany();
+    await prisma.investigationResult.deleteMany();
+    await prisma.investigationOrder.deleteMany();
+    await prisma.investigation.deleteMany();
     await prisma.clinicalFormSubmission.deleteMany();
     await prisma.careTask.deleteMany();
     await prisma.carePlanVersion.deleteMany();
     await prisma.carePlan.deleteMany();
     await prisma.clinicianAssignmentHistory.deleteMany();
     await prisma.encounter.deleteMany();
+    await prisma.treatmentPathway.deleteMany();
     await prisma.careEpisode.deleteMany();
     await prisma.room.deleteMany();
     await prisma.facility.deleteMany();
@@ -56,6 +61,7 @@ describe('Hemorrhoid Vertical Slice 3 — T2 atomic Return Encounter orchestrati
     patient: string,
     episodeId?: string,
     reasonForVisit = 'Khám trĩ (synthetic, T2)',
+    initial = false,
   ): Promise<string> {
     const res = await request(app.getHttpServer())
       .post('/encounters')
@@ -63,6 +69,7 @@ describe('Hemorrhoid Vertical Slice 3 — T2 atomic Return Encounter orchestrati
       .send({
         patientId: patient,
         episodeId,
+        workflowKind: initial ? 'HEMORRHOID_INITIAL' : undefined,
         occurredAt: new Date().toISOString(),
         reasonForVisit,
       })
@@ -79,7 +86,7 @@ describe('Hemorrhoid Vertical Slice 3 — T2 atomic Return Encounter orchestrati
     return request(app.getHttpServer())
       .post('/clinical-forms')
       .set('Authorization', `Bearer ${token}`)
-      .send({ encounterId, templateKey, responses });
+      .send({ encounterId, templateKey, responses: decisionFixture(templateKey, responses) });
   }
 
   async function completeSubmission(token: string, id: string) {
@@ -92,7 +99,7 @@ describe('Hemorrhoid Vertical Slice 3 — T2 atomic Return Encounter orchestrati
    * follow-up CareTask — the eligible input for the dedicated Return
    * Encounter endpoint. */
   async function readyOpenFollowUpTask(patient: string): Promise<string> {
-    const encounterId = await createEncounter(doctorToken, patient);
+    const encounterId = await createEncounter(doctorToken, patient, undefined, undefined, true);
     const exam = await createSubmission(
       doctorToken,
       encounterId,
@@ -197,7 +204,7 @@ describe('Hemorrhoid Vertical Slice 3 — T2 atomic Return Encounter orchestrati
     await app.close();
   });
 
-  it('creates the first Return Encounter, starts the HEMORRHOID_TREATMENT episode, completes the CareTask, and records audit events', async () => {
+  it('creates the first Return Encounter, reuses the Initial HEMORRHOID_TREATMENT Case, completes the CareTask, and records audit events', async () => {
     const careTaskId = await readyOpenFollowUpTask(patientId);
 
     const res = await createReturn(doctorToken, careTaskId);
@@ -212,7 +219,7 @@ describe('Hemorrhoid Vertical Slice 3 — T2 atomic Return Encounter orchestrati
     expect(episode.episodeType).toBe('HEMORRHOID_TREATMENT');
     expect(episode.status).toBe(CareEpisodeStatus.ACTIVE);
     expect(episode.startedAt.toISOString()).toBe(
-      new Date(encounter.occurredAt).toISOString(),
+      (await prisma.encounter.findFirstOrThrow({where:{episodeId:episode.id,workflowKind:'HEMORRHOID_INITIAL'}})).occurredAt.toISOString(),
     );
 
     const task = await prisma.careTask.findUniqueOrThrow({

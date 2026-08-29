@@ -15,7 +15,10 @@ export function LoginPage() {
   if (user) {
     const redirectTo =
       (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? '/';
-    return <Navigate to={redirectTo} replace />;
+    // A nurse signing in after a doctor must not resume that doctor's route.
+    return (
+      <Navigate to={user.role === 'NURSE' ? '/investigations/assigned' : redirectTo} replace />
+    );
   }
 
   async function handleSubmit(event: FormEvent) {

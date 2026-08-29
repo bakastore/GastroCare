@@ -1,5 +1,20 @@
 # GastroCare — Local Operations & Owner Synthetic Dry Run
 
+## DEC-016 local synthetic update (2026-08-28)
+
+Xem [implementation notes](docs/13_DEC016_CASE_PATHWAY_IMPLEMENTATION.md) trước khi chạy. Initial Hemorrhoid tạo/dùng Case ngay; mở tab **Điều trị** để tạo TreatmentPathway tường minh, không còn patient-level standalone Longo start. Tab **CLS** quản lý Investigation/Order/raw Result và explicit parent. Không real-patient runtime, production, AI hoặc attachments.
+
+`seed:pilot` bổ sung một NURSE giả lập (credentials constants tại `backend/test/pilot-seed.ts`) và Investigation current/prior. NURSE chỉ thấy công việc CLS được giao, không patient workspace chung. Seed vẫn xóa/reset toàn bộ DB nó trỏ tới; không chạy đồng thời với backend E2E hoặc browser runner.
+
+**Isolated pilot DB (2026-08-28 correction):** Owner Synthetic Acceptance giờ chạy trên một database riêng, persistent — `gastrocare_pilot` — KHÔNG dùng chung `gastrocare_foundation_test` (database mà mọi backend E2E tự truncate trong `reset()`). Không cần sửa `backend/.env`: script tự suy ra connection string pilot từ `DATABASE_URL` hiện có (giữ nguyên host/port/credentials, chỉ đổi tên database). Xem §1A. Automated E2E + `scripts/verify-backup-restore.sh` vẫn chạy trên `gastrocare_foundation_test` như cũ.
+
+Browser runner khởi động server riêng theo process group, dọn cả group khi kết thúc và từ chối tái sử dụng cổng đang có server. Backup verifier kiểm tra SHA256 dump và chữ ký toàn bộ bảng, gồm bảng DEC-016/audit/migration metadata; chạy full backend regression sau restore rồi seed lại pilot.
+
+M0 proof có thể dựng PRE từ baseline Git và thực hiện DROP/CREATE/restore trên riêng `gastrocare_dec016_rehearsal`, không reset dev. Đây là thao tác ghi synthetic; không thuộc independent read-only audit nếu chưa có quyền chạy riêng.
+
+---
+
+
 Cập nhật: 2026-08-21
 
 This document is operational, not architectural — it does not redefine any
@@ -35,7 +50,10 @@ Two seed scripts exist, for two different purposes:
   `reception.a@example.test`), **no** patients. Used by the Playwright
   browser suite, which creates its own patient at test time.
 - `npm run seed:pilot` — the full deterministic synthetic pilot dataset
-  (see §2 below). Use this before an Owner Synthetic Dry Run.
+  (see §2 below). It seeds **whichever database `DATABASE_URL` points at**
+  (`gastrocare_foundation_test` by default) and is used by
+  `scripts/verify-backup-restore.sh`. For an Owner Synthetic Dry Run use the
+  **isolated** pilot database instead — see §1A.
 
 ```bash
 cd backend
@@ -49,6 +67,54 @@ cd backend
 npm run start:dev
 # Listens on http://localhost:3000 by default (see backend/.env)
 ```
+
+---
+
+## 1A. Isolated synthetic pilot database — Owner Synthetic Acceptance
+
+**Problem this solves.** `backend/.env` sets `DATABASE_URL` to
+`gastrocare_foundation_test`, and every backend E2E suite truncates that
+database in its own `reset()`. Any pilot data seeded there is destroyed by the
+next `npm run test:e2e`. Owner Synthetic Acceptance must run on its own
+persistent database.
+
+**Design.** A dedicated database `gastrocare_pilot` on the **same** PostgreSQL
+instance. The pilot connection string is derived at run time from the existing
+`DATABASE_URL` (same host/port/credentials, database name swapped) and injected
+only into the child processes the script spawns — **`backend/.env` is never
+edited**. No new infrastructure, no secrets committed, synthetic data only.
+
+```bash
+cd backend
+
+# One command: create gastrocare_pilot (if missing) + apply all migrations +
+# run the synthetic pilot seed + verify the 4 synthetic accounts. Idempotent —
+# safe to re-run; each run resets the pilot dataset to the deterministic seed.
+npm run pilot:up
+
+# Start the backend against the pilot database (no manual DATABASE_URL edit):
+npm run pilot:start          # foreground; Ctrl+C to stop
+
+# Other helpers:
+npm run pilot:seed           # re-run the pilot seed only (create+migrate first)
+npm run pilot:verify         # assert the 4 synthetic accounts exist in 1 tenant
+npm run pilot:smoke          # verify + boot AppModule on the pilot DB and check
+                             #   login->200, wrong password->401, GET /patients->200
+npm run pilot:psql-url       # print the derived pilot DATABASE_URL (masked)
+```
+
+To confirm the isolation holds: run `npm run pilot:up`, then the full
+`npm run test:e2e`, then `npm run pilot:smoke` — the pilot dataset is
+unchanged and login still succeeds.
+
+Automated tests (`npm run test:e2e`) and `scripts/verify-backup-restore.sh`
+continue to use `gastrocare_foundation_test` and never touch
+`gastrocare_pilot`, so running the full test suite does **not** destroy the
+Owner pilot dataset. Re-seed the pilot only by explicitly running
+`npm run pilot:seed` / `npm run pilot:up`.
+
+Pilot credentials are the same synthetic accounts `seed:pilot` creates
+(constants in `backend/test/pilot-seed.ts`) — see §1.6.
 
 ### 1.5 Start the frontend
 

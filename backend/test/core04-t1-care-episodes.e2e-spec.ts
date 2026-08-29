@@ -26,6 +26,9 @@ describe('CORE-04 T1 — CareEpisode + Encounter clinical time (e2e)', () => {
   const occurredAt = '2026-08-23T04:15:30.000Z';
 
   async function resetTables() {
+    await prisma.investigationResult.deleteMany();
+    await prisma.investigationOrder.deleteMany();
+    await prisma.investigation.deleteMany();
     await prisma.clinicalFormSubmission.deleteMany();
     await prisma.auditEvent.deleteMany();
     await prisma.careTask.deleteMany();
@@ -33,6 +36,7 @@ describe('CORE-04 T1 — CareEpisode + Encounter clinical time (e2e)', () => {
     await prisma.carePlan.deleteMany();
     await prisma.clinicianAssignmentHistory.deleteMany();
     await prisma.encounter.deleteMany();
+    await prisma.treatmentPathway.deleteMany();
     await prisma.careEpisode.deleteMany();
     await prisma.room.deleteMany();
     await prisma.facility.deleteMany();
@@ -162,13 +166,13 @@ describe('CORE-04 T1 — CareEpisode + Encounter clinical time (e2e)', () => {
     delete process.env.PILOT_DEFAULT_CLINICIAN_EMAIL;
   });
 
-  it('creates an ACTIVE LONGO_TREATMENT CareEpisode for a same-tenant patient', async () => {
+  it('creates an ACTIVE HEMORRHOID_TREATMENT CareEpisode for a same-tenant patient', async () => {
     const response = await request(app.getHttpServer())
       .post('/care-episodes')
       .set('Authorization', `Bearer ${doctorAToken}`)
       .send({
         patientId: patientA1Id,
-        episodeType: 'LONGO_TREATMENT',
+        episodeType: 'HEMORRHOID_TREATMENT',
         startedAt: '2026-08-20T02:00:00.000Z',
       })
       .expect(201);
@@ -177,7 +181,7 @@ describe('CORE-04 T1 — CareEpisode + Encounter clinical time (e2e)', () => {
     expect(response.body).toMatchObject({
       tenantId: tenantAId,
       patientId: patientA1Id,
-      episodeType: 'LONGO_TREATMENT',
+      episodeType: 'HEMORRHOID_TREATMENT',
       status: CareEpisodeStatus.ACTIVE,
       endedAt: null,
     });
@@ -197,7 +201,7 @@ describe('CORE-04 T1 — CareEpisode + Encounter clinical time (e2e)', () => {
       .set('Authorization', `Bearer ${doctorAToken}`)
       .send({
         patientId: patientBId,
-        episodeType: 'LONGO_TREATMENT',
+        episodeType: 'HEMORRHOID_TREATMENT',
         startedAt: '2026-08-20T02:00:00.000Z',
       })
       .expect(404);
@@ -306,6 +310,11 @@ describe('CORE-04 T1 — CareEpisode + Encounter clinical time (e2e)', () => {
   });
 
   it('closes an ACTIVE Episode and sets endedAt using server time', async () => {
+    const enc=await prisma.encounter.findFirstOrThrow({where:{episodeId:episodeAId}});
+    const form=await request(app.getHttpServer()).post('/clinical-forms').auth(doctorAToken,{type:'bearer'})
+      .send({encounterId:enc.id,templateKey:'HEMORRHOID_FOLLOW_UP_ASSESSMENT',responses:{responseSummary:'synthetic'}}).expect(201);
+    await request(app.getHttpServer()).post(`/clinical-forms/${form.body.id}/complete`).auth(doctorAToken,{type:'bearer'}).expect(201);
+
     const before = Date.now();
     const response = await request(app.getHttpServer())
       .post(`/care-episodes/${episodeAId}/close`)

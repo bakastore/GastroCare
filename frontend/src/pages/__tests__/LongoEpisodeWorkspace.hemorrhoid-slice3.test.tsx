@@ -3,12 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { LongoEpisodeWorkspace } from '../LongoEpisodeWorkspace';
-import {
-  careEpisodesApi,
-  encountersApi,
-  followUpTasksApi,
-  patientsApi,
-} from '../../api/resources';
+import { careEpisodesApi, encountersApi, followUpTasksApi, patientsApi } from '../../api/resources';
 
 // Hemorrhoid Vertical Slice 3 continuous-care loop (DEC-013;
 // docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md §D-§H) — T6 frontend
@@ -110,7 +105,7 @@ describe('LongoEpisodeWorkspace — Hemorrhoid Vertical Slice 3 continuous-care 
 
     renderWorkspace();
 
-    expect(await screen.findByText(/Đợt theo dõi trĩ/)).toBeInTheDocument();
+    expect(await screen.findByText(/Case trĩ/)).toBeInTheDocument();
     // No Longo episode CARD was rendered (the page-level <h2> heading is
     // always "Đợt điều trị Longo" regardless of episode type, so this
     // checks for the absence of the per-episode-card Longo header text
@@ -121,7 +116,9 @@ describe('LongoEpisodeWorkspace — Hemorrhoid Vertical Slice 3 continuous-care 
       screen.queryByRole('link', { name: '+ Lượt khám trong đợt điều trị' }),
     ).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Đóng đợt điều trị' })).not.toBeInTheDocument();
-    expect(screen.queryByText('Hàng đợi tái khám (kế hoạch so với thực tế)')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Hàng đợi tái khám (kế hoạch so với thực tế)'),
+    ).not.toBeInTheDocument();
   });
 
   it('shows the continuous-care sequence (Assessment enabled, Next Decision disabled) on a Return Encounter with no forms yet', async () => {
@@ -134,9 +131,7 @@ describe('LongoEpisodeWorkspace — Hemorrhoid Vertical Slice 3 continuous-care 
     renderWorkspace();
 
     expect(await screen.findByText('Lượt tái khám')).toBeInTheDocument();
-    expect(
-      screen.getByRole('link', { name: 'Đánh giá tái khám' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Đánh giá tái khám' })).toBeInTheDocument();
     // Not yet reachable — Assessment must complete first.
     const disabledNext = screen.getByText('Quyết định điều trị tiếp theo');
     expect(disabledNext).toHaveAttribute('aria-disabled', 'true');
@@ -160,12 +155,11 @@ describe('LongoEpisodeWorkspace — Hemorrhoid Vertical Slice 3 continuous-care 
     renderWorkspace();
 
     expect(await screen.findByRole('link', { name: 'Đánh giá tái khám ✓' })).toBeInTheDocument();
-    expect(
-      screen.getByRole('link', { name: 'Quyết định điều trị tiếp theo' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText('Tạo kế hoạch chăm sóc', { selector: 'span' }),
-    ).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('link', { name: 'Quyết định điều trị tiếp theo' })).toBeInTheDocument();
+    expect(screen.getByText('Tạo kế hoạch chăm sóc', { selector: 'span' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
   });
 
   it('offers "Bắt đầu tái khám" for an OPEN generic follow-up CareTask, wired to the dedicated Return Encounter endpoint (no patientId/episodeId from the client)', async () => {
@@ -193,7 +187,9 @@ describe('LongoEpisodeWorkspace — Hemorrhoid Vertical Slice 3 continuous-care 
 
     renderWorkspace();
 
-    const trigger = await screen.findByRole('button', { name: 'Bắt đầu tái khám' });
+    const trigger = await screen.findByRole('button', {
+      name: 'Bắt đầu tái khám',
+    });
     expect(trigger).toBeInTheDocument();
     expect(encountersApi.createHemorrhoidReturn).not.toHaveBeenCalled();
   });
@@ -214,6 +210,29 @@ describe('LongoEpisodeWorkspace — Hemorrhoid Vertical Slice 3 continuous-care 
     await screen.findByText('Lượt tái khám');
     expect(screen.queryByRole('button', { name: 'Kết thúc đợt theo dõi' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Đóng đợt điều trị' })).not.toBeInTheDocument();
+  });
+
+  it('DEC016: equal clinical times use createdAt then id, independent of event ordering', async () => {
+    vi.mocked(careEpisodesApi.listByPatient).mockResolvedValue([hemorrhoidEpisode] as never);
+    vi.mocked(patientsApi.getTimeline).mockResolvedValue({
+      episodes: [
+        {
+          episode: hemorrhoidEpisode,
+          events: [
+            returnEncounterEvent({
+              id: 'return-enc-2',
+              createdAt: '2026-09-10T10:00:00.000Z',
+            }),
+            returnEncounterEvent({ createdAt: '2026-09-10T09:00:00.000Z' }),
+            assessmentDoneEvent(),
+          ],
+        },
+      ],
+      ungroupedEncounters: [],
+    } as never);
+    renderWorkspace();
+    await screen.findAllByText('Lượt tái khám');
+    expect(screen.queryByRole('button', { name: 'Kết thúc đợt theo dõi' })).not.toBeInTheDocument();
   });
 
   it('C2: CLOSED Hemorrhoid episode reopens with a required reason via careEpisodesApi.reopen', async () => {
@@ -252,7 +271,10 @@ describe('LongoEpisodeWorkspace — Hemorrhoid Vertical Slice 3 continuous-care 
     vi.mocked(careEpisodesApi.listByPatient).mockResolvedValue([hemorrhoidEpisode] as never);
     vi.mocked(patientsApi.getTimeline).mockResolvedValue({
       episodes: [
-        { episode: hemorrhoidEpisode, events: [returnEncounterEvent(), assessmentDoneEvent()] },
+        {
+          episode: hemorrhoidEpisode,
+          events: [returnEncounterEvent(), assessmentDoneEvent()],
+        },
       ],
       ungroupedEncounters: [],
     } as never);
@@ -262,10 +284,14 @@ describe('LongoEpisodeWorkspace — Hemorrhoid Vertical Slice 3 continuous-care 
     const user = userEvent.setup();
 
     expect(
-      await screen.findByRole('link', { name: 'Quyết định điều trị tiếp theo' }),
+      await screen.findByRole('link', {
+        name: 'Quyết định điều trị tiếp theo',
+      }),
     ).toBeInTheDocument();
 
-    const terminate = screen.getByRole('button', { name: 'Kết thúc đợt theo dõi' });
+    const terminate = screen.getByRole('button', {
+      name: 'Kết thúc đợt theo dõi',
+    });
     await user.click(terminate);
 
     await waitFor(() => {
@@ -289,16 +315,29 @@ describe('LongoEpisodeWorkspace — Hemorrhoid Vertical Slice 3 continuous-care 
   });
 
   it('R2: Terminate renders only on the LATEST Return Encounter, never on a historical one', async () => {
-    const historical = returnEncounterEvent({ id: 'ret-1', occurredAt: '2026-09-10T09:00:00.000Z' });
-    const latest = returnEncounterEvent({ id: 'ret-2', occurredAt: '2026-10-01T09:00:00.000Z' });
+    const historical = returnEncounterEvent({
+      id: 'ret-1',
+      occurredAt: '2026-09-10T09:00:00.000Z',
+    });
+    const latest = returnEncounterEvent({
+      id: 'ret-2',
+      occurredAt: '2026-10-01T09:00:00.000Z',
+    });
     const assessmentOnHistorical = {
       ...assessmentDoneEvent(),
-      data: { ...assessmentDoneEvent().data, id: 'asmt-1', encounterId: 'ret-1' },
+      data: {
+        ...assessmentDoneEvent().data,
+        id: 'asmt-1',
+        encounterId: 'ret-1',
+      },
     };
     vi.mocked(careEpisodesApi.listByPatient).mockResolvedValue([hemorrhoidEpisode] as never);
     vi.mocked(patientsApi.getTimeline).mockResolvedValue({
       episodes: [
-        { episode: hemorrhoidEpisode, events: [historical, assessmentOnHistorical, latest] },
+        {
+          episode: hemorrhoidEpisode,
+          events: [historical, assessmentOnHistorical, latest],
+        },
       ],
       ungroupedEncounters: [],
     } as never);
@@ -317,7 +356,10 @@ describe('LongoEpisodeWorkspace — Hemorrhoid Vertical Slice 3 continuous-care 
     vi.mocked(careEpisodesApi.listByPatient).mockResolvedValue([closedEpisode] as never);
     vi.mocked(patientsApi.getTimeline).mockResolvedValue({
       episodes: [
-        { episode: closedEpisode, events: [returnEncounterEvent(), assessmentDoneEvent()] },
+        {
+          episode: closedEpisode,
+          events: [returnEncounterEvent(), assessmentDoneEvent()],
+        },
       ],
       ungroupedEncounters: [],
     } as never);
@@ -362,7 +404,14 @@ describe('LongoEpisodeWorkspace — Hemorrhoid Vertical Slice 3 continuous-care 
     expect(screen.getByText('Chẩn đoán')).toBeInTheDocument();
     expect(screen.getByText('Quyết định điều trị')).toBeInTheDocument();
     // No Longo forms, no legacy link.
-    for (const label of ['Tiền phẫu', 'Biên bản mổ', 'Hậu phẫu sớm', 'Tái khám 2 tuần', 'Nong hậu môn', 'Tái khám dài hạn']) {
+    for (const label of [
+      'Tiền phẫu',
+      'Biên bản mổ',
+      'Hậu phẫu sớm',
+      'Tái khám 2 tuần',
+      'Nong hậu môn',
+      'Tái khám dài hạn',
+    ]) {
       expect(screen.queryByRole('link', { name: label })).not.toBeInTheDocument();
     }
     expect(screen.queryByRole('link', { name: 'Phiếu khám lại (cũ)' })).not.toBeInTheDocument();
@@ -458,9 +507,7 @@ describe('LongoEpisodeWorkspace — Hemorrhoid Vertical Slice 3 continuous-care 
 
     renderWorkspace();
 
-    expect(
-      await screen.findByRole('button', { name: 'Bắt đầu tái khám' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Bắt đầu tái khám' })).toBeInTheDocument();
     expect(encountersApi.createHemorrhoidReturn).not.toHaveBeenCalled();
   });
 
@@ -524,5 +571,157 @@ describe('LongoEpisodeWorkspace — Hemorrhoid Vertical Slice 3 continuous-care 
     expect(linkage).toHaveTextContent('Khám lại test');
     expect(linkage).not.toHaveTextContent(returnEncId);
     expect(screen.queryByText(new RegExp(returnEncId))).not.toBeInTheDocument();
+  });
+
+  // DEC-016 F3 — under DEC-016 a Longo pathway is nested inside the
+  // Hemorrhoid Case. A CARE_TASK whose source Encounter belongs to a
+  // TreatmentPathway is pathway-owned; the backend rejects a Hemorrhoid
+  // Return for it, so the frontend must not offer "Bắt đầu tái khám".
+  it('F3: a pathway-owned CareTask inside a Case does not offer "Bắt đầu tái khám"', async () => {
+    vi.mocked(careEpisodesApi.listByPatient).mockResolvedValue([hemorrhoidEpisode] as never);
+    vi.mocked(patientsApi.getTimeline).mockResolvedValue({
+      episodes: [
+        {
+          episode: hemorrhoidEpisode,
+          events: [
+            openGenericCareTaskEvent({
+              sourceEncounterId: 'longo-enc-1',
+              sourceWorkflowKind: null,
+              treatmentPathwayId: 'pathway-longo-1',
+            }),
+          ],
+        },
+      ],
+      ungroupedEncounters: [],
+    } as never);
+
+    renderWorkspace();
+
+    await screen.findByText(/Nhiệm vụ theo dõi/);
+    expect(screen.queryByRole('button', { name: 'Bắt đầu tái khám' })).not.toBeInTheDocument();
+  });
+
+  // DEC-016 F3 positive regression — a real Hemorrhoid continuous-care
+  // CareTask sourced from a Case-level (non-pathway) Encounter keeps the
+  // Return action when otherwise eligible.
+  it('F3: a Case-level non-pathway Hemorrhoid CareTask still offers "Bắt đầu tái khám"', async () => {
+    vi.mocked(careEpisodesApi.listByPatient).mockResolvedValue([hemorrhoidEpisode] as never);
+    vi.mocked(patientsApi.getTimeline).mockResolvedValue({
+      episodes: [
+        {
+          episode: hemorrhoidEpisode,
+          events: [
+            openGenericCareTaskEvent({
+              sourceEncounterId: 'return-enc-0',
+              sourceWorkflowKind: null,
+              treatmentPathwayId: null,
+            }),
+          ],
+        },
+      ],
+      ungroupedEncounters: [],
+    } as never);
+
+    renderWorkspace();
+
+    expect(await screen.findByRole('button', { name: 'Bắt đầu tái khám' })).toBeInTheDocument();
+  });
+
+  // DEC-016 F1 — two LONGO TreatmentPathways in the same Case, each with a
+  // MONTH_3 follow-up task on the same due date, must remain distinguishable
+  // and each action must target the correct pathway/timepoint.
+  it('F1: two LONGO pathways with the same MONTH_3 date render distinguishably with correct actions', async () => {
+    vi.mocked(careEpisodesApi.listByPatient).mockResolvedValue([hemorrhoidEpisode] as never);
+    vi.mocked(followUpTasksApi.listByPatient).mockResolvedValue([
+      {
+        id: 'task-a',
+        patientId: 'patient-1',
+        carePlanId: null,
+        status: 'OPEN',
+        dueDate: '2026-12-01T00:00:00.000Z',
+        createdAt: '2026-09-01T00:00:00.000Z',
+        completedAt: null,
+        cancelledAt: null,
+        overdue: false,
+        sourceEncounterId: 'surgery-a',
+        timepointCode: 'MONTH_3',
+        completedByEncounterId: null,
+        scheduleReviewRequired: false,
+      },
+      {
+        id: 'task-b',
+        patientId: 'patient-1',
+        carePlanId: null,
+        status: 'OPEN',
+        dueDate: '2026-12-01T00:00:00.000Z',
+        createdAt: '2026-09-01T00:00:00.000Z',
+        completedAt: null,
+        cancelledAt: null,
+        overdue: false,
+        sourceEncounterId: 'surgery-b',
+        timepointCode: 'MONTH_3',
+        completedByEncounterId: null,
+        scheduleReviewRequired: false,
+      },
+    ] as never);
+    vi.mocked(patientsApi.getTimeline).mockResolvedValue({
+      episodes: [
+        {
+          episode: hemorrhoidEpisode,
+          events: [
+            {
+              type: 'ENCOUNTER' as const,
+              timestamp: '2026-09-01T08:00:00.000Z',
+              data: {
+                id: 'surgery-a',
+                reasonForVisit: 'Phẫu thuật Longo (synthetic)',
+                occurredAt: '2026-09-01T08:00:00.000Z',
+                treatmentPathwayId: 'pathway-a',
+                treatmentModality: 'SURGERY',
+                methodCode: 'LONGO',
+                carePlanId: null,
+                carePlanStatus: null,
+              },
+            },
+            {
+              type: 'ENCOUNTER' as const,
+              timestamp: '2026-09-01T08:00:00.000Z',
+              data: {
+                id: 'surgery-b',
+                reasonForVisit: 'Phẫu thuật Longo lần 2 (synthetic)',
+                occurredAt: '2026-09-01T08:00:00.000Z',
+                treatmentPathwayId: 'pathway-b',
+                treatmentModality: 'SURGERY',
+                methodCode: 'LONGO',
+                carePlanId: null,
+                carePlanStatus: null,
+              },
+            },
+          ],
+        },
+      ],
+      ungroupedEncounters: [],
+    } as never);
+
+    renderWorkspace();
+
+    await screen.findByText('Hàng đợi tái khám (kế hoạch so với thực tế)');
+    // Both MONTH_3 rows render.
+    expect(screen.getAllByText('Tháng 3')).toHaveLength(2);
+    // Distinguishable pathway context (not a raw UUID).
+    const ctxA = screen.getByText(/LONGO #1/);
+    const ctxB = screen.getByText(/LONGO #2/);
+    expect(ctxA).toBeInTheDocument();
+    expect(ctxB).toBeInTheDocument();
+    expect(screen.queryByText(/pathway-a/)).not.toBeInTheDocument();
+    // Each action targets the exact pathway + timepoint.
+    const links = screen.getAllByRole('link', { name: 'Mở lượt tái khám' });
+    const hrefs = links.map((l) => l.getAttribute('href'));
+    expect(hrefs).toContain(
+      '/patients/patient-1/encounters/new?episodeId=episode-1&treatmentPathwayId=pathway-a&timepointCode=MONTH_3',
+    );
+    expect(hrefs).toContain(
+      '/patients/patient-1/encounters/new?episodeId=episode-1&treatmentPathwayId=pathway-b&timepointCode=MONTH_3',
+    );
   });
 });

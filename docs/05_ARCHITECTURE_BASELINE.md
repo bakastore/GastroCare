@@ -1,5 +1,10 @@
 # GastroCare — Architecture Baseline
 
+
+## DEC-016 — overlay kiến trúc
+
+[DEC-016](DEC016_OWNER_AUTHORITY.md) mở Case + TreatmentPathway + Investigation trong phạm vi giả lập. Không thêm CareCase storage; Case vẫn CareEpisode. Composite FK giữ tenant/Case/patient ancestry; app guard kiểm tra modality/method và parent cycle. Initial/Return/Investigation writes dùng transaction + audit; Return giữ Serializable close race, conflict 409 và no auto retry. Reconciliation dùng explicit manifest và actual backup/restore proof, không heuristic. PDF/image storage, AI, CORE-05 và production không được mở. Chi tiết: [13_DEC016_CASE_PATHWAY_IMPLEMENTATION.md](13_DEC016_CASE_PATHWAY_IMPLEMENTATION.md).
+
 Cập nhật: 2026-08-21
 
 ```

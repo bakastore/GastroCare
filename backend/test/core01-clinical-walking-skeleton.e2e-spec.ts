@@ -56,6 +56,9 @@ describe('CORE-01 — Clinical Core Walking Skeleton (e2e)', () => {
     prisma = app.get(PrismaService);
 
     // Reset all Core + Foundation tables (disposable test DB only).
+    await prisma.investigationResult.deleteMany();
+    await prisma.investigationOrder.deleteMany();
+    await prisma.investigation.deleteMany();
     await prisma.clinicalFormSubmission.deleteMany();
     await prisma.auditEvent.deleteMany();
     await prisma.careTask.deleteMany();
@@ -63,6 +66,7 @@ describe('CORE-01 — Clinical Core Walking Skeleton (e2e)', () => {
     await prisma.carePlan.deleteMany();
     await prisma.clinicianAssignmentHistory.deleteMany();
     await prisma.encounter.deleteMany();
+    await prisma.treatmentPathway.deleteMany();
     await prisma.careEpisode.deleteMany();
     await prisma.room.deleteMany();
     await prisma.facility.deleteMany();
@@ -118,6 +122,9 @@ describe('CORE-01 — Clinical Core Walking Skeleton (e2e)', () => {
   });
 
   afterAll(async () => {
+    await prisma.investigationResult.deleteMany();
+    await prisma.investigationOrder.deleteMany();
+    await prisma.investigation.deleteMany();
     await prisma.clinicalFormSubmission.deleteMany();
     await prisma.auditEvent.deleteMany();
     await prisma.careTask.deleteMany();
@@ -125,6 +132,7 @@ describe('CORE-01 — Clinical Core Walking Skeleton (e2e)', () => {
     await prisma.carePlan.deleteMany();
     await prisma.clinicianAssignmentHistory.deleteMany();
     await prisma.encounter.deleteMany();
+    await prisma.treatmentPathway.deleteMany();
     await prisma.careEpisode.deleteMany();
     await prisma.room.deleteMany();
     await prisma.facility.deleteMany();

@@ -1,3 +1,4 @@
+import { decisionFixture } from './dec016-fixtures';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthRole, CareTaskStatus } from '@prisma/client';
@@ -35,12 +36,16 @@ describe('Hemorrhoid Vertical Slice 2 — T7 targeted synthetic acceptance (e2e)
 
   async function resetTables() {
     await prisma.auditEvent.deleteMany();
+    await prisma.investigationResult.deleteMany();
+    await prisma.investigationOrder.deleteMany();
+    await prisma.investigation.deleteMany();
     await prisma.clinicalFormSubmission.deleteMany();
     await prisma.careTask.deleteMany();
     await prisma.carePlanVersion.deleteMany();
     await prisma.carePlan.deleteMany();
     await prisma.clinicianAssignmentHistory.deleteMany();
     await prisma.encounter.deleteMany();
+    await prisma.treatmentPathway.deleteMany();
     await prisma.careEpisode.deleteMany();
     await prisma.room.deleteMany();
     await prisma.facility.deleteMany();
@@ -67,6 +72,7 @@ describe('Hemorrhoid Vertical Slice 2 — T7 targeted synthetic acceptance (e2e)
       .post('/encounters')
       .set('Authorization', `Bearer ${token}`)
       .send({
+        workflowKind: 'HEMORRHOID_INITIAL',
         patientId: patient,
         occurredAt: new Date().toISOString(),
         reasonForVisit,
@@ -84,7 +90,7 @@ describe('Hemorrhoid Vertical Slice 2 — T7 targeted synthetic acceptance (e2e)
     return request(app.getHttpServer())
       .post('/clinical-forms')
       .set('Authorization', `Bearer ${token}`)
-      .send({ encounterId, templateKey, responses });
+      .send({ encounterId, templateKey, responses: decisionFixture(templateKey, responses) });
   }
 
   async function completeSubmission(token: string, id: string) {

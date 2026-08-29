@@ -1,4 +1,4 @@
-export type AuthRole = 'DOCTOR' | 'RECEPTIONIST';
+export type AuthRole = 'DOCTOR' | 'RECEPTIONIST' | 'NURSE';
 
 export type PatientGender = 'MALE' | 'FEMALE' | 'OTHER';
 
@@ -31,6 +31,7 @@ export interface Encounter {
   patientId: string;
   episodeId: string | null;
   workflowKind: EncounterWorkflowKind | null;
+  treatmentPathwayId?: string | null;
   /**
    * The clinician clinically responsible for this Encounter — DEC-010 §A.
    * Distinct from provenance (who created the row); may change over time
@@ -128,6 +129,16 @@ export interface CareTask {
   timepointCode: FollowUpTimepoint | null;
   completedByEncounterId: string | null;
   scheduleReviewRequired: boolean;
+  /**
+   * DEC-016 F2 — additive, read-only linkage resolved from the task's source
+   * Encounter (CareTask -> sourceEncounter -> episodeId / treatmentPathwayId).
+   * Present on the GET /care-tasks list projection. A Longo timepoint task
+   * (timepointCode != null) is owned by a TreatmentPathway; the frontend uses
+   * this authoritative linkage to route into the correct Longo clinical
+   * follow-up flow instead of offering generic manual completion.
+   */
+  sourceEpisodeId?: string | null;
+  treatmentPathwayId?: string | null;
 }
 
 export type CareEpisodeStatus = 'ACTIVE' | 'CLOSED';
@@ -143,11 +154,7 @@ export interface CareEpisode {
 }
 
 export type TimelineEventType =
-  | 'ENCOUNTER'
-  | 'CARE_PLAN_SIGNED'
-  | 'CARE_TASK'
-  | 'CLINICAL_FORM_SUBMITTED'
-  | 'FOLLOW_UP_TASK';
+  'ENCOUNTER' | 'CARE_PLAN_SIGNED' | 'CARE_TASK' | 'CLINICAL_FORM_SUBMITTED' | 'FOLLOW_UP_TASK';
 
 export interface TimelineEvent {
   type: TimelineEventType;
@@ -172,10 +179,7 @@ export interface PatientTimeline {
 }
 
 export function flattenTimeline(timeline: PatientTimeline): TimelineEvent[] {
-  return [
-    ...timeline.episodes.flatMap((group) => group.events),
-    ...timeline.ungroupedEncounters,
-  ];
+  return [...timeline.episodes.flatMap((group) => group.events), ...timeline.ungroupedEncounters];
 }
 
 // Mirrors backend/src/clinical-forms/templates/types.ts — the frontend
@@ -184,12 +188,7 @@ export function flattenTimeline(timeline: PatientTimeline): TimelineEvent[] {
 // field definitions (which live only in backend code, per T3: no generic
 // DB form builder).
 export type ClinicalFieldType =
-  | 'number'
-  | 'text'
-  | 'textarea'
-  | 'single_choice'
-  | 'boolean'
-  | 'multi_select';
+  'number' | 'text' | 'textarea' | 'single_choice' | 'boolean' | 'multi_select';
 
 export interface ClinicalFieldOption {
   value: number | string;
@@ -232,11 +231,7 @@ export interface ClinicalFormTemplateDef {
 
 export type ClinicalFormStatus = 'DRAFT' | 'COMPLETED';
 
-export type ClinicalFormResponseValue =
-  | number
-  | string
-  | boolean
-  | (number | string)[];
+export type ClinicalFormResponseValue = number | string | boolean | (number | string)[];
 export type ClinicalFormResponses = Record<string, ClinicalFormResponseValue>;
 
 export interface ClinicalFormSubmission {
@@ -257,4 +252,38 @@ export interface ClinicalFormSubmission {
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface TreatmentPathway {
+  id: string;
+  caseId: string;
+  patientId: string;
+  modality: 'MEDICAL' | 'PROCEDURE' | 'SURGERY';
+  methodCode: string | null;
+  startedAt: string;
+  legacyEpisodeId: string | null;
+}
+export interface InvestigationOrder {
+  id: string;
+  requestText: string;
+  assignedToUserId: string | null;
+  requestedAt: string;
+}
+export interface InvestigationResult {
+  id: string;
+  rawText: string;
+  observedAt: string;
+  orderId: string | null;
+}
+export interface Investigation {
+  id: string;
+  caseId: string;
+  patientId: string;
+  label: string;
+  origin: 'INTERNAL_CURRENT' | 'ECOSYSTEM_PRIOR' | 'EXTERNAL_PRIOR';
+  parentInvestigationId: string | null;
+  orders: InvestigationOrder[];
+  results: InvestigationResult[];
+  patient: { id: string; fullName: string; dateOfBirth: string };
+  careCase: { id: string; status: string; episodeType: string };
 }

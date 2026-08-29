@@ -1,3 +1,5 @@
+import { InvestigationsModule } from './investigations/investigations.module';
+import { TreatmentPathwaysModule } from './treatment-pathways/treatment-pathways.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
@@ -37,6 +39,8 @@ import { RoomsModule } from './rooms/rooms.module';
     CliniciansModule,
     FacilitiesModule,
     RoomsModule,
+    TreatmentPathwaysModule,
+    InvestigationsModule,
   ],
   providers: [
     {

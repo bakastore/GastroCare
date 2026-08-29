@@ -1,5 +1,10 @@
 # GastroCare — Safety, Privacy & Governance
 
+
+## DEC-016 — NURSE và ranh giới dữ liệu
+
+[Owner authority DEC-016](DEC016_OWNER_AUTHORITY.md) thêm NURSE chỉ cho assigned Investigation workflow: tối thiểu patient identity (id/name/dateOfBirth), Case id/type/status và assigned Orders/Results. Không mở patient search/timeline, general Case read, Diagnosis, Treatment Decision hoặc ClinicalForm. NURSE chỉ nhập raw Result cho Order được giao đúng tenant; không suy diễn lâm sàng. Audit mới chỉ ghi identity/linkage/enum, không raw result hoặc clinical summary. Prior evidence không cần fabricated local Order. Dữ liệu bệnh nhân thật/production vẫn NOT AUTHORIZED; dumps/screenshots/test fixtures chỉ synthetic, raw artifacts ngoài Git. Không attachment storage. Mọi DEFERRED clinical semantics giữ nguyên.
+
 Cập nhật: 2026-08-21
 
 Đây là nguồn sự thật duy nhất (normative home) cho toàn bộ yêu cầu về an toàn, quyền riêng tư, và governance của GastroCare. [05_ARCHITECTURE_BASELINE.md](05_ARCHITECTURE_BASELINE.md) chỉ tham chiếu tài liệu này, không lặp lại chi tiết (P-10).

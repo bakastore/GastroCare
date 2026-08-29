@@ -1,10 +1,41 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { clinicalFormsApi } from '../api/resources';
+import { clinicalFormsApi, patientsApi } from '../api/resources';
 import { useApiQuery } from '../api/useApiQuery';
 import { ApiError } from '../api/client';
 import { ErrorState, LoadingState } from '../components/AsyncStates';
+import { PageHeader } from '../components/PageHeader';
 import type { ClinicalFormSubmission } from '../types/domain';
+
+const FORM_TITLE = 'Khám lại sau phẫu thuật Longo (trĩ)';
+
+function FollowupFormHeader({
+  patientId,
+  patientName,
+  status,
+  guardUnsavedChanges,
+}: {
+  patientId: string;
+  patientName?: string;
+  status?: React.ReactNode;
+  guardUnsavedChanges?: boolean;
+}) {
+  return (
+    <PageHeader
+      parentLabel="Hồ sơ bệnh nhân"
+      parentHref={`/patients/${patientId}`}
+      breadcrumb={[
+        { label: 'Bệnh nhân', href: '/patients' },
+        ...(patientName ? [{ label: patientName, href: `/patients/${patientId}` }] : []),
+        { label: FORM_TITLE },
+      ]}
+      title={FORM_TITLE}
+      subtitle={patientName}
+      status={status}
+      guardUnsavedChanges={guardUnsavedChanges}
+    />
+  );
+}
 
 // HEMORRHOID_LONGO_FOLLOWUP v1 — field labels/options mirror
 // backend/src/clinical-forms/templates/hemorrhoid-longo-followup.v1.ts
@@ -38,6 +69,12 @@ export function ClinicalFormPage() {
     encounterId: string;
   }>();
 
+  const patientQuery = useApiQuery(
+    () => patientsApi.getById(patientId as string),
+    [patientId],
+  );
+  const patientName = patientQuery.data?.fullName;
+
   const submissionQuery = useApiQuery(async () => {
     const submissions = await clinicalFormsApi.listByPatient(patientId as string);
     return (
@@ -55,6 +92,7 @@ export function ClinicalFormPage() {
       <StartForm
         encounterId={encounterId as string}
         patientId={patientId as string}
+        patientName={patientName}
         onCreated={submissionQuery.reload}
       />
     );
@@ -64,6 +102,7 @@ export function ClinicalFormPage() {
     <FormEditor
       submission={submissionQuery.data}
       patientId={patientId as string}
+      patientName={patientName}
       onChanged={submissionQuery.reload}
     />
   );
@@ -72,10 +111,12 @@ export function ClinicalFormPage() {
 function StartForm({
   encounterId,
   patientId,
+  patientName,
   onCreated,
 }: {
   encounterId: string;
   patientId: string;
+  patientName?: string;
   onCreated: () => void;
 }) {
   const navigate = useNavigate();
@@ -100,8 +141,8 @@ function StartForm({
   }
 
   return (
-    <div className="form-page">
-      <h1>Khám lại sau phẫu thuật Longo (trĩ)</h1>
+    <div className="clinical-form-page">
+      <FollowupFormHeader patientId={patientId} patientName={patientName} />
       {error && (
         <p className="form-error" role="alert">
           {error}
@@ -122,10 +163,12 @@ function StartForm({
 function FormEditor({
   submission,
   patientId,
+  patientName,
   onChanged,
 }: {
   submission: ClinicalFormSubmission;
   patientId: string;
+  patientName?: string;
   onChanged: () => void;
 }) {
   const navigate = useNavigate();
@@ -136,6 +179,9 @@ function FormEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isDirty =
+    !isReadOnly &&
+    JSON.stringify(responses) !== JSON.stringify(submission.responses);
 
   const liveWexnerTotal = useMemo(() => {
     const values = WEXNER_ITEMS.map((item) => responses[item.key]);
@@ -179,16 +225,19 @@ function FormEditor({
   }
 
   return (
-    <div className="form-page">
-      <h1>Khám lại sau phẫu thuật Longo (trĩ)</h1>
-      <p className="page-subtitle">
-        Trạng thái:{' '}
-        {submission.status === 'DRAFT' ? (
-          <span className="badge badge-draft">Nháp</span>
-        ) : (
-          <span className="badge badge-signed">Đã hoàn tất</span>
-        )}
-      </p>
+    <div className="clinical-form-page">
+      <FollowupFormHeader
+        patientId={patientId}
+        patientName={patientName}
+        guardUnsavedChanges={isDirty}
+        status={
+          submission.status === 'DRAFT' ? (
+            <span className="badge badge-draft">Nháp</span>
+          ) : (
+            <span className="badge badge-signed">Đã hoàn tất</span>
+          )
+        }
+      />
 
       <section>
         <h2>Thông tin lần khám lại</h2>

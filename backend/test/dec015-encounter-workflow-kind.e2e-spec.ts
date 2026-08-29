@@ -1,3 +1,4 @@
+import { createLongoPathway, decisionFixture } from './dec016-fixtures';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthRole } from '@prisma/client';
@@ -25,12 +26,16 @@ describe('DEC-015 — Encounter Workflow Discriminator v1 (e2e)', () => {
 
   async function resetTables() {
     await prisma.auditEvent.deleteMany();
+    await prisma.investigationResult.deleteMany();
+    await prisma.investigationOrder.deleteMany();
+    await prisma.investigation.deleteMany();
     await prisma.clinicalFormSubmission.deleteMany();
     await prisma.careTask.deleteMany();
     await prisma.carePlanVersion.deleteMany();
     await prisma.carePlan.deleteMany();
     await prisma.clinicianAssignmentHistory.deleteMany();
     await prisma.encounter.deleteMany();
+    await prisma.treatmentPathway.deleteMany();
     await prisma.careEpisode.deleteMany();
     await prisma.room.deleteMany();
     await prisma.facility.deleteMany();
@@ -63,7 +68,7 @@ describe('DEC-015 — Encounter Workflow Discriminator v1 (e2e)', () => {
     return request(app.getHttpServer())
       .post('/clinical-forms')
       .set('Authorization', `Bearer ${doctorToken}`)
-      .send({ encounterId, templateKey, responses });
+      .send({ encounterId, templateKey, responses: decisionFixture(templateKey, responses) });
   }
   function completeSubmission(id: string) {
     return request(app.getHttpServer())
@@ -176,7 +181,7 @@ describe('DEC-015 — Encounter Workflow Discriminator v1 (e2e)', () => {
     }).expect(201);
     const row = await prisma.encounter.findUniqueOrThrow({ where: { id: res.body.id } });
     expect(row.workflowKind).toBe('HEMORRHOID_INITIAL');
-    expect(row.episodeId).toBeNull();
+    expect(row.episodeId).toBeTruthy();
   });
 
   it('B3: an invalid workflowKind string is rejected by DTO validation (400)', async () => {
@@ -188,7 +193,7 @@ describe('DEC-015 — Encounter Workflow Discriminator v1 (e2e)', () => {
     }).expect(400);
   });
 
-  it('B4: episodeId + workflowKind is rejected (400) and no Encounter is created', async () => {
+  it('B4: legacy Longo episodeId + Initial workflowKind is rejected (409) and no Encounter is created', async () => {
     const episode = await prisma.careEpisode.create({
       data: { tenantId, patientId, episodeType: 'LONGO_TREATMENT', status: 'ACTIVE', startedAt: new Date() },
     });
@@ -199,28 +204,26 @@ describe('DEC-015 — Encounter Workflow Discriminator v1 (e2e)', () => {
       occurredAt: new Date().toISOString(),
       reasonForVisit: 'Khám (synthetic B4)',
       workflowKind: 'HEMORRHOID_INITIAL',
-    }).expect(400);
+    }).expect(409);
     const after = await prisma.encounter.count({ where: { tenantId, episodeId: episode.id } });
     expect(after).toBe(before);
     await prisma.careEpisode.delete({ where: { id: episode.id } });
   });
 
   it('B5: Longo episode-bound generic Encounter persists workflowKind = NULL; episodeType stays LONGO_TREATMENT', async () => {
-    const episode = await request(app.getHttpServer())
-      .post('/care-episodes')
-      .set('Authorization', `Bearer ${doctorToken}`)
-      .send({ patientId, episodeType: 'LONGO_TREATMENT', startedAt: new Date().toISOString() })
-      .expect(201);
+    const episode={body:await prisma.careEpisode.findFirstOrThrow({where:{patientId,episodeType:'HEMORRHOID_TREATMENT'}})};
+    const pathwayId=await createLongoPathway(app,doctorToken,episode.body.id);
     const res = await postEncounter({
       patientId,
       episodeId: episode.body.id,
+      treatmentPathwayId:pathwayId,
       occurredAt: new Date().toISOString(),
       reasonForVisit: 'Khám tiền phẫu Longo (synthetic B5)',
     }).expect(201);
     const row = await prisma.encounter.findUniqueOrThrow({ where: { id: res.body.id } });
     expect(row.workflowKind).toBeNull();
     const ep = await prisma.careEpisode.findUniqueOrThrow({ where: { id: episode.body.id } });
-    expect(ep.episodeType).toBe('LONGO_TREATMENT');
+    expect(ep.episodeType).toBe('HEMORRHOID_TREATMENT');
   });
 
   it('B6: Hemorrhoid Return Encounter persists workflowKind = NULL; episodeType is HEMORRHOID_TREATMENT', async () => {
@@ -264,14 +267,12 @@ describe('DEC-015 — Encounter Workflow Discriminator v1 (e2e)', () => {
       reasonForVisit: 'Đau thượng vị (B7 generic)',
     }).expect(201);
     // (c) Longo episode-bound
-    const longoEp = await request(app.getHttpServer())
-      .post('/care-episodes')
-      .set('Authorization', `Bearer ${doctorToken}`)
-      .send({ patientId: p.id, episodeType: 'LONGO_TREATMENT', startedAt: '2026-09-03T09:00:00.000Z' })
-      .expect(201);
+    const longoEp={body:{id:initial.body.episodeId}};
+    const longoPathwayId=await createLongoPathway(app,doctorToken,longoEp.body.id);
     const longoEnc = await postEncounter({
       patientId: p.id,
       episodeId: longoEp.body.id,
+      treatmentPathwayId:longoPathwayId,
       occurredAt: '2026-09-03T10:00:00.000Z',
       reasonForVisit: 'Khám Longo (B7)',
     }).expect(201);

@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { LongoClinicalFormPage } from '../LongoClinicalFormPage';
-import { clinicalFormsApi } from '../../api/resources';
+import { clinicalFormsApi, patientsApi } from '../../api/resources';
 
 // DEC-012 §6-7, §19 — HEMORRHOID_DIAGNOSIS / HEMORRHOID_TREATMENT_DECISION
 // deliberately reuse this same schema-driven renderer (already proven for
@@ -21,6 +21,7 @@ vi.mock('../../api/resources', () => ({
     getHistory: vi.fn(),
     getTemplate: vi.fn(),
   },
+  patientsApi: { getById: vi.fn() },
 }));
 
 function renderPage(templateKey: string) {
@@ -41,6 +42,10 @@ function renderPage(templateKey: string) {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(clinicalFormsApi.listByPatient).mockResolvedValue([]);
+  vi.mocked(patientsApi.getById).mockResolvedValue({
+    id: 'patient-1',
+    fullName: 'BN Longo',
+  } as never);
 });
 
 describe('LongoClinicalFormPage reused for Hemorrhoid Diagnosis / Treatment Decision', () => {
@@ -54,7 +59,12 @@ describe('LongoClinicalFormPage reused for Hemorrhoid Diagnosis / Treatment Deci
           key: 'main',
           label: 'Chẩn đoán',
           fields: [
-            { type: 'textarea', key: 'diagnosisSummary', label: 'Tóm tắt chẩn đoán', required: true },
+            {
+              type: 'textarea',
+              key: 'diagnosisSummary',
+              label: 'Tóm tắt chẩn đoán',
+              required: true,
+            },
           ],
         },
       ],
@@ -106,7 +116,12 @@ describe('LongoClinicalFormPage reused for Hemorrhoid Diagnosis / Treatment Deci
           key: 'main',
           label: 'Quyết định điều trị',
           fields: [
-            { type: 'textarea', key: 'decisionSummary', label: 'Tóm tắt quyết định', required: true },
+            {
+              type: 'textarea',
+              key: 'decisionSummary',
+              label: 'Tóm tắt quyết định',
+              required: true,
+            },
           ],
         },
       ],
@@ -115,9 +130,7 @@ describe('LongoClinicalFormPage reused for Hemorrhoid Diagnosis / Treatment Deci
 
     renderPage('HEMORRHOID_TREATMENT_DECISION');
 
-    expect(
-      await screen.findByRole('heading', { name: 'Quyết định điều trị' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Quyết định điều trị' })).toBeInTheDocument();
   });
 
   it('a completed Diagnosis is read-only and the diagnosisSummary field is disabled', async () => {
@@ -130,7 +143,12 @@ describe('LongoClinicalFormPage reused for Hemorrhoid Diagnosis / Treatment Deci
           key: 'main',
           label: 'Chẩn đoán',
           fields: [
-            { type: 'textarea', key: 'diagnosisSummary', label: 'Tóm tắt chẩn đoán', required: true },
+            {
+              type: 'textarea',
+              key: 'diagnosisSummary',
+              label: 'Tóm tắt chẩn đoán',
+              required: true,
+            },
           ],
         },
       ],
@@ -166,5 +184,60 @@ describe('LongoClinicalFormPage reused for Hemorrhoid Diagnosis / Treatment Deci
 
     expect(await screen.findByLabelText('Tóm tắt chẩn đoán *')).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Sửa (tạo phiên bản mới)' })).toBeInTheDocument();
+  });
+  it('DEC016: existing v1 decision uses version 1 and never renders v2 modality fields', async () => {
+    const key = 'HEMORRHOID_TREATMENT_DECISION';
+    vi.mocked(clinicalFormsApi.getTemplate).mockImplementation(async (_key, version) => ({
+      templateKey: key,
+      version: version ?? 2,
+      displayName: 'Quyết định điều trị',
+      scoreInstruments: [],
+      sections: [
+        {
+          key: 'main',
+          label: 'Quyết định điều trị',
+          fields:
+            version === 1
+              ? [
+                  {
+                    type: 'textarea',
+                    key: 'decisionSummary',
+                    label: 'Tóm tắt quyết định',
+                    required: true,
+                  },
+                ]
+              : [
+                  {
+                    type: 'multi_select',
+                    key: 'treatmentModalities',
+                    label: 'Phương thức v2',
+                    required: true,
+                    options: [{ value: 'MEDICAL', label: 'Nội khoa' }],
+                  },
+                ],
+        },
+      ],
+    }));
+    vi.mocked(clinicalFormsApi.listByPatient).mockResolvedValue([
+      {
+        id: 'legacy-1',
+        patientId: 'patient-1',
+        encounterId: 'enc-1',
+        templateKey: key,
+        templateVersion: 1,
+        status: 'COMPLETED',
+        responses: { decisionSummary: 'Synthetic legacy v1' },
+        logicalGroupId: 'legacy-1',
+        revisionNumber: 1,
+      } as never,
+    ]);
+    vi.mocked(clinicalFormsApi.getHistory).mockResolvedValue({
+      current: {} as never,
+      revisions: [],
+    });
+    renderPage(key);
+    expect(await screen.findByDisplayValue('Synthetic legacy v1')).toBeDisabled();
+    expect(clinicalFormsApi.getTemplate).toHaveBeenCalledWith(key, 1);
+    expect(screen.queryByText('Phương thức v2')).not.toBeInTheDocument();
   });
 });

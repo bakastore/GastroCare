@@ -5,6 +5,7 @@ import { carePlansApi, careTasksApi, patientsApi } from '../api/resources';
 import { useApiQuery } from '../api/useApiQuery';
 import { ApiError } from '../api/client';
 import { ErrorState, LoadingState } from '../components/AsyncStates';
+import { PageHeader } from '../components/PageHeader';
 import { formatDate, formatDateTime } from '../lib/format';
 import { flattenTimeline } from '../types/domain';
 
@@ -25,6 +26,13 @@ export function CarePlanPage() {
   const carePlanQuery = useApiQuery(() => carePlansApi.getById(carePlanId as string), [
     carePlanId,
   ]);
+  const patientQuery = useApiQuery(
+    () =>
+      carePlanQuery.data
+        ? patientsApi.getById(carePlanQuery.data.patientId)
+        : Promise.resolve(null),
+    [carePlanQuery.data?.patientId],
+  );
 
   const timelineQuery = useApiQuery(async () => {
     if (!carePlanQuery.data) return [] as SignedVersion[];
@@ -179,17 +187,26 @@ export function CarePlanPage() {
     }
   }
 
+  const amendDirty =
+    isAmending &&
+    Boolean(amendInstructions || amendFollowUpDate || amendReason || amendTaskAction);
+
   return (
     <div className="form-page">
-      <h1>Kế hoạch chăm sóc</h1>
-      <p className="page-subtitle">
-        Trạng thái:{' '}
-        {carePlan.status === 'DRAFT' ? (
-          <span className="badge badge-draft">Nháp</span>
-        ) : (
-          <span className="badge badge-signed">Đã ký</span>
-        )}
-      </p>
+      <PageHeader
+        parentLabel="Hồ sơ bệnh nhân"
+        parentHref={`/patients/${carePlan.patientId}`}
+        title="Kế hoạch chăm sóc"
+        subtitle={patientQuery.data?.fullName}
+        status={
+          carePlan.status === 'DRAFT' ? (
+            <span className="badge badge-draft">Nháp</span>
+          ) : (
+            <span className="badge badge-signed">Đã ký</span>
+          )
+        }
+        guardUnsavedChanges={isDraftDirty || amendDirty}
+      />
 
       {carePlan.status === 'DRAFT' && (
         <div>

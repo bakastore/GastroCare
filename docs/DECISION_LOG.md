@@ -359,6 +359,22 @@ Verified:
 
 ---
 
+### DEC-016 — Case / TreatmentPathway / Investigation Core
+
+**Ngày:** 2026-08-28
+
+**Trạng thái:** OWNER LOCKED (Owner prompt Session A; Contract v0.3 OWNER LOCKED được Owner xác nhận).
+
+Nguồn được lưu tại [DEC016_OWNER_AUTHORITY.md](DEC016_OWNER_AUTHORITY.md). Không có bản Contract v0.3 đầy đủ trong repository khi T0; Owner cho phép dùng yêu cầu trong prompt, không dừng vì thiếu external convenience copy.
+
+Owner mở T0 → M0 → M7 liên tục, không routine checkpoint approval, implementation/testing và technical docs. Không commit/push/deploy/real data. Case dùng physical CareEpisode; Initial có Case ngay; Return chỉ reuse; TreatmentPathway đa modality, explicit surgery method; Longo đổi ancestry sang Case + SURGERY/LONGO pathway; Decision v2 đa modality; Investigation parent/Order/Result và NURSE assigned raw-result scope. PDF/image storage, AI, CORE-05 vẫn ngoài phạm vi.
+
+DEC-016 supersedes DEC-015 §6 ở phần Longo identity: identity nay qua TreatmentPathway, không còn direct LONGO_TREATMENT Case. Supersedes quy tắc Initial permanently ungrouped và Return creates Case của Slice 2/3, cùng giới hạn không được schema/Investigation/Surgery của các work package cũ. Không đổi clinical scoring, clinical semantics deferred hoặc quyền Owner product acceptance.
+
+Domain/architecture/privacy normative overlays: docs/04, 05, 06. Implementation notes/evidence: [13_DEC016_CASE_PATHWAY_IMPLEMENTATION.md](13_DEC016_CASE_PATHWAY_IMPLEMENTATION.md). Sau M7: **FRESH CODEX SESSION B — INDEPENDENT READ-ONLY AUDIT**; Session A không tự gọi mình là independent auditor.
+
+---
+
 ## WORKING ASSUMPTIONS
 
 | ID | Nội dung | Nguồn gốc | Trạng thái |

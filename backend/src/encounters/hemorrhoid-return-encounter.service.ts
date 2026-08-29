@@ -22,20 +22,10 @@ import {
 } from '../clinical-forms/templates/hemorrhoid-continuous-care';
 
 /**
- * Dedicated atomic Return Encounter orchestration — Hemorrhoid Vertical
- * Slice 3 T2 (DEC-013; docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md
- * §H-§K). Deliberately separate from the generic
- * `CareTasksService.complete()` (Contract §J: "Do NOT use the current
- * generic CareTasksService.complete() as the atomic implementation for this
- * dedicated path") — that method is a plain read-then-update with no
- * episode resolution and no Serializable isolation, insufficient for the
- * CareEpisode start/reuse race this endpoint must guard against.
- *
- * The full C1-C4 real-Postgres concurrency proof and the mandatory
- * Independent Codex audit for this transaction are T4 (deferred — this is
- * T2 implementation only, already using the Contract-mandated Serializable
- * isolation and guarded conditional update so T4 has the correct shape to
- * test against).
+ * DEC016: atomic Return creation in the source Encounter's existing ACTIVE
+ * Case. No Case creation. Guarded CareTask transition, assignment and audits
+ * share one Serializable transaction; conflicts return 409 without retry.
+ * Existing C1-C4 tests continue to verify close/Return and rollback safety.
  */
 @Injectable()
 export class HemorrhoidReturnEncounterService {
@@ -68,9 +58,6 @@ export class HemorrhoidReturnEncounterService {
 
     let result: {
       encounterId: string;
-      episodeId: string;
-      episodeCreated: boolean;
-      careTaskId: string;
     };
     try {
       result = await this.prisma.$transaction(
@@ -96,7 +83,17 @@ export class HemorrhoidReturnEncounterService {
           }
           const carePlan = await tx.carePlan.findFirst({
             where: { id: task.carePlanId, tenantId },
-            select: { encounterId: true },
+            select: {
+              encounterId: true,
+              patientId: true,
+              encounter: {
+                select: {
+                  episodeId: true,
+                  patientId: true,
+                  treatmentPathwayId: true,
+                },
+              },
+            },
           });
           if (!carePlan) {
             throw new ConflictException('CareTask has no linked CarePlan');
@@ -122,8 +119,8 @@ export class HemorrhoidReturnEncounterService {
           // 3. Derive patientId from the CareTask — never from the client.
           const patientId = task.patientId;
 
-          // 4-6. Resolve ACTIVE HEMORRHOID_TREATMENT episode: 0 -> create;
-          // 1 -> reuse; >1 -> 409 (Contract §C, §J).
+          // DEC016: exactly one ACTIVE Case, matching the source Encounter.
+          // Zero or ambiguous candidates fail; Return never creates a Case.
           const activeEpisodes = await tx.careEpisode.findMany({
             where: {
               tenantId,
@@ -137,23 +134,18 @@ export class HemorrhoidReturnEncounterService {
               `More than one ACTIVE ${HEMORRHOID_TREATMENT_EPISODE_TYPE} episode exists for this patient`,
             );
           }
-          let episode = activeEpisodes[0] ?? null;
-          let episodeCreated = false;
+          const episode = activeEpisodes[0];
           const occurredAt = new Date(dto.occurredAt);
-          if (!episode) {
-            // First Return Encounter for this patient — start the episode.
-            // startedAt = Return Encounter.occurredAt (Contract §J); reusing
-            // an existing episode must never change its startedAt.
-            episode = await tx.careEpisode.create({
-              data: {
-                tenantId,
-                patientId,
-                episodeType: HEMORRHOID_TREATMENT_EPISODE_TYPE,
-                status: CareEpisodeStatus.ACTIVE,
-                startedAt: occurredAt,
-              },
-            });
-            episodeCreated = true;
+          if (
+            !episode ||
+            carePlan.patientId !== patientId ||
+            carePlan.encounter.patientId !== patientId ||
+            carePlan.encounter.episodeId !== episode.id ||
+            carePlan.encounter.treatmentPathwayId !== null
+          ) {
+            throw new ConflictException(
+              'Return requires the existing ACTIVE Case of its source Encounter; no Case is created',
+            );
           }
 
           // T4 — close-vs-Return concurrency guard (Contract §R): a plain
@@ -166,10 +158,7 @@ export class HemorrhoidReturnEncounterService {
           // real row-level conflict against a concurrent close() UPDATE on
           // that same row, so at most one of {this Return Encounter, that
           // close} can commit; the loser gets 409, never silently
-          // proceeding into a concurrently-closed episode. For a
-          // newly-created episode this is a trivial always-1-row update
-          // (nothing else could concurrently touch a row that did not exist
-          // before this transaction).
+          // proceeding into a concurrently-closed Case.
           const episodeGuard = await tx.careEpisode.updateMany({
             where: {
               id: episode.id,
@@ -234,22 +223,6 @@ export class HemorrhoidReturnEncounterService {
           // 12. Required AuditEvents, written inside the same transaction
           // (Contract §T) so a committed Return Encounter is never
           // observable without its audit trail.
-          if (episodeCreated) {
-            await this.audit.record(
-              {
-                tenantId,
-                actorId,
-                action: 'CARE_EPISODE_STARTED',
-                entityType: 'CareEpisode',
-                entityId: episode.id,
-                metadata: {
-                  episodeType: HEMORRHOID_TREATMENT_EPISODE_TYPE,
-                  patientId,
-                },
-              },
-              tx,
-            );
-          }
           await this.audit.record(
             {
               tenantId,
@@ -279,9 +252,6 @@ export class HemorrhoidReturnEncounterService {
 
           return {
             encounterId: encounter.id,
-            episodeId: episode.id,
-            episodeCreated,
-            careTaskId: task.id,
           };
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },

@@ -1,3 +1,5 @@
+import { InvestigationsService } from '../src/investigations/investigations.service';
+import { TreatmentPathwaysService } from '../src/treatment-pathways/treatment-pathways.service';
 // CORE-03 deterministic synthetic pilot dataset — synthetic data only.
 //
 // Unlike test/e2e-seed.ts (accounts only, for Playwright to build its own
@@ -34,6 +36,8 @@ export const PILOT_RECEPTIONIST_PASSWORD = 'CoreReceptionPilot-Pass1!';
 // handover (DEC-010 §B) for backup/restore + Owner review coverage.
 export const PILOT_DOCTOR_B_EMAIL = 'doctor.b@example.test';
 export const PILOT_DOCTOR_B_PASSWORD = 'CoreDoctorPilotB-Pass1!';
+export const PILOT_NURSE_EMAIL = 'nurse.a@example.test';
+export const PILOT_NURSE_PASSWORD = 'CoreNursePilot-Pass1!';
 
 function daysAgo(days: number): string {
   const d = new Date();
@@ -52,6 +56,9 @@ export async function seedPilotDataset(): Promise<void> {
   // for a delete-only pass) — same table order as test/e2e-seed.ts.
   const resetClient = new PrismaClient();
   try {
+    await resetClient.investigationResult.deleteMany();
+    await resetClient.investigationOrder.deleteMany();
+    await resetClient.investigation.deleteMany();
     await resetClient.clinicalFormSubmission.deleteMany();
     await resetClient.auditEvent.deleteMany();
     await resetClient.careTask.deleteMany();
@@ -59,6 +66,7 @@ export async function seedPilotDataset(): Promise<void> {
     await resetClient.carePlan.deleteMany();
     await resetClient.clinicianAssignmentHistory.deleteMany();
     await resetClient.encounter.deleteMany();
+    await resetClient.treatmentPathway.deleteMany();
     await resetClient.careEpisode.deleteMany();
     await resetClient.room.deleteMany();
     await resetClient.facility.deleteMany();
@@ -88,6 +96,8 @@ export async function seedPilotDataset(): Promise<void> {
     const careTasksService = appContext.get(CareTasksService);
     const clinicalFormsService = appContext.get(ClinicalFormsService);
     const careEpisodesService = appContext.get(CareEpisodesService);
+    const pathwaysService = appContext.get(TreatmentPathwaysService);
+    const investigationsService = appContext.get(InvestigationsService);
     const facilitiesService = appContext.get(FacilitiesService);
     const roomsService = appContext.get(RoomsService);
 
@@ -116,6 +126,15 @@ export async function seedPilotDataset(): Promise<void> {
         email: PILOT_DOCTOR_B_EMAIL,
         passwordHash: await bcrypt.hash(PILOT_DOCTOR_B_PASSWORD, 10),
         role: AuthRole.DOCTOR,
+        tenantId: tenant.id,
+      },
+    });
+
+    const nurse = await prisma.authUser.create({
+      data: {
+        email: PILOT_NURSE_EMAIL,
+        passwordHash: await bcrypt.hash(PILOT_NURSE_PASSWORD, 10),
+        role: AuthRole.NURSE,
         tenantId: tenant.id,
       },
     });
@@ -171,7 +190,7 @@ export async function seedPilotDataset(): Promise<void> {
     // realism, not an application-enforced requirement.
     const minhEpisode = await careEpisodesService.create(tenant.id, doctor.id, {
       patientId: minh.id,
-      episodeType: 'LONGO_TREATMENT',
+      episodeType: 'HEMORRHOID_TREATMENT',
       startedAt: '2026-08-15T09:00:00.000Z',
     });
 
@@ -254,13 +273,18 @@ export async function seedPilotDataset(): Promise<void> {
       },
     );
 
-    const hoaEncounter = await encountersService.create(tenant.id, doctor.id, AuthRole.DOCTOR, {
-      patientId: hoa.id,
-      occurredAt: '2026-08-20T08:30:00.000Z',
-      reasonForVisit: 'Đau bụng âm ỉ vùng thượng vị',
-      clinicalNote: 'Không sốt, ăn uống kém.',
-      assessment: 'Theo dõi loét dạ dày tá tràng',
-    });
+    const hoaEncounter = await encountersService.create(
+      tenant.id,
+      doctor.id,
+      AuthRole.DOCTOR,
+      {
+        patientId: hoa.id,
+        occurredAt: '2026-08-20T08:30:00.000Z',
+        reasonForVisit: 'Đau bụng âm ỉ vùng thượng vị',
+        clinicalNote: 'Không sốt, ăn uống kém.',
+        assessment: 'Theo dõi loét dạ dày tá tràng',
+      },
+    );
 
     const hoaCarePlan = await carePlansService.create(tenant.id, doctor.id, {
       encounterId: hoaEncounter.id,
@@ -283,20 +307,89 @@ export async function seedPilotDataset(): Promise<void> {
       },
     );
 
-    const longoEpisode = await careEpisodesService.create(tenant.id, doctor.id, {
-      patientId: longoPatient.id,
-      episodeType: 'LONGO_TREATMENT',
+    const longoEpisode = await careEpisodesService.create(
+      tenant.id,
+      doctor.id,
+      {
+        patientId: longoPatient.id,
+        episodeType: 'HEMORRHOID_TREATMENT',
+        startedAt: '2026-07-01T02:00:00.000Z',
+      },
+    );
+
+    const longoPathway = await pathwaysService.create(tenant.id, doctor.id, {
+      caseId: longoEpisode.id,
+      modality: 'SURGERY',
+      methodCode: 'LONGO',
       startedAt: '2026-07-01T02:00:00.000Z',
     });
 
-    const preopEncounter = await encountersService.create(tenant.id, doctor.id, AuthRole.DOCTOR, {
-      patientId: longoPatient.id,
-      episodeId: longoEpisode.id,
-      occurredAt: '2026-07-05T02:00:00.000Z',
-      reasonForVisit: 'Khám tiền phẫu Longo (dữ liệu tổng hợp)',
-      clinicalNote: 'x',
-      assessment: 'Chỉ định phẫu thuật Longo',
+    // DEC016: synthetic current and prior evidence, with explicit ancestry.
+    const doctorContext = {
+      tenantId: tenant.id,
+      userId: doctor.id,
+      role: doctor.role,
+      email: doctor.email,
+    };
+    const currentInvestigation = await investigationsService.create(
+      doctorContext,
+      {
+        caseId: longoEpisode.id,
+        label: 'CLS giả lập phục vụ kiểm tra backup',
+        origin: 'INTERNAL_CURRENT',
+      },
+    );
+    const order = await investigationsService.order(
+      doctorContext,
+      currentInvestigation.id,
+      {
+        requestedAt: '2026-07-01T03:00:00.000Z',
+        requestText: 'Yêu cầu giả lập',
+        assignedToUserId: nurse.id,
+      },
+    );
+    await investigationsService.result(
+      {
+        tenantId: tenant.id,
+        userId: nurse.id,
+        role: nurse.role,
+        email: nurse.email,
+      },
+      currentInvestigation.id,
+      {
+        orderId: order.id,
+        observedAt: '2026-07-01T04:00:00.000Z',
+        rawText: 'Kết quả thô giả lập; không diễn giải lâm sàng',
+      },
+    );
+    const priorInvestigation = await investigationsService.create(
+      doctorContext,
+      {
+        caseId: longoEpisode.id,
+        label: 'Bằng chứng có trước giả lập',
+        origin: 'EXTERNAL_PRIOR',
+        parentInvestigationId: currentInvestigation.id,
+      },
+    );
+    await investigationsService.result(doctorContext, priorInvestigation.id, {
+      observedAt: '2026-06-01T04:00:00.000Z',
+      rawText: 'Bản ghi thô giả lập từ trước; không tạo Order',
     });
+
+    const preopEncounter = await encountersService.create(
+      tenant.id,
+      doctor.id,
+      AuthRole.DOCTOR,
+      {
+        patientId: longoPatient.id,
+        episodeId: longoEpisode.id,
+        treatmentPathwayId: longoPathway.id,
+        occurredAt: '2026-07-05T02:00:00.000Z',
+        reasonForVisit: 'Khám tiền phẫu Longo (dữ liệu tổng hợp)',
+        clinicalNote: 'x',
+        assessment: 'Chỉ định phẫu thuật Longo',
+      },
+    );
     const preopSubmission = await clinicalFormsService.create(
       tenant.id,
       doctor.id,
@@ -326,6 +419,7 @@ export async function seedPilotDataset(): Promise<void> {
       {
         patientId: longoPatient.id,
         episodeId: longoEpisode.id,
+        treatmentPathwayId: longoPathway.id,
         occurredAt: '2026-07-10T07:00:00.000Z',
         reasonForVisit: 'Phẫu thuật Longo (dữ liệu tổng hợp)',
         clinicalNote: 'x',
@@ -374,6 +468,7 @@ export async function seedPilotDataset(): Promise<void> {
       {
         patientId: longoPatient.id,
         episodeId: longoEpisode.id,
+        treatmentPathwayId: longoPathway.id,
         occurredAt: '2026-07-24T02:00:00.000Z',
         reasonForVisit: 'Tái khám 2 tuần (dữ liệu tổng hợp)',
         clinicalNote: 'x',
@@ -403,6 +498,7 @@ export async function seedPilotDataset(): Promise<void> {
       {
         patientId: longoPatient.id,
         episodeId: longoEpisode.id,
+        treatmentPathwayId: longoPathway.id,
         occurredAt: '2026-08-05T02:00:00.000Z',
         reasonForVisit: 'Nong hậu môn lần 1 (dữ liệu tổng hợp)',
         clinicalNote: 'x',
@@ -439,6 +535,7 @@ export async function seedPilotDataset(): Promise<void> {
       {
         patientId: longoPatient.id,
         episodeId: longoEpisode.id,
+        treatmentPathwayId: longoPathway.id,
         occurredAt: '2026-08-10T02:00:00.000Z',
         reasonForVisit: 'Tái khám tháng 1 (dữ liệu tổng hợp)',
         clinicalNote: 'x',
@@ -591,7 +688,8 @@ export async function seedPilotDataset(): Promise<void> {
     await clinicalFormsService.amend(tenant.id, doctorB.id, triExam2.id, {
       responses: {
         ...(triExam2.responses as Record<string, unknown>),
-        otherGeneralFinding: 'Bổ sung ghi chú sau khi xem lại hồ sơ (dữ liệu tổng hợp).',
+        otherGeneralFinding:
+          'Bổ sung ghi chú sau khi xem lại hồ sơ (dữ liệu tổng hợp).',
       },
       amendmentReason: 'Bổ sung ghi chú toàn thân (dữ liệu tổng hợp)',
     });

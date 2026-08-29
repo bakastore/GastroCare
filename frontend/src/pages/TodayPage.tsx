@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { careTasksApi, patientsApi } from '../api/resources';
 import { useApiQuery } from '../api/useApiQuery';
 import { EmptyState, ErrorState, LoadingState } from '../components/AsyncStates';
+import { PageHeader } from '../components/PageHeader';
 import { formatDate } from '../lib/format';
 
 export function TodayPage() {
@@ -26,8 +27,7 @@ export function TodayPage() {
 
   return (
     <div>
-      <h1>Hôm nay</h1>
-      <p className="page-subtitle">Việc cần theo dõi — tái khám đang mở.</p>
+      <PageHeader title="Hôm nay" subtitle="Việc cần theo dõi — tái khám đang mở." />
 
       {isLoading && <LoadingState />}
       {error && <ErrorState message={error} />}

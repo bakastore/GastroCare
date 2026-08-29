@@ -73,61 +73,103 @@ select:focus-visible {
   outline-offset: 2px;
 }
 
-/* App shell */
+/* App shell — left sidebar + content (DEMO UI NAVIGATION v1) */
 .app-shell {
   min-height: 100%;
   display: flex;
-  flex-direction: column;
 }
 
-.topbar {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  padding: 0 20px;
-  height: 56px;
+.sidebar {
+  width: 232px;
+  flex-shrink: 0;
   background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.sidebar-brand {
+  padding: 16px 18px;
+  font-weight: 700;
+  font-size: 17px;
   border-bottom: 1px solid var(--color-border);
 }
 
-.brand {
-  font-weight: 700;
+.sidebar-brand a {
   color: var(--color-primary-dark);
+  text-decoration: none;
 }
 
-.primary-nav {
-  display: flex;
-  gap: 4px;
+.sidebar-nav {
   flex: 1;
+  padding: 12px 10px;
 }
 
-.nav-link {
-  padding: 8px 12px;
-  border-radius: var(--radius);
+.sidebar-group + .sidebar-group {
+  margin-top: 18px;
+}
+
+.sidebar-group-label {
+  margin: 0 0 6px;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--color-text-muted);
+}
+
+.sidebar-nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sidebar-link {
+  display: block;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  color: var(--color-text);
   text-decoration: none;
   font-size: 14px;
 }
 
-.nav-link:hover {
+.sidebar-link:hover {
   background: var(--color-bg);
 }
 
-.nav-link-active {
+.sidebar-link-active {
   background: var(--color-bg);
   color: var(--color-primary-dark);
   font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--color-primary);
 }
 
-.topbar-user {
+.sidebar-footer {
+  border-top: 1px solid var(--color-border);
+  padding: 12px 14px;
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  gap: 6px;
   font-size: 13px;
   color: var(--color-text-muted);
 }
 
+.sidebar-footer .user-email {
+  word-break: break-all;
+}
+
+.sidebar-footer .btn {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
 .user-role {
+  align-self: flex-start;
   padding: 2px 8px;
   border-radius: 12px;
   background: var(--color-bg);
@@ -135,12 +177,76 @@ select:focus-visible {
   color: var(--color-primary-dark);
 }
 
+.app-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.brand {
+  font-weight: 700;
+  color: var(--color-primary-dark);
+}
+
+/* Desktop: the sidebar carries navigation, so the topbar is a thin context
+ * strip. On narrow screens it holds the drawer toggle. */
+.topbar {
+  display: none;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  height: 52px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.topbar-menu-btn {
+  font-size: 18px;
+  line-height: 1;
+  padding: 4px 10px;
+}
+
+.sidebar-scrim {
+  display: none;
+}
+
 .page {
   flex: 1;
-  max-width: 960px;
+  max-width: 1120px;
   width: 100%;
   margin: 0 auto;
-  padding: 24px 20px 60px;
+  padding: 24px 24px 60px;
+}
+
+@media (max-width: 860px) {
+  .sidebar {
+    position: fixed;
+    z-index: 30;
+    left: 0;
+    top: 0;
+    transform: translateX(-100%);
+    transition: transform 0.18s ease;
+    box-shadow: 0 0 24px rgba(15, 23, 30, 0.15);
+  }
+
+  .app-shell-drawer-open .sidebar {
+    transform: translateX(0);
+  }
+
+  .app-shell-drawer-open .sidebar-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    border: 0;
+    padding: 0;
+    background: rgba(15, 23, 30, 0.4);
+  }
+
+  .topbar {
+    display: flex;
+  }
 }
 
 /* Buttons */
@@ -341,6 +447,64 @@ form textarea {
   color: var(--color-success-text);
 }
 
+/* Shared page header (DEMO UI — contextual back + consistent hierarchy) */
+.page-header {
+  margin-bottom: 20px;
+}
+
+.page-breadcrumb {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-bottom: 6px;
+}
+
+.page-breadcrumb a {
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.page-breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+.page-breadcrumb-sep {
+  color: var(--color-border);
+}
+
+.page-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--color-primary);
+  text-decoration: none;
+  padding: 2px 0;
+}
+
+.page-back:hover {
+  text-decoration: underline;
+}
+
+.page-header-main {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin-top: 8px;
+}
+
+.page-header-main h1 {
+  margin: 0;
+}
+
+.page-header-status .badge {
+  vertical-align: middle;
+}
+
+.page-header .page-subtitle {
+  margin: 6px 0 0;
+}
+
 /* Page header row / search */
 .page-header-row {
   display: flex;
@@ -509,6 +673,221 @@ form textarea {
   gap: 8px;
 }
 
+/* Unified visit entry (DEMO UI) */
+.visit-entry {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 16px;
+}
+
+.visit-entry-menu {
+  position: absolute;
+  z-index: 10;
+  margin-top: 4px;
+  min-width: 220px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 20px rgba(15, 23, 30, 0.12);
+  padding: 4px;
+}
+
+.visit-entry-option {
+  display: block;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  color: var(--color-text);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.visit-entry-option:hover {
+  background: var(--color-bg);
+}
+
+/* ------------------------------------------------------------------ *
+ * Clinical form pages (A3-UX-01) — page-scoped, so the app's other
+ * inputs/selects are untouched. Currently used by the Hemorrhoid
+ * Examination page; the class names are generic so other clinical
+ * template pages can opt in later.
+ * ------------------------------------------------------------------ */
+.page:has(.clinical-form-page) {
+  max-width: 1200px;
+}
+
+.clinical-form-page {
+  width: 100%;
+}
+
+.clinical-form-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.clinical-form-header .back-link {
+  align-self: flex-start;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.clinical-form-header .back-link:hover {
+  text-decoration: underline;
+}
+
+.clinical-form-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.clinical-form-title h1 {
+  margin: 0;
+}
+
+.clinical-section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin: 0 0 16px;
+}
+
+.clinical-section > h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.clinical-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 14px 18px;
+  align-items: start;
+}
+
+.clinical-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.clinical-field--full {
+  grid-column: 1 / -1;
+}
+
+.clinical-field label,
+.clinical-field-label {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--color-text);
+}
+
+/* A3-UX-02 — clock-face position selector: a compact ring of circular
+ * toggle buttons, no scrollbar, whole clock visible at once. */
+.clinical-clock {
+  display: grid;
+  grid-template-columns: repeat(6, 44px);
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.clock-btn {
+  width: 44px;
+  height: 44px;
+  min-height: 0;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.clock-btn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+}
+
+.clock-btn[aria-pressed='true'] {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+  font-weight: 700;
+}
+
+/* Read-only (completed form): selected hours stay teal and obvious,
+ * unselected fade back gently — never washed-out or dashed. */
+.clinical-form-page .clock-btn:disabled {
+  cursor: default;
+  opacity: 1;
+  border-style: solid;
+  -webkit-text-fill-color: currentColor;
+}
+
+.clinical-form-page .clock-btn:disabled[aria-pressed='false'] {
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+}
+
+.clinical-form-page .clock-btn:disabled[aria-pressed='true'] {
+  background: var(--color-primary);
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+}
+
+@media (max-width: 520px) {
+  .clinical-clock {
+    grid-template-columns: repeat(4, 44px);
+  }
+}
+
+.clinical-form-page input,
+.clinical-form-page select,
+.clinical-form-page textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  min-height: 38px;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.clinical-form-page textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.clinical-form-page select[multiple] {
+  min-height: 112px;
+}
+
+/* Completed / read-only: still fully legible — no washed-out grey. */
+.clinical-form-page :disabled,
+.clinical-readonly input:disabled,
+.clinical-readonly select:disabled,
+.clinical-readonly textarea:disabled {
+  opacity: 1;
+  color: var(--color-text);
+  -webkit-text-fill-color: var(--color-text);
+  background: var(--color-bg);
+  border-style: dashed;
+  cursor: default;
+}
+
 @media (max-width: 720px) {
   .topbar {
     flex-wrap: wrap;
@@ -522,6 +901,10 @@ form textarea {
   }
 
   .identity-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .clinical-grid {
     grid-template-columns: 1fr;
   }
 }

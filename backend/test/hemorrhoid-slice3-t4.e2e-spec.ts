@@ -1,3 +1,4 @@
+import { decisionFixture } from './dec016-fixtures';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthRole, CareEpisodeStatus, CareTaskStatus } from '@prisma/client';
@@ -26,12 +27,16 @@ describe('Hemorrhoid Vertical Slice 3 — T4 episode lifecycle/concurrency (e2e)
 
   async function resetTables() {
     await prisma.auditEvent.deleteMany();
+    await prisma.investigationResult.deleteMany();
+    await prisma.investigationOrder.deleteMany();
+    await prisma.investigation.deleteMany();
     await prisma.clinicalFormSubmission.deleteMany();
     await prisma.careTask.deleteMany();
     await prisma.carePlanVersion.deleteMany();
     await prisma.carePlan.deleteMany();
     await prisma.clinicianAssignmentHistory.deleteMany();
     await prisma.encounter.deleteMany();
+    await prisma.treatmentPathway.deleteMany();
     await prisma.careEpisode.deleteMany();
     await prisma.room.deleteMany();
     await prisma.facility.deleteMany();
@@ -73,6 +78,7 @@ describe('Hemorrhoid Vertical Slice 3 — T4 episode lifecycle/concurrency (e2e)
       .post('/encounters')
       .set('Authorization', `Bearer ${token}`)
       .send({
+        workflowKind: 'HEMORRHOID_INITIAL',
         patientId: patient,
         occurredAt: new Date().toISOString(),
         reasonForVisit,
@@ -90,7 +96,7 @@ describe('Hemorrhoid Vertical Slice 3 — T4 episode lifecycle/concurrency (e2e)
     return request(app.getHttpServer())
       .post('/clinical-forms')
       .set('Authorization', `Bearer ${token}`)
-      .send({ encounterId, templateKey, responses });
+      .send({ encounterId, templateKey, responses: decisionFixture(templateKey, responses) });
   }
 
   async function completeSubmission(token: string, id: string) {
@@ -230,7 +236,7 @@ describe('Hemorrhoid Vertical Slice 3 — T4 episode lifecycle/concurrency (e2e)
       expect(second.status).toBe(409);
     });
 
-    it('still allows multiple ACTIVE LONGO_TREATMENT episodes for the same patient (Longo behavior preserved)', async () => {
+    it('rejects retired direct LONGO_TREATMENT creation (multiple pathways are tested under DEC-016)', async () => {
       const patient = await createPatient('LONGO1');
       const first = await request(app.getHttpServer())
         .post('/care-episodes')
@@ -240,7 +246,7 @@ describe('Hemorrhoid Vertical Slice 3 — T4 episode lifecycle/concurrency (e2e)
           episodeType: 'LONGO_TREATMENT',
           startedAt: new Date().toISOString(),
         });
-      expect(first.status).toBe(201);
+      expect(first.status).toBe(400);
 
       const second = await request(app.getHttpServer())
         .post('/care-episodes')
@@ -250,7 +256,7 @@ describe('Hemorrhoid Vertical Slice 3 — T4 episode lifecycle/concurrency (e2e)
           episodeType: 'LONGO_TREATMENT',
           startedAt: new Date().toISOString(),
         });
-      expect(second.status).toBe(201);
+      expect(second.status).toBe(400);
     });
   });
 
@@ -411,7 +417,7 @@ describe('Hemorrhoid Vertical Slice 3 — T4 episode lifecycle/concurrency (e2e)
       expect(task.completedByEncounterId).toBeTruthy();
 
       const returnEncounters = await prisma.encounter.count({
-        where: { tenantId, patientId: patient, episodeId: { not: null } },
+        where: { tenantId, patientId: patient, episodeId: { not: null }, workflowKind: null, treatmentPathwayId: null },
       });
       expect(returnEncounters).toBe(1);
 
@@ -581,10 +587,10 @@ describe('Hemorrhoid Vertical Slice 3 — T4 episode lifecycle/concurrency (e2e)
       const episodes = await prisma.careEpisode.findMany({
         where: { tenantId, patientId: patient, episodeType: 'HEMORRHOID_TREATMENT' },
       });
-      expect(episodes).toHaveLength(0);
+      expect(episodes).toHaveLength(1); // Existing Initial Case survives failed Return.
 
       const returnEncounters = await prisma.encounter.count({
-        where: { tenantId, patientId: patient, episodeId: { not: null } },
+        where: { tenantId, patientId: patient, episodeId: { not: null }, workflowKind: null, treatmentPathwayId: null },
       });
       expect(returnEncounters).toBe(0);
 

@@ -46,6 +46,9 @@ describe('Hemorrhoid Vertical Slice 1 (e2e)', () => {
   let roomBId: string;
 
   async function resetTables() {
+    await prisma.investigationResult.deleteMany();
+    await prisma.investigationOrder.deleteMany();
+    await prisma.investigation.deleteMany();
     await prisma.clinicalFormSubmission.deleteMany();
     await prisma.auditEvent.deleteMany();
     await prisma.careTask.deleteMany();
@@ -53,6 +56,7 @@ describe('Hemorrhoid Vertical Slice 1 (e2e)', () => {
     await prisma.carePlan.deleteMany();
     await prisma.clinicianAssignmentHistory.deleteMany();
     await prisma.encounter.deleteMany();
+    await prisma.treatmentPathway.deleteMany();
     await prisma.careEpisode.deleteMany();
     await prisma.room.deleteMany();
     await prisma.facility.deleteMany();
@@ -401,7 +405,7 @@ describe('Hemorrhoid Vertical Slice 1 (e2e)', () => {
         .set('Authorization', `Bearer ${doctorA1Token}`)
         .send({
           patientId: patientAId,
-          episodeType: 'LONGO_TREATMENT',
+          episodeType: 'HEMORRHOID_TREATMENT',
           startedAt: '2026-08-14T00:00:00.000Z',
         })
         .expect(201);
@@ -824,7 +828,7 @@ describe('Hemorrhoid Vertical Slice 1 (e2e)', () => {
         type: string;
         data: { templateKey?: string };
       };
-      const events = timeline.body.ungroupedEncounters as TimelineEvent[];
+      const events = [...timeline.body.ungroupedEncounters,...timeline.body.episodes.flatMap((g:{events:TimelineEvent[]})=>g.events)] as TimelineEvent[];
       const hasHemorrhoidExam = events.some(
         (event) =>
           event.type === 'CLINICAL_FORM_SUBMITTED' &&

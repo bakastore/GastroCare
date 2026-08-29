@@ -25,8 +25,8 @@ export const HEMORRHOID_CONTINUOUS_CARE_ANCESTRY_TEMPLATE_KEYS: readonly string[
  * Enforced on create/complete/amend for HEMORRHOID_FOLLOW_UP_ASSESSMENT only
  * (Contract §N): the Encounter must belong to a HEMORRHOID_TREATMENT
  * CareEpisode of the same tenant + patient. This excludes both the
- * permanently-ungrouped initial Hemorrhoid Encounter (episodeId null —
- * Contract §B) and any Longo/unrelated episode. Does not duplicate
+ * Initial Encounter (workflowKind HEMORRHOID_INITIAL) and any pathway
+ * Encounter, even when all belong to the same Case (DEC016). Does not duplicate
  * episodeId onto ClinicalFormSubmission — ancestry is re-verified through
  * the Encounter each time, mirroring the existing Longo guard
  * (assertLongoEpisodeAncestry).
@@ -50,14 +50,28 @@ export async function assertHemorrhoidContinuousCareEpisodeAncestry(
   prisma: PrismaService,
   tenantId: string,
   templateKey: string,
-  encounter: Pick<Encounter, 'id' | 'tenantId' | 'patientId' | 'episodeId'>,
+  encounter: Pick<
+    Encounter,
+    | 'id'
+    | 'tenantId'
+    | 'patientId'
+    | 'episodeId'
+    | 'workflowKind'
+    | 'treatmentPathwayId'
+  >,
   requireActive = true,
 ): Promise<void> {
-  if (!HEMORRHOID_CONTINUOUS_CARE_ANCESTRY_TEMPLATE_KEYS.includes(templateKey)) {
+  if (
+    !HEMORRHOID_CONTINUOUS_CARE_ANCESTRY_TEMPLATE_KEYS.includes(templateKey)
+  ) {
     return;
   }
 
-  if (!encounter.episodeId) {
+  if (
+    !encounter.episodeId ||
+    encounter.workflowKind !== null ||
+    encounter.treatmentPathwayId !== null
+  ) {
     throw new ForbiddenException(
       `Encounter must belong to a ${HEMORRHOID_TREATMENT_EPISODE_TYPE} CareEpisode for template ${templateKey}`,
     );
@@ -89,8 +103,8 @@ export async function assertHemorrhoidContinuousCareEpisodeAncestry(
  * `assertHemorrhoidContinuousCareEpisodeAncestry` above which additionally
  * requires the episode to currently be ACTIVE before a new clinical form
  * write is allowed on it). Used by the CarePlan two-branch prerequisite
- * (Contract §G) to distinguish a Return Encounter from the permanently
- * ungrouped initial Hemorrhoid Encounter and from unrelated Core/Longo
+ * (Contract §G, updated DEC016) to distinguish a Return Encounter from
+ * an Initial Encounter or a pathway Encounter and unrelated Core/Longo
  * Encounters, independent of whether any HEMORRHOID_FOLLOW_UP_ASSESSMENT
  * has been submitted on it yet.
  */
@@ -101,9 +115,18 @@ export async function isHemorrhoidContinuousCareBranchEncounter(
 ): Promise<boolean> {
   const encounter = await prisma.encounter.findFirst({
     where: { id: encounterId, tenantId },
-    select: { episodeId: true },
+    select: {
+      episodeId: true,
+      workflowKind: true,
+      treatmentPathwayId: true,
+      patientId: true,
+    },
   });
-  if (!encounter?.episodeId) {
+  if (
+    !encounter?.episodeId ||
+    encounter.workflowKind !== null ||
+    encounter.treatmentPathwayId !== null
+  ) {
     return false;
   }
 
@@ -111,6 +134,7 @@ export async function isHemorrhoidContinuousCareBranchEncounter(
     where: {
       id: encounter.episodeId,
       tenantId,
+      patientId: encounter.patientId,
       episodeType: HEMORRHOID_TREATMENT_EPISODE_TYPE,
     },
     select: { id: true },

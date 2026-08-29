@@ -34,6 +34,9 @@ describe('Clinical Forms — HEMORRHOID_LONGO_FOLLOWUP (e2e)', () => {
   let doctorBToken: string;
 
   async function resetTables() {
+    await prisma.investigationResult.deleteMany();
+    await prisma.investigationOrder.deleteMany();
+    await prisma.investigation.deleteMany();
     await prisma.clinicalFormSubmission.deleteMany();
     await prisma.auditEvent.deleteMany();
     await prisma.careTask.deleteMany();
@@ -41,6 +44,7 @@ describe('Clinical Forms — HEMORRHOID_LONGO_FOLLOWUP (e2e)', () => {
     await prisma.carePlan.deleteMany();
     await prisma.clinicianAssignmentHistory.deleteMany();
     await prisma.encounter.deleteMany();
+    await prisma.treatmentPathway.deleteMany();
     await prisma.careEpisode.deleteMany();
     await prisma.room.deleteMany();
     await prisma.facility.deleteMany();

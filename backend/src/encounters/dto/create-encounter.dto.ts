@@ -21,6 +21,10 @@ export class CreateEncounterDto {
   @IsUUID()
   episodeId?: string;
 
+  @IsOptional()
+  @IsUUID()
+  treatmentPathwayId?: string;
+
   /**
    * The clinician clinically responsible for this Encounter (DEC-010 §A/§B).
    * Optional: a Receptionist creating an Encounter Context may omit it, in

@@ -1,3 +1,4 @@
+import { decisionFixture } from './dec016-fixtures';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthRole, ClinicalFormStatus, CareTaskStatus } from '@prisma/client';
@@ -31,12 +32,16 @@ describe('Hemorrhoid Vertical Slice 2 — T1-T4 (e2e)', () => {
 
   async function resetTables() {
     await prisma.auditEvent.deleteMany();
+    await prisma.investigationResult.deleteMany();
+    await prisma.investigationOrder.deleteMany();
+    await prisma.investigation.deleteMany();
     await prisma.clinicalFormSubmission.deleteMany();
     await prisma.careTask.deleteMany();
     await prisma.carePlanVersion.deleteMany();
     await prisma.carePlan.deleteMany();
     await prisma.clinicianAssignmentHistory.deleteMany();
     await prisma.encounter.deleteMany();
+    await prisma.treatmentPathway.deleteMany();
     await prisma.careEpisode.deleteMany();
     await prisma.room.deleteMany();
     await prisma.facility.deleteMany();
@@ -63,6 +68,7 @@ describe('Hemorrhoid Vertical Slice 2 — T1-T4 (e2e)', () => {
       .post('/encounters')
       .set('Authorization', `Bearer ${token}`)
       .send({
+        workflowKind: 'HEMORRHOID_INITIAL',
         patientId,
         occurredAt: new Date().toISOString(),
         reasonForVisit,
@@ -80,7 +86,7 @@ describe('Hemorrhoid Vertical Slice 2 — T1-T4 (e2e)', () => {
     return request(app.getHttpServer())
       .post('/clinical-forms')
       .set('Authorization', `Bearer ${token}`)
-      .send({ encounterId, templateKey, responses });
+      .send({ encounterId, templateKey, responses: decisionFixture(templateKey, responses) });
   }
 
   async function completeSubmission(token: string, id: string) {
@@ -476,7 +482,7 @@ describe('Hemorrhoid Vertical Slice 2 — T1-T4 (e2e)', () => {
         .post(`/clinical-forms/${decisionId}/amend`)
         .set('Authorization', `Bearer ${doctorAToken}`)
         .send({
-          responses: { decisionSummary: 'Điều trị ngoại khoa (đã sửa, synthetic)' },
+          responses: { decisionSummary: 'Điều trị ngoại khoa (đã sửa, synthetic)', treatmentModalities: ['SURGERY'] },
           amendmentReason: 'Thay đổi hướng điều trị (synthetic)',
         })
         .expect(201);
@@ -526,21 +532,12 @@ describe('Hemorrhoid Vertical Slice 2 — T1-T4 (e2e)', () => {
     });
 
     it('CarePlan sign re-checks the prerequisite and cannot be bypassed by frontend state', async () => {
-      // Encounter starts as non-Hemorrhoid (no Examination yet), so
-      // CarePlan.create() does not gate on the Hemorrhoid sequence at all —
-      // this legitimately produces a DRAFT CarePlan. The Encounter only
-      // becomes a Hemorrhoid encounter afterward, once an Examination
-      // submission exists, and Treatment Decision is deliberately never
-      // completed. sign() must independently re-verify and reject, proving
-      // the prerequisite is not just a create-time snapshot.
+      // Deliberately seed a pre-existing invalid DRAFT to prove sign re-reads
+      // authoritative prerequisites. API create is also guarded under DEC-016.
       const encounterId = await createEncounter(doctorAToken, patientAId);
-      const created = await createCarePlan(
-        doctorAToken,
-        encounterId,
-        'Điều trị theo đơn (synthetic)',
-      );
-      expect(created.status).toBe(201);
-      const carePlanId = created.body.id as string;
+      const e = await prisma.encounter.findUniqueOrThrow({where:{id:encounterId}});
+      const draft = await prisma.carePlan.create({data:{tenantId:e.tenantId,patientId:e.patientId,encounterId,instructions:'synthetic pre-existing draft'}});
+      const carePlanId = draft.id;
 
       await completeExamination(doctorAToken, encounterId);
       // Diagnosis/Treatment Decision deliberately never completed.
@@ -550,7 +547,8 @@ describe('Hemorrhoid Vertical Slice 2 — T1-T4 (e2e)', () => {
     });
 
     it('unrelated non-Hemorrhoid CarePlan create/sign is unaffected', async () => {
-      const encounterId = await createEncounter(doctorAToken, patientAId);
+      const res = await request(app.getHttpServer()).post('/encounters').auth(doctorAToken,{type:'bearer'}).send({patientId:patientAId,occurredAt:new Date().toISOString(),reasonForVisit:'synthetic generic'}).expect(201);
+      const encounterId=res.body.id;
       const created = await createCarePlan(
         doctorAToken,
         encounterId,

@@ -65,7 +65,7 @@ test.describe('Hemorrhoid Vertical Slice 3 — continuous-care browser golden pa
       const res = await api.post('/encounters', {
         data: {
           patientId,
-          occurredAt: new Date().toISOString(),
+          occurredAt: '2026-09-01T09:00:00.000Z',
           reasonForVisit,
           workflowKind: 'HEMORRHOID_INITIAL',
         },
@@ -99,6 +99,8 @@ test.describe('Hemorrhoid Vertical Slice 3 — continuous-care browser golden pa
     await apiComplete(
       await apiCreateSubmission(initialEncounterId, 'HEMORRHOID_TREATMENT_DECISION', {
         decisionSummary: 'Điều trị nội khoa (browser T7, synthetic)',
+        treatmentModalities: ['MEDICAL'],
+        medicalCareSetting: 'synthetic clinic',
       }),
     );
     const carePlan1Res = await api.post('/care-plans', {
@@ -112,29 +114,26 @@ test.describe('Hemorrhoid Vertical Slice 3 — continuous-care browser golden pa
     const carePlan1Id = (await carePlan1Res.json()).id as string;
     const sign1Res = await api.post(`/care-plans/${carePlan1Id}/sign`);
     expect(sign1Res.ok()).toBeTruthy();
-    const task1Id = (await sign1Res.json()).careTask.id as string;
 
     // 4. Reload the browser and verify (Contract §S/§I): the OPEN generic
-    // follow-up task shows "Bắt đầu tái khám" — no HEMORRHOID_TREATMENT
-    // episode exists yet, so this renders in the ungrouped section.
+    // follow-up task shows "Bắt đầu tái khám" inside the Case created at Initial.
     await page.goto(`/patients/${patientId}`);
     await expect(page.getByRole('button', { name: 'Bắt đầu tái khám' })).toBeVisible();
-    // No Hemorrhoid episode card should exist before the first Return.
-    await expect(page.getByText('Đợt theo dõi trĩ')).toHaveCount(0);
+    // DEC016: the Case already exists before the first Return.
+    await expect(page.getByText('Case trĩ')).toHaveCount(1);
 
     // 5. Submit the Return Encounter form via the browser (Contract §H):
     // succeeds, reloads timeline, task becomes completed/linked, new Return
     // Encounter appears.
     await page.getByRole('button', { name: 'Bắt đầu tái khám' }).click();
+    await page.getByLabel('Thời điểm tái khám').fill('2026-10-01T09:00');
     await page.getByLabel('Lý do khám').fill('Tái khám lần 1 (browser T7, synthetic)');
     await page.getByRole('button', { name: 'Xác nhận tái khám' }).click();
 
     // Required proof 1: HEMORRHOID_TREATMENT episode header wording.
-    await expect(page.getByText('Đợt theo dõi trĩ')).toBeVisible();
+    await expect(page.getByText('Case trĩ')).toBeVisible();
     // Required proof 2: no Longo-only controls leak onto this card.
-    await expect(
-      page.getByRole('link', { name: '+ Lượt khám trong đợt điều trị' }),
-    ).toHaveCount(0);
+    await expect(page.getByRole('link', { name: '+ Lượt khám trong đợt điều trị' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Đóng đợt điều trị' })).toHaveCount(0);
     await expect(page.getByText('Hàng đợi tái khám (kế hoạch so với thực tế)')).toHaveCount(0);
     // Required proof: new Return Encounter appears, task shows completed.
@@ -159,12 +158,8 @@ test.describe('Hemorrhoid Vertical Slice 3 — continuous-care browser golden pa
     // COMPLETED and the episode is ACTIVE, BOTH explicit paths are offered:
     // Continue ("Quyết định điều trị tiếp theo") and Terminate ("Kết thúc
     // đợt theo dõi"). Neither is inferred from the responseSummary.
-    await expect(
-      page.getByRole('link', { name: 'Quyết định điều trị tiếp theo' }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole('button', { name: 'Kết thúc đợt theo dõi' }).first(),
-    ).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Quyết định điều trị tiếp theo' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Kết thúc đợt theo dõi' }).first()).toBeVisible();
 
     await page.getByRole('link', { name: 'Quyết định điều trị tiếp theo' }).click();
     await expect(page).toHaveURL(/\/clinical-forms\/HEMORRHOID_NEXT_CLINICAL_DECISION$/);
@@ -189,13 +184,16 @@ test.describe('Hemorrhoid Vertical Slice 3 — continuous-care browser golden pa
     await expect(page.getByText('Đã ký', { exact: true })).toBeVisible();
 
     // 7. Second Return Encounter reuses the same Hemorrhoid episode — only
-    // one "Đợt theo dõi trĩ" card exists throughout.
+    // one Case card exists throughout.
     await page.goto(`/patients/${patientId}`);
-    await expect(page.getByText('Đợt theo dõi trĩ')).toHaveCount(1);
+    await expect(page.getByText('Case trĩ')).toHaveCount(1);
     await page.getByRole('button', { name: 'Bắt đầu tái khám' }).click();
+    await page.getByLabel('Thời điểm tái khám').fill('2026-11-01T09:00');
     await page.getByLabel('Lý do khám').fill('Tái khám lần 2 (browser T7, synthetic)');
     await page.getByRole('button', { name: 'Xác nhận tái khám' }).click();
-    await expect(page.getByText('Đợt theo dõi trĩ')).toHaveCount(1);
+    await expect(page.getByText('Case trĩ')).toHaveCount(1);
+
+    await expect(page.getByText('Lượt tái khám', { exact: true })).toHaveCount(2);
 
     // 8. Correction batch R2 — termination is decided on the CURRENT Return
     // Encounter, only after ITS OWN Follow-up Assessment is COMPLETED. On
@@ -207,7 +205,9 @@ test.describe('Hemorrhoid Vertical Slice 3 — continuous-care browser golden pa
     await page.getByRole('link', { name: 'Đánh giá tái khám', exact: true }).click();
     await expect(page).toHaveURL(/\/clinical-forms\/HEMORRHOID_FOLLOW_UP_ASSESSMENT$/);
     await page.getByRole('button', { name: 'Bắt đầu biểu mẫu' }).click();
-    await page.getByLabel('Đánh giá tái khám').fill('Ổn định, ngừng theo dõi (browser T7, synthetic)');
+    await page
+      .getByLabel('Đánh giá tái khám')
+      .fill('Ổn định, ngừng theo dõi (browser T7, synthetic)');
     await page.getByRole('button', { name: 'Lưu bản nháp' }).click();
     await page.getByRole('button', { name: 'Hoàn tất' }).click();
     await expect(page.getByText('Đã hoàn tất', { exact: false })).toBeVisible();
@@ -238,7 +238,8 @@ test.describe('Hemorrhoid Vertical Slice 3 — continuous-care browser golden pa
           e.data.templateKey === 'HEMORRHOID_NEXT_CLINICAL_DECISION',
       ),
     ).toHaveLength(1);
-    expect(episodeEvents.filter((e) => e.type === 'CARE_PLAN_SIGNED')).toHaveLength(1);
+    // DEC016: Initial and Return #1 plans both belong to this same Case.
+    expect(episodeEvents.filter((e) => e.type === 'CARE_PLAN_SIGNED')).toHaveLength(2);
 
     // 9. Correction batch C2/§D — explicit reopen with a required reason via
     // the existing (T4-audited) careEpisodesApi.reopen.

@@ -41,7 +41,8 @@ test.describe('CORE-02 — Doctor golden path', () => {
     await expect(page.getByRole('heading', { name: PATIENT_NAME })).toBeVisible();
 
     // 4. Create Initial Encounter.
-    await page.getByRole('link', { name: '+ Lượt khám mới' }).click();
+    await page.getByRole('button', { name: '+ Tạo lượt khám' }).click();
+    await page.getByRole('menuitem', { name: 'Khám khác' }).click();
     await expect(page).toHaveURL(/\/encounters\/new$/);
     await page.getByLabel('Thời điểm khám').fill('2026-08-23T09:00');
     await page.getByLabel('Lý do khám').fill('Đau thượng vị 6 tuần, đầy bụng, ợ nóng');
@@ -69,7 +70,8 @@ test.describe('CORE-02 — Doctor golden path', () => {
     // 8. Create Return Encounter for same Patient.
     await page.getByRole('link', { name: PATIENT_NAME }).click();
     await expect(page).toHaveURL(/\/patients\/[^/]+$/);
-    await page.getByRole('link', { name: '+ Lượt khám mới' }).click();
+    await page.getByRole('button', { name: '+ Tạo lượt khám' }).click();
+    await page.getByRole('menuitem', { name: 'Khám khác' }).click();
     await page.getByLabel('Thời điểm khám').fill('2026-09-06T09:00');
     await page.getByLabel('Lý do khám').fill('Tái khám sau 14 ngày');
     await page.getByLabel('Ghi chú lâm sàng').fill('Đỡ đau thượng vị, còn đầy bụng nhẹ.');
@@ -95,9 +97,7 @@ test.describe('CORE-02 — Doctor golden path', () => {
     // 11. Verify both Encounters are present in correct sequence.
     const timelineItems = page.locator('.timeline-item');
     await expect(timelineItems.filter({ hasText: 'Lượt khám' })).toHaveCount(2);
-    const encounterTexts = await timelineItems
-      .filter({ hasText: 'Lượt khám' })
-      .allTextContents();
+    const encounterTexts = await timelineItems.filter({ hasText: 'Lượt khám' }).allTextContents();
     expect(encounterTexts[0]).toContain('Đau thượng vị');
     expect(encounterTexts[1]).toContain('Tái khám sau 14 ngày');
   });
@@ -165,7 +165,8 @@ test.describe('CORE-03 — Clinical Forms (HEMORRHOID_LONGO_FOLLOWUP) golden pat
     const patientId = page.url().match(/patients\/([^/]+)$/)?.[1];
     expect(patientId).toBeTruthy();
 
-    await page.getByRole('link', { name: '+ Lượt khám mới' }).click();
+    await page.getByRole('button', { name: '+ Tạo lượt khám' }).click();
+    await page.getByRole('menuitem', { name: 'Khám khác' }).click();
     await page.getByLabel('Thời điểm khám').fill('2026-09-23T09:00');
     await page.getByLabel('Lý do khám').fill('Khám lại sau phẫu thuật Longo 1 tháng');
     await page.getByLabel('Ghi chú lâm sàng').fill('Vết mổ liền tốt.');
@@ -179,7 +180,11 @@ test.describe('CORE-03 — Clinical Forms (HEMORRHOID_LONGO_FOLLOWUP) golden pat
       `/patients/${patientId}/encounters/${encounterId}/clinical-forms/hemorrhoid-longo-followup`,
     );
     await page.getByRole('button', { name: 'Bắt đầu phiếu khám lại' }).click();
-    await expect(page.getByRole('heading', { name: 'Khám lại sau phẫu thuật Longo (trĩ)' })).toBeVisible();
+    await expect(
+      page.getByRole('heading', {
+        name: 'Khám lại sau phẫu thuật Longo (trĩ)',
+      }),
+    ).toBeVisible();
 
     await page.getByLabel('Lần khám lại thứ').fill('1');
     await page.getByLabel('Số tháng sau phẫu thuật').fill('1');
@@ -205,7 +210,8 @@ test.describe('CORE-03 — Clinical Forms (HEMORRHOID_LONGO_FOLLOWUP) golden pat
     await expect(page.getByText('Tổng điểm Wexner: 2 / 20')).toBeVisible();
 
     // Second longitudinal follow-up encounter + submission.
-    await page.getByRole('link', { name: '+ Lượt khám mới' }).click();
+    await page.getByRole('button', { name: '+ Tạo lượt khám' }).click();
+    await page.getByRole('menuitem', { name: 'Khám khác' }).click();
     await page.getByLabel('Thời điểm khám').fill('2026-11-23T09:00');
     await page.getByLabel('Lý do khám').fill('Khám lại sau phẫu thuật Longo 3 tháng');
     await page.getByLabel('Ghi chú lâm sàng').fill('Ổn định.');
@@ -282,7 +288,7 @@ const LONGO_PATIENT_NAME = 'Phạm Thị Longo E2E';
 const longoPatientPhone = `07${Date.now().toString().slice(-8)}`;
 
 test.describe('CORE-04 T15 — full Longo Episode pathway golden path', () => {
-  test('doctor runs the complete synthetic Longo journey end to end', async ({ page }) => {
+  test('doctor runs the complete synthetic Longo journey end to end', async ({ page, request }) => {
     await page.goto('/login');
     await page.getByLabel('Email').fill(DOCTOR_EMAIL);
     await page.getByLabel('Mật khẩu').fill(DOCTOR_PASSWORD);
@@ -300,20 +306,31 @@ test.describe('CORE-04 T15 — full Longo Episode pathway golden path', () => {
     const patientId = page.url().match(/patients\/([^/]+)$/)?.[1];
     expect(patientId).toBeTruthy();
 
-    // 2. Start Longo Episode.
-    await page.getByRole('button', { name: '+ Bắt đầu đợt điều trị Longo' }).click();
-    await page.getByLabel('Thời điểm bắt đầu').fill('2026-01-01T02:00');
-    await page.getByRole('button', { name: 'Xác nhận bắt đầu' }).click();
-    await expect(page.getByText('ĐANG ĐIỀU TRỊ')).toBeVisible();
-
-    // Correction batch C4/H — no Hemorrhoid continuous-care wording or
-    // action leaks into the Longo episode workspace.
-    await expect(page.getByText('Đợt theo dõi trĩ')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Kết thúc đợt theo dõi' })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Mở lại đợt theo dõi' })).toHaveCount(0);
+    // DEC-016: Case starts at Initial; Longo is a nested explicit pathway.
+    const token = await page.evaluate(() => localStorage.getItem('gastrocare.accessToken'));
+    const headers = { Authorization: `Bearer ${token}` };
+    const initialRes = await request.post(`${API_URL}/encounters`, {
+      headers,
+      data: {
+        patientId,
+        workflowKind: 'HEMORRHOID_INITIAL',
+        occurredAt: '2026-01-01T02:00:00.000Z',
+        reasonForVisit: 'synthetic Initial for Longo Case',
+      },
+    });
+    expect(initialRes.ok()).toBeTruthy();
+    const initial = await initialRes.json();
+    await page.reload();
+    await expect(page.getByText('Case trĩ')).toBeVisible();
+    await expect(page.getByRole('button', { name: '+ Bắt đầu đợt điều trị Longo' })).toHaveCount(0);
+    await page.getByRole('tab', { name: 'Điều trị', exact: true }).click();
+    await page.getByLabel('Thời điểm bắt đầu phương thức').fill('2026-01-01T02:00');
+    await page.getByRole('button', { name: 'Thêm phương thức điều trị' }).click();
+    await expect(page.getByTestId('treatment-pathway')).toHaveCount(1);
 
     async function createEpisodeEncounter(occurredAt: string, reasonForVisit: string) {
-      await page.getByRole('link', { name: '+ Lượt khám trong đợt điều trị' }).click();
+      await page.getByRole('tab', { name: 'Điều trị', exact: true }).click();
+      await page.getByRole('link', { name: /Lượt khám trong phương thức điều trị/ }).click();
       await expect(page).toHaveURL(/\/encounters\/new\?episodeId=/);
       await page.getByLabel('Thời điểm khám').fill(occurredAt);
       await page.getByLabel('Lý do khám').fill(reasonForVisit);
@@ -467,10 +484,57 @@ test.describe('CORE-04 T15 — full Longo Episode pathway golden path', () => {
     // — confirms correct appearance on the Timeline, not just CareTask state.
     await expect(page.getByText('LONGO_LONG_TERM_FOLLOWUP')).toHaveCount(4);
 
-    // 11. Explicit Episode closure, then reopen.
-    await page.getByRole('button', { name: 'Đóng đợt điều trị' }).click();
+    // Case closure is guarded by a completed Hemorrhoid Return assessment.
+    // Build that explicit source/task/Return context via the API; UI exercises
+    // close/reopen. The continuous-care browser spec covers Return entry itself.
+    async function complete(encounterId: string, templateKey: string, responses: object) {
+      const f = await request.post(`${API_URL}/clinical-forms`, {
+        headers,
+        data: { encounterId, templateKey, responses },
+      });
+      expect(f.ok()).toBeTruthy();
+      const done = await request.post(`${API_URL}/clinical-forms/${(await f.json()).id}/complete`, {
+        headers,
+      });
+      expect(done.ok()).toBeTruthy();
+    }
+    await complete(initial.id, 'HEMORRHOID_EXAMINATION', {});
+    await complete(initial.id, 'HEMORRHOID_DIAGNOSIS', {
+      diagnosisSummary: 'synthetic',
+    });
+    await complete(initial.id, 'HEMORRHOID_TREATMENT_DECISION', {
+      decisionSummary: 'synthetic',
+      treatmentModalities: ['SURGERY'],
+    });
+    const cp = await request.post(`${API_URL}/care-plans`, {
+      headers,
+      data: {
+        encounterId: initial.id,
+        instructions: 'synthetic',
+        followUpDate: '2026-08-01',
+      },
+    });
+    expect(cp.ok()).toBeTruthy();
+    const signed = await request.post(`${API_URL}/care-plans/${(await cp.json()).id}/sign`, {
+      headers,
+    });
+    expect(signed.ok()).toBeTruthy();
+    const ret = await request.post(`${API_URL}/encounters/hemorrhoid-return`, {
+      headers,
+      data: {
+        careTaskId: (await signed.json()).careTask.id,
+        occurredAt: '2026-08-01T00:00:00Z',
+        reasonForVisit: 'synthetic Case review',
+      },
+    });
+    expect(ret.ok()).toBeTruthy();
+    await complete((await ret.json()).id, 'HEMORRHOID_FOLLOW_UP_ASSESSMENT', {
+      responseSummary: 'synthetic',
+    });
+    await page.reload();
+    await page.getByRole('button', { name: 'Kết thúc đợt theo dõi' }).click();
     await expect(page.getByText('ĐÃ ĐÓNG')).toBeVisible();
-    await page.getByRole('button', { name: 'Mở lại đợt điều trị' }).click();
+    await page.getByRole('button', { name: 'Mở lại đợt theo dõi' }).click();
     await page.getByLabel('Lý do mở lại').fill('Cần ghi chép bổ sung (E2E)');
     await page.getByRole('button', { name: 'Xác nhận mở lại' }).click();
     await expect(page.getByText('ĐANG ĐIỀU TRỊ')).toBeVisible();
@@ -536,7 +600,8 @@ test.describe('DEC-010 Hemorrhoid Vertical Slice 1 — real-world workflow golde
     // completes an exam with vitals — this becomes the prior COMPLETED
     // source record for vital-sign copy-forward (DEC-010 §6) into the
     // SECOND encounter created below.
-    await page.getByRole('link', { name: '+ Lượt khám trĩ mới' }).click();
+    await page.getByRole('button', { name: '+ Tạo lượt khám' }).click();
+    await page.getByRole('menuitem', { name: 'Khám trĩ' }).click();
     await expect(page).toHaveURL(/\/hemorrhoid\/new-encounter$/);
     await page.getByLabel('Thời điểm khám').fill('2026-08-01T09:00');
     await page.getByLabel('Lý do khám').fill('Khám trĩ lần đầu (E2E)');
@@ -735,10 +800,9 @@ test.describe('DEC-010 Hemorrhoid Vertical Slice 1 — real-world workflow golde
     // 16. Revision 1 was never overwritten — its original value (weight 62,
     // before the amendment) is still retrievable via the same history data
     // the UI list above is rendered from.
-    const submissionsRes = await request.get(
-      `${API_URL}/clinical-forms?patientId=${patientId}`,
-      { headers: { Authorization: `Bearer ${doctorToken}` } },
-    );
+    const submissionsRes = await request.get(`${API_URL}/clinical-forms?patientId=${patientId}`, {
+      headers: { Authorization: `Bearer ${doctorToken}` },
+    });
     expect(submissionsRes.ok()).toBeTruthy();
     const submissions = await submissionsRes.json();
     const rootSubmission = submissions.find(
@@ -749,10 +813,9 @@ test.describe('DEC-010 Hemorrhoid Vertical Slice 1 — real-world workflow golde
     );
     expect(rootSubmission).toBeTruthy();
 
-    const historyRes = await request.get(
-      `${API_URL}/clinical-forms/${rootSubmission.id}/history`,
-      { headers: { Authorization: `Bearer ${doctorToken}` } },
-    );
+    const historyRes = await request.get(`${API_URL}/clinical-forms/${rootSubmission.id}/history`, {
+      headers: { Authorization: `Bearer ${doctorToken}` },
+    });
     expect(historyRes.ok()).toBeTruthy();
     const history = await historyRes.json();
     expect(history.revisions).toHaveLength(2);
@@ -801,7 +864,8 @@ test.describe('DEC-012 Hemorrhoid Vertical Slice 2 — T6 golden path', () => {
     const patientId = page.url().match(/patients\/([^/]+)$/)?.[1];
     expect(patientId).toBeTruthy();
 
-    await page.getByRole('link', { name: '+ Lượt khám trĩ mới' }).click();
+    await page.getByRole('button', { name: '+ Tạo lượt khám' }).click();
+    await page.getByRole('menuitem', { name: 'Khám trĩ' }).click();
     await page.getByLabel('Thời điểm khám').fill('2026-09-01T09:00');
     await page.getByLabel('Lý do khám').fill('Khám trĩ lần đầu (E2E Slice 2)');
     await page.getByRole('button', { name: 'Tạo lượt khám' }).click();
@@ -845,6 +909,8 @@ test.describe('DEC-012 Hemorrhoid Vertical Slice 2 — T6 golden path', () => {
     ).toBeVisible();
     await page.getByRole('button', { name: 'Bắt đầu biểu mẫu' }).click();
     await page.getByLabel('Quyết định điều trị *').fill(decisionSummary);
+    await page.getByLabel('Phương thức điều trị (chọn nhiều)').selectOption(['MEDICAL', 'SURGERY']);
+    await page.getByLabel('Nơi điều trị nội khoa').fill('synthetic clinic');
     await page.getByRole('button', { name: 'Hoàn tất' }).click();
     await expect(page.getByText('Đã hoàn tất (phiên bản 1)')).toBeVisible();
     await page.getByRole('button', { name: 'Về hồ sơ bệnh nhân' }).click();
@@ -888,7 +954,8 @@ test.describe('DEC-012 Hemorrhoid Vertical Slice 2 — T6 golden path', () => {
     // Return Encounter used to complete the follow-up CareTask below. Just
     // capture its id from the exam URL; completing its own exam is not
     // needed for this step.
-    await page.getByRole('link', { name: '+ Lượt khám trĩ mới' }).click();
+    await page.getByRole('button', { name: '+ Tạo lượt khám' }).click();
+    await page.getByRole('menuitem', { name: 'Khám trĩ' }).click();
     await page.getByLabel('Thời điểm khám').fill('2026-09-26T09:00');
     await page.getByLabel('Lý do khám').fill('Tái khám trĩ (E2E Slice 2)');
     await page.getByRole('button', { name: 'Tạo lượt khám' }).click();
@@ -908,7 +975,9 @@ test.describe('DEC-012 Hemorrhoid Vertical Slice 2 — T6 golden path', () => {
     const row = page.getByRole('row').filter({ hasText: patientName });
     await expect(row).toBeVisible();
     await row.getByRole('button', { name: 'Hoàn thành qua lượt tái khám' }).click();
-    const confirmButton = page.getByRole('button', { name: 'Xác nhận hoàn thành' });
+    const confirmButton = page.getByRole('button', {
+      name: 'Xác nhận hoàn thành',
+    });
     await expect(confirmButton).toBeDisabled();
     await page.getByLabel('Lượt tái khám').selectOption(returnEncounterId as string);
     await expect(confirmButton).toBeEnabled();
@@ -937,4 +1006,80 @@ test.describe('DEC-012 Hemorrhoid Vertical Slice 2 — T6 golden path', () => {
       page.getByText(/Hoàn thành qua lượt tái khám:.*Tái khám trĩ \(E2E Slice 2\)/),
     ).toBeVisible();
   });
+});
+
+test('DEC-016 Investigation parent/prior evidence and NURSE assigned raw Result workflow', async ({
+  page,
+  request,
+}) => {
+  await page.goto('/login');
+  await page.getByLabel('Email').fill(DOCTOR_EMAIL);
+  await page.getByLabel('Mật khẩu').fill(DOCTOR_PASSWORD);
+  await page.getByRole('button', { name: 'Đăng nhập' }).click();
+  await expect(page).toHaveURL(/\/today$/);
+  const token = await page.evaluate(() => localStorage.getItem('gastrocare.accessToken'));
+  const headers = { Authorization: `Bearer ${token}` };
+  const p = await request.post(`${API_URL}/patients`, {
+    headers,
+    data: {
+      fullName: 'SYNTHETIC DEC016 CLS',
+      dateOfBirth: '1990-01-01',
+      gender: 'OTHER',
+      phone: `08${Date.now().toString().slice(-8)}`,
+    },
+  });
+  expect(p.ok()).toBeTruthy();
+  const patientId = (await p.json()).patient.id;
+  const initial = await request.post(`${API_URL}/encounters`, {
+    headers,
+    data: {
+      patientId,
+      occurredAt: '2026-08-28T09:00:00Z',
+      reasonForVisit: 'synthetic',
+      workflowKind: 'HEMORRHOID_INITIAL',
+    },
+  });
+  expect(initial.ok()).toBeTruthy();
+  await page.goto(`/patients/${patientId}`);
+  await page.getByRole('tab', { name: 'CLS', exact: true }).click();
+  await page.getByLabel('Tên CLS').fill('SYNTHETIC CBC');
+  await page.getByRole('button', { name: 'Thêm CLS', exact: true }).click();
+  const current = page.locator('article').filter({
+    has: page.getByRole('heading', { name: 'SYNTHETIC CBC', exact: true }),
+  });
+  await current.getByLabel('Nội dung chỉ định').fill('synthetic request');
+  await current.getByLabel('Thời điểm chỉ định').fill('2026-08-28T09:00');
+  await current.getByLabel('Giao cho').selectOption({ label: 'nurse.a@example.test' });
+  await current.getByRole('button', { name: 'Tạo chỉ định' }).click();
+  await expect(current.getByText(/Chỉ định #1/)).toBeVisible();
+  await page.getByLabel('Tên CLS').fill('SYNTHETIC PRIOR');
+  await page.getByLabel('Nguồn CLS').selectOption('EXTERNAL_PRIOR');
+  await page.getByLabel('CLS cha (liên kết tường minh)').selectOption({ label: 'SYNTHETIC CBC' });
+  await page.getByRole('button', { name: 'Thêm CLS', exact: true }).click();
+  const prior = page.locator('article').filter({
+    has: page.getByRole('heading', { name: 'SYNTHETIC PRIOR', exact: true }),
+  });
+  await expect(prior.getByText('CLS cha: SYNTHETIC CBC')).toBeVisible();
+  await expect(prior.getByRole('button', { name: 'Tạo chỉ định' })).toHaveCount(0);
+  await prior.getByLabel('Kết quả thô', { exact: true }).fill('synthetic prior value');
+  await prior.getByLabel('Thời điểm kết quả').fill('2026-08-27T09:00');
+  await prior.getByRole('button', { name: 'Lưu kết quả thô' }).click();
+  await expect(prior.getByText('synthetic prior value', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Đăng xuất' }).click();
+  await page.getByLabel('Email').fill('nurse.a@example.test');
+  await page.getByLabel('Mật khẩu').fill('CoreNurseE2E-Pass1!');
+  await page.getByRole('button', { name: 'Đăng nhập' }).click();
+  await expect(page).toHaveURL(/\/investigations\/assigned$/);
+  await expect(page.getByRole('heading', { name: 'SYNTHETIC CBC', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'SYNTHETIC PRIOR', exact: true })).toHaveCount(0);
+  await page.getByLabel('Chỉ định tương ứng').selectOption({ label: '#1 · synthetic request' });
+  await page.getByLabel('Kết quả thô', { exact: true }).fill('synthetic nurse raw value');
+  await page.getByLabel('Thời điểm kết quả').fill('2026-08-28T10:00');
+  await page.getByRole('button', { name: 'Lưu kết quả thô' }).click();
+  await expect(page.getByText('synthetic nurse raw value', { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByText('synthetic nurse raw value', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Bệnh nhân', exact: true })).toHaveCount(0);
+  await page.goto(`/patients/${patientId}`);
+  await expect(page).toHaveURL(/\/not-authorized$/);
 });

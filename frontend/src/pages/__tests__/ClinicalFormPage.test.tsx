@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { ClinicalFormPage } from '../ClinicalFormPage';
-import { clinicalFormsApi } from '../../api/resources';
+import { clinicalFormsApi, patientsApi } from '../../api/resources';
 
 vi.mock('../../api/resources', () => ({
   clinicalFormsApi: {
@@ -13,10 +13,15 @@ vi.mock('../../api/resources', () => ({
     updateDraft: vi.fn(),
     complete: vi.fn(),
   },
+  patientsApi: { getById: vi.fn() },
 }));
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(patientsApi.getById).mockResolvedValue({
+    id: 'patient-1',
+    fullName: 'BN CLS',
+  } as never);
 });
 
 function renderClinicalFormPage() {

@@ -1,5 +1,7 @@
+import { CaseTreatmentPanel } from './CaseTreatmentPanel';
+import { InvestigationPanel } from './InvestigationPanel';
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { careEpisodesApi, encountersApi, followUpTasksApi, patientsApi } from '../api/resources';
 import { useApiQuery } from '../api/useApiQuery';
 import { ApiError } from '../api/client';
@@ -42,14 +44,10 @@ export function LongoEpisodeWorkspace({ patientId }: { patientId: string }) {
   const followUpQuery = useApiQuery(() => followUpTasksApi.listByPatient(patientId), [patientId]);
   const timelineQuery = useApiQuery(() => patientsApi.getTimeline(patientId), [patientId]);
 
-  const [isStarting, setIsStarting] = useState(false);
-  const [startedAt, setStartedAt] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
   const [pendingEpisodeId, setPendingEpisodeId] = useState<string | null>(null);
   const [reopeningEpisodeId, setReopeningEpisodeId] = useState<string | null>(null);
   const [reopenReason, setReopenReason] = useState('');
-
-  const activeEpisode = (episodesQuery.data ?? []).find((e) => e.status === 'ACTIVE');
 
   // Correction batch C5-A — patient-wide Encounter lookup across every
   // Timeline bucket (episode groups + ungrouped). A generic follow-up
@@ -61,10 +59,7 @@ export function LongoEpisodeWorkspace({ patientId }: { patientId: string }) {
     const map = new Map<string, { reasonForVisit: string; occurredAt: string }>();
     const timeline = timelineQuery.data;
     if (timeline) {
-      const all = [
-        ...timeline.episodes.flatMap((g) => g.events),
-        ...timeline.ungroupedEncounters,
-      ];
+      const all = [...timeline.episodes.flatMap((g) => g.events), ...timeline.ungroupedEncounters];
       for (const e of all) {
         if (e.type === 'ENCOUNTER') {
           map.set(String(e.data.id), {
@@ -81,22 +76,6 @@ export function LongoEpisodeWorkspace({ patientId }: { patientId: string }) {
     episodesQuery.reload();
     followUpQuery.reload();
     timelineQuery.reload();
-  }
-
-  async function startEpisode() {
-    setActionError(null);
-    try {
-      await careEpisodesApi.create({
-        patientId,
-        episodeType: 'LONGO_TREATMENT',
-        startedAt: startedAt ? new Date(startedAt).toISOString() : new Date().toISOString(),
-      });
-      setIsStarting(false);
-      setStartedAt('');
-      reloadAll();
-    } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : 'Không bắt đầu được đợt điều trị.');
-    }
   }
 
   async function closeEpisode(episodeId: string) {
@@ -133,43 +112,15 @@ export function LongoEpisodeWorkspace({ patientId }: { patientId: string }) {
           Longo episodes, Hemorrhoid continuous-care episodes and ungrouped
           Encounters for one patient, so the static "Đợt điều trị Longo"
           heading was misleading. */}
-      <h2>Đợt điều trị / theo dõi</h2>
+      <h2>Case · Điều trị / theo dõi</h2>
 
       {actionError && <ErrorState message={actionError} />}
 
       {episodesQuery.isLoading && <LoadingState />}
       {episodesQuery.error && <ErrorState message={episodesQuery.error} />}
 
-      {!episodesQuery.isLoading && !episodesQuery.error && !activeEpisode && !isStarting && (
-        <div className="form-actions">
-          <button type="button" className="btn btn-primary" onClick={() => setIsStarting(true)}>
-            + Bắt đầu đợt điều trị Longo
-          </button>
-        </div>
-      )}
-
-      {isStarting && (
-        <div className="inline-form">
-          <label htmlFor="episodeStartedAt">Thời điểm bắt đầu</label>
-          <input
-            id="episodeStartedAt"
-            type="datetime-local"
-            value={startedAt}
-            onChange={(e) => setStartedAt(e.target.value)}
-          />
-          <div className="form-actions">
-            <button type="button" className="btn btn-ghost" onClick={() => setIsStarting(false)}>
-              Hủy
-            </button>
-            <button type="button" className="btn btn-primary" onClick={startEpisode}>
-              Xác nhận bắt đầu
-            </button>
-          </div>
-        </div>
-      )}
-
-      {!episodesQuery.isLoading && (episodesQuery.data ?? []).length === 0 && !isStarting && (
-        <EmptyState message="Chưa có đợt điều trị Longo nào." />
+      {!episodesQuery.isLoading && (episodesQuery.data ?? []).length === 0 && (
+        <EmptyState message="Chưa có Case. Bắt đầu từ lượt khám trĩ mới." />
       )}
 
       {(episodesQuery.data ?? []).map((episode) => (
@@ -192,15 +143,14 @@ export function LongoEpisodeWorkspace({ patientId }: { patientId: string }) {
           followUpTasks={(followUpQuery.data ?? []).filter((task) =>
             timelineQuery.data?.episodes
               .find((g) => g.episode.id === episode.id)
-              ?.events.some(
-                (e) => e.type === 'ENCOUNTER' && e.data.id === task.sourceEncounterId,
-              ),
+              ?.events.some((e) => e.type === 'ENCOUNTER' && e.data.id === task.sourceEncounterId),
           )}
           onReloadAll={reloadAll}
         />
       ))}
 
-      {(timelineQuery.data?.ungroupedEncounters.filter((e) => e.type === 'ENCOUNTER').length ?? 0) > 0 && (
+      {(timelineQuery.data?.ungroupedEncounters.filter((e) => e.type === 'ENCOUNTER').length ?? 0) >
+        0 && (
         <div className="episode-card">
           <h3>Lượt khám ngoài đợt điều trị</h3>
           <TimelineEventList
@@ -249,44 +199,66 @@ function EpisodeCard({
   onReloadAll: () => void;
 }) {
   const isHemorrhoidContinuousCare = episode.episodeType === HEMORRHOID_TREATMENT_EPISODE_TYPE;
+  // The active Case tab lives in the URL (?tab=) so leaving for a clinical
+  // form / pathway page and coming back restores the same tab (context
+  // preservation). Falls back to "Tổng quan".
+  const CASE_TABS = ['Tổng quan', 'Khám', 'CLS', 'Điều trị', 'Theo dõi', 'Lịch sử'];
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const tab = tabParam && CASE_TABS.includes(tabParam) ? tabParam : 'Tổng quan';
+  const setTab = (name: string) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('tab', name);
+        return next;
+      },
+      { replace: true },
+    );
+  };
+
+  // F1 — a Longo follow-up CareTask is owned by a TreatmentPathway through
+  // its source (surgery-anchor) Encounter. Two LONGO pathways inside the same
+  // Case can each carry a MONTH_3 task on the same due date; without pathway
+  // context they render identically. Resolve human-readable context from the
+  // authoritative Encounter events already in this Case bucket — surgery
+  // method + surgery date, plus a stable per-Case pathway ordinal (never a
+  // raw UUID as the clinician-facing label). No new frontend source of truth.
+  const encounterEventByIdInCase = new Map(
+    events
+      .filter((e) => e.type === 'ENCOUNTER')
+      .map((e) => [String(e.data.id), e.data as Record<string, unknown>]),
+  );
+  const pathwayOrderInCase: string[] = [];
+  for (const e of events) {
+    if (e.type === 'ENCOUNTER' && e.data.treatmentPathwayId) {
+      const id = String(e.data.treatmentPathwayId);
+      if (!pathwayOrderInCase.includes(id)) pathwayOrderInCase.push(id);
+    }
+  }
+  function pathwayContextForTask(sourceEncounterId: string | null) {
+    const src = sourceEncounterId ? encounterEventByIdInCase.get(sourceEncounterId) : undefined;
+    const pathwayId = src?.treatmentPathwayId ? String(src.treatmentPathwayId) : null;
+    if (!pathwayId) return null;
+    const ordinal = pathwayOrderInCase.indexOf(pathwayId) + 1;
+    const method = String(src?.methodCode ?? src?.treatmentModality ?? 'Phương thức');
+    const anchorDate = src?.occurredAt ? formatDate(String(src.occurredAt)) : '';
+    return {
+      pathwayId,
+      label: `${method}${ordinal > 0 ? ` #${ordinal}` : ''}${anchorDate ? ` · ${anchorDate}` : ''}`,
+    };
+  }
   return (
     <div className="episode-card">
       <h3>
-        {isHemorrhoidContinuousCare
-          ? 'Đợt theo dõi trĩ (tái khám liên tục)'
-          : 'Đợt điều trị Longo'}{' '}
-        — bắt đầu {formatDate(episode.startedAt)}{' '}
+        {isHemorrhoidContinuousCare ? 'Case trĩ' : 'Đợt điều trị Longo'} — bắt đầu{' '}
+        {formatDate(episode.startedAt)}{' '}
         {episode.status === 'ACTIVE' ? (
           <span className="badge badge-open">ĐANG ĐIỀU TRỊ</span>
         ) : (
           <span className="badge badge-signed">ĐÃ ĐÓNG</span>
         )}
       </h3>
-
-      {/* Longo Episode manual Encounter + close/reopen (CORE-04 T14 wording,
-          unchanged). */}
-      {!isHemorrhoidContinuousCare && (
-        <div className="form-actions">
-          {episode.status === 'ACTIVE' && (
-            <>
-              <Link
-                className="btn btn-primary"
-                to={`/patients/${patientId}/encounters/new?episodeId=${episode.id}`}
-              >
-                + Lượt khám trong đợt điều trị
-              </Link>
-              <button type="button" className="btn btn-ghost" disabled={isPending} onClick={onClose}>
-                Đóng đợt điều trị
-              </button>
-            </>
-          )}
-          {episode.status === 'CLOSED' && !isReopening && (
-            <button type="button" className="btn btn-ghost" onClick={onStartReopen}>
-              Mở lại đợt điều trị
-            </button>
-          )}
-        </div>
-      )}
 
       {/* Correction batch C2 + R2 — Hemorrhoid continuous-care reopen only.
           There is deliberately NO generic Close button on the ACTIVE
@@ -327,18 +299,55 @@ function EpisodeCard({
         </div>
       )}
 
-      <h4>Dòng thời gian trong đợt điều trị</h4>
-      <TimelineEventList
-        events={events}
-        patientId={patientId}
-        episodeType={episode.episodeType}
-        episodeStatus={episode.status}
-        encountersById={encountersById}
-        onTerminateEpisode={onClose}
-        onReloadAll={onReloadAll}
-      />
+      <div className="row-actions" role="tablist" aria-label="Case workspace">
+        {CASE_TABS.map((name) => (
+          <button
+            key={name}
+            role="tab"
+            type="button"
+            className={tab === name ? 'btn btn-primary' : 'btn btn-ghost'}
+            aria-selected={tab === name}
+            onClick={() => setTab(name)}
+          >
+            {name}
+          </button>
+        ))}
+      </div>
+      {tab === 'CLS' ? (
+        <InvestigationPanel caseId={episode.id} />
+      ) : (
+        <>
+          {tab === 'Điều trị' && (
+            <CaseTreatmentPanel
+              caseId={episode.id}
+              patientId={patientId}
+              active={episode.status === 'ACTIVE'}
+              onChanged={onReloadAll}
+            />
+          )}
+          <h4>{tab === 'Lịch sử' ? 'Lịch sử Case' : 'Dòng thời gian trong Case'}</h4>
+          <TimelineEventList
+            visibleTypes={
+              tab === 'Khám'
+                ? ['ENCOUNTER']
+                : tab === 'Theo dõi'
+                  ? ['CARE_TASK', 'FOLLOW_UP_TASK']
+                  : tab === 'Điều trị'
+                    ? ['CARE_PLAN_SIGNED', 'CLINICAL_FORM_SUBMITTED']
+                    : undefined
+            }
+            events={events}
+            patientId={patientId}
+            episodeType={episode.episodeType}
+            episodeStatus={episode.status}
+            encountersById={encountersById}
+            onTerminateEpisode={onClose}
+            onReloadAll={onReloadAll}
+          />
+        </>
+      )}
 
-      {!isHemorrhoidContinuousCare && (
+      {followUpTasks.length > 0 && (
         <>
           <h4>Hàng đợi tái khám (kế hoạch so với thực tế)</h4>
           {followUpTasks.length === 0 ? (
@@ -348,17 +357,22 @@ function EpisodeCard({
               <table className="data-table">
                 <thead>
                   <tr>
+                    <th>Phương thức</th>
                     <th>Mốc</th>
                     <th>Ngày dự kiến</th>
                     <th>Trạng thái</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
                   {followUpTasks
                     .slice()
                     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
-                    .map((task) => (
+                    .map((task) => {
+                      const pathwayContext = pathwayContextForTask(task.sourceEncounterId);
+                      return (
                       <tr key={task.id}>
+                        <td>{pathwayContext ? pathwayContext.label : '—'}</td>
                         <td>{TIMEPOINT_LABELS[task.timepointCode ?? ''] ?? task.timepointCode}</td>
                         <td>{formatDate(task.dueDate)}</td>
                         <td>
@@ -370,8 +384,19 @@ function EpisodeCard({
                             <span className="badge badge-open">Kế hoạch</span>
                           )}
                         </td>
+                        <td>
+                          {task.status !== 'COMPLETED' && pathwayContext && (
+                            <Link
+                              className="btn btn-ghost btn-small"
+                              to={`/patients/${patientId}/encounters/new?episodeId=${episode.id}&treatmentPathwayId=${pathwayContext.pathwayId}&timepointCode=${task.timepointCode ?? ''}`}
+                            >
+                              Mở lượt tái khám
+                            </Link>
+                          )}
+                        </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                 </tbody>
               </table>
             </div>
@@ -396,7 +421,10 @@ const HEMORRHOID_PREREQ_CHAIN = [
 ];
 const HEMORRHOID_SEQUENCE: { templateKey: string; label: string }[] = [
   { templateKey: 'HEMORRHOID_DIAGNOSIS', label: 'Chẩn đoán' },
-  { templateKey: 'HEMORRHOID_TREATMENT_DECISION', label: 'Quyết định điều trị' },
+  {
+    templateKey: 'HEMORRHOID_TREATMENT_DECISION',
+    label: 'Quyết định điều trị',
+  },
 ];
 
 // Hemorrhoid Vertical Slice 3 continuous-care branch (DEC-013 §D-§E, §G;
@@ -409,11 +437,18 @@ const HEMORRHOID_CONTINUOUS_PREREQ_CHAIN = [
   'HEMORRHOID_NEXT_CLINICAL_DECISION',
 ];
 const HEMORRHOID_CONTINUOUS_SEQUENCE: { templateKey: string; label: string }[] = [
-  { templateKey: 'HEMORRHOID_FOLLOW_UP_ASSESSMENT', label: 'Đánh giá tái khám' },
-  { templateKey: 'HEMORRHOID_NEXT_CLINICAL_DECISION', label: 'Quyết định điều trị tiếp theo' },
+  {
+    templateKey: 'HEMORRHOID_FOLLOW_UP_ASSESSMENT',
+    label: 'Đánh giá tái khám',
+  },
+  {
+    templateKey: 'HEMORRHOID_NEXT_CLINICAL_DECISION',
+    label: 'Quyết định điều trị tiếp theo',
+  },
 ];
 
 function TimelineEventList({
+  visibleTypes,
   events,
   patientId,
   episodeType,
@@ -422,6 +457,7 @@ function TimelineEventList({
   onTerminateEpisode,
   onReloadAll,
 }: {
+  visibleTypes?: TimelineEvent['type'][];
   events: TimelineEvent[];
   patientId: string;
   episodeType: string | null;
@@ -465,36 +501,43 @@ function TimelineEventList({
   // action, and only after its own Follow-up Assessment is COMPLETED.
   // Historical Return Encounters never render an actionable Close.
   let latestReturnEncounterId: string | null = null;
-  let latestOccurredAt = '';
+  let latestSortKey = '';
   for (const e of events) {
-    if (e.type === 'ENCOUNTER') {
-      const occurredAt = String(e.data.occurredAt ?? e.timestamp);
-      if (!latestReturnEncounterId || occurredAt >= latestOccurredAt) {
+    if (
+      e.type === 'ENCOUNTER' &&
+      e.data.workflowKind !== 'HEMORRHOID_INITIAL' &&
+      !e.data.treatmentPathwayId
+    ) {
+      // Clinical time remains primary; ties are deterministic even if event order changes.
+      const sortKey = `${e.data.occurredAt ?? e.timestamp}|${e.data.createdAt ?? ''}|${e.data.id}`;
+      if (!latestReturnEncounterId || sortKey > latestSortKey) {
         latestReturnEncounterId = String(e.data.id);
-        latestOccurredAt = occurredAt;
+        latestSortKey = sortKey;
       }
     }
   }
   return (
     <ul className="timeline">
-      {events.map((event, index) => (
-        <li key={`${event.type}-${index}`} className={`timeline-item timeline-${event.type}`}>
-          <span className="timeline-time">{formatDateTime(event.timestamp)}</span>
-          <EpisodeTimelineEventBody
-            event={event}
-            patientId={patientId}
-            completedByEncounter={completedByEncounter}
-            encounterById={encounterById}
-            episodeType={episodeType}
-            episodeStatus={episodeStatus ?? null}
-            isLatestReturnEncounter={
-              event.type === 'ENCOUNTER' && String(event.data.id) === latestReturnEncounterId
-            }
-            onTerminateEpisode={onTerminateEpisode}
-            onReloadAll={onReloadAll}
-          />
-        </li>
-      ))}
+      {events
+        .filter((event) => !visibleTypes || visibleTypes.includes(event.type))
+        .map((event, index) => (
+          <li key={`${event.type}-${index}`} className={`timeline-item timeline-${event.type}`}>
+            <span className="timeline-time">{formatDateTime(event.timestamp)}</span>
+            <EpisodeTimelineEventBody
+              event={event}
+              patientId={patientId}
+              completedByEncounter={completedByEncounter}
+              encounterById={encounterById}
+              episodeType={episodeType}
+              episodeStatus={episodeStatus ?? null}
+              isLatestReturnEncounter={
+                event.type === 'ENCOUNTER' && String(event.data.id) === latestReturnEncounterId
+              }
+              onTerminateEpisode={onTerminateEpisode}
+              onReloadAll={onReloadAll}
+            />
+          </li>
+        ))}
     </ul>
   );
 }
@@ -523,7 +566,10 @@ function EpisodeTimelineEventBody({
   if (event.type === 'ENCOUNTER') {
     const encounterId = String(event.data.id);
     const completed = completedByEncounter.get(encounterId) ?? new Set<string>();
-    const isHemorrhoidContinuousCare = episodeType === HEMORRHOID_TREATMENT_EPISODE_TYPE;
+    const isHemorrhoidContinuousCare =
+      episodeType === HEMORRHOID_TREATMENT_EPISODE_TYPE &&
+      event.data.workflowKind !== 'HEMORRHOID_INITIAL' &&
+      !event.data.treatmentPathwayId;
     // F2 — an Encounter is 1:1 with CarePlan; once one exists (DRAFT or
     // SIGNED) the sequence must offer to view it, never re-offer creation.
     const carePlanId = event.data.carePlanId as string | null;
@@ -569,11 +615,7 @@ function EpisodeTimelineEventBody({
                     key={step.templateKey}
                     className="btn btn-ghost btn-small btn-disabled"
                     aria-disabled="true"
-                    title={
-                      episodeActive
-                        ? 'Cần hoàn tất bước trước'
-                        : 'Đợt theo dõi đã kết thúc'
-                    }
+                    title={episodeActive ? 'Cần hoàn tất bước trước' : 'Đợt theo dõi đã kết thúc'}
                   >
                     {step.label}
                   </span>
@@ -622,10 +664,9 @@ function EpisodeTimelineEventBody({
           {isLatestReturnEncounter && assessmentDone && episodeActive && onTerminateEpisode && (
             <div className="inline-form">
               <p className="form-hint">
-                Đánh giá tái khám đã hoàn tất. Bác sĩ chọn tường minh: tiếp tục
-                bằng "Quyết định điều trị tiếp theo" ở trên, hoặc kết thúc đợt
-                theo dõi. Không bắt buộc phải có Quyết định điều trị tiếp theo
-                hay Kế hoạch chăm sóc để kết thúc.
+                Đánh giá tái khám đã hoàn tất. Bác sĩ chọn tường minh: tiếp tục bằng "Quyết định
+                điều trị tiếp theo" ở trên, hoặc kết thúc đợt theo dõi. Không bắt buộc phải có Quyết
+                định điều trị tiếp theo hay Kế hoạch chăm sóc để kết thúc.
               </p>
               <div className="row-actions">
                 <button
@@ -647,7 +688,7 @@ function EpisodeTimelineEventBody({
     // the Hemorrhoid initial sequence / legacy follow-up link must not leak
     // in. (Longo's six templates require episodeId != null, so they never
     // apply to an ungrouped Encounter.)
-    if (episodeType === 'LONGO_TREATMENT') {
+    if (event.data.treatmentModality === 'SURGERY' && event.data.methodCode === 'LONGO') {
       return (
         <div>
           <strong>Lượt khám</strong> — {String(event.data.reasonForVisit)}
@@ -670,6 +711,15 @@ function EpisodeTimelineEventBody({
     // R3 blocker: the persisted, explicit Encounter.workflowKind is the
     // authoritative discriminator — never reasonForVisit / clinical text /
     // form existence / URL / frontend state.
+    if (event.data.treatmentPathwayId)
+      return (
+        <div>
+          <strong>
+            Lượt khám · {String(event.data.methodCode ?? event.data.treatmentModality ?? '')}
+          </strong>{' '}
+          — {String(event.data.reasonForVisit)}
+        </div>
+      );
     const workflowKind = (event.data.workflowKind as string | null) ?? null;
 
     // C4-C — ungrouped + workflowKind === 'HEMORRHOID_INITIAL': the initial
@@ -677,9 +727,7 @@ function EpisodeTimelineEventBody({
     // -> CarePlan). No Longo forms, no legacy "Phiếu khám lại (cũ)" in the
     // active current-workflow navigation.
     if (workflowKind === 'HEMORRHOID_INITIAL') {
-      const nextChainIndex = HEMORRHOID_PREREQ_CHAIN.findIndex(
-        (key) => !completed.has(key),
-      );
+      const nextChainIndex = HEMORRHOID_PREREQ_CHAIN.findIndex((key) => !completed.has(key));
       const treatmentDecisionDone = completed.has('HEMORRHOID_TREATMENT_DECISION');
       return (
         <div>
@@ -709,9 +757,7 @@ function EpisodeTimelineEventBody({
               return (
                 <Link
                   key={step.templateKey}
-                  className={
-                    isDone ? 'btn btn-ghost btn-small' : 'btn btn-primary btn-small'
-                  }
+                  className={isDone ? 'btn btn-ghost btn-small' : 'btn btn-primary btn-small'}
                   to={`/patients/${patientId}/encounters/${encounterId}/clinical-forms/${step.templateKey}`}
                 >
                   {isDone ? `${step.label} ✓` : step.label}
@@ -794,18 +840,21 @@ function EpisodeTimelineEventBody({
       const summary = event.data.summary;
       return (
         <div>
-          <strong>{summaryLabel}</strong>
-          {' '}(phiên bản {String(event.data.revisionNumber)})
+          <strong>{summaryLabel}</strong> (phiên bản {String(event.data.revisionNumber)})
           {summary ? <p>{String(summary)}</p> : null}
-          {event.data.amendmentReason ? <span> — Sửa: {String(event.data.amendmentReason)}</span> : null}
+          {event.data.amendmentReason ? (
+            <span> — Sửa: {String(event.data.amendmentReason)}</span>
+          ) : null}
         </div>
       );
     }
     return (
       <div>
-        <strong>Biểu mẫu đã hoàn tất</strong> — {String(event.data.templateKey)}
-        {' '}(phiên bản {String(event.data.revisionNumber)})
-        {event.data.amendmentReason ? <span> — Sửa: {String(event.data.amendmentReason)}</span> : null}
+        <strong>Biểu mẫu đã hoàn tất</strong> — {String(event.data.templateKey)} (phiên bản{' '}
+        {String(event.data.revisionNumber)})
+        {event.data.amendmentReason ? (
+          <span> — Sửa: {String(event.data.amendmentReason)}</span>
+        ) : null}
       </div>
     );
   }
@@ -836,8 +885,7 @@ function EpisodeTimelineEventBody({
       ? encounterById.get(completedByEncounterId)
       : undefined;
     const taskId = String(event.data.id);
-    const isOpenGenericFollowUp =
-      event.data.status === 'OPEN' && event.data.timepointCode == null;
+    const isOpenGenericFollowUp = event.data.status === 'OPEN' && event.data.timepointCode == null;
     // C4-E — the dedicated Hemorrhoid Return trigger is only valid when the
     // task authoritatively belongs to the Hemorrhoid workflow: its source
     // Encounter (CareTask -> CarePlan -> Encounter, from the Timeline
@@ -845,11 +893,21 @@ function EpisodeTimelineEventBody({
     // OR this CARE_TASK event is inside a HEMORRHOID_TREATMENT episode
     // bucket (the continuous-care flow). Never inferred from text / task
     // title / dueDate / CarePlan instructions.
-    const sourceWorkflowKind =
-      (event.data.sourceWorkflowKind as string | null) ?? null;
+    const sourceWorkflowKind = (event.data.sourceWorkflowKind as string | null) ?? null;
+    // DEC-016 F3 — under DEC-016 a Longo pathway is nested inside the
+    // Hemorrhoid Case, so `episodeType === HEMORRHOID_TREATMENT` alone no
+    // longer proves a task is a real Hemorrhoid continuous-care task. If the
+    // task's source Encounter belongs to a TreatmentPathway it is a
+    // pathway-owned task (e.g. a Longo follow-up) and the backend
+    // authoritatively rejects a Hemorrhoid Return for it — never inferred
+    // from text / labels / form existence / reasonForVisit / title / timing,
+    // only from the authoritative pathway linkage on the Timeline projection.
+    const sourceTreatmentPathwayId =
+      (event.data.treatmentPathwayId as string | null) ?? null;
     const isHemorrhoidReturnEligible =
-      sourceWorkflowKind === 'HEMORRHOID_INITIAL' ||
-      episodeType === HEMORRHOID_TREATMENT_EPISODE_TYPE;
+      sourceTreatmentPathwayId === null &&
+      (sourceWorkflowKind === 'HEMORRHOID_INITIAL' ||
+        episodeType === HEMORRHOID_TREATMENT_EPISODE_TYPE);
     return (
       <div>
         <strong>Nhiệm vụ theo dõi</strong> — {String(event.data.status)}
@@ -947,7 +1005,12 @@ function HemorrhoidReturnEncounterTrigger({
         placeholder="Tái khám"
       />
       <div className="form-actions">
-        <button type="button" className="btn btn-ghost" onClick={() => setIsOpen(false)} disabled={isSubmitting}>
+        <button
+          type="button"
+          className="btn btn-ghost"
+          onClick={() => setIsOpen(false)}
+          disabled={isSubmitting}
+        >
           Hủy
         </button>
         <button type="button" className="btn btn-primary" onClick={submit} disabled={isSubmitting}>

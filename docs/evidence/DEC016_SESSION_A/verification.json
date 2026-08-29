@@ -1,0 +1,107 @@
+{
+  "date": "2026-08-28",
+  "status": "PASS — required T0–M7 technical execution; baseline findings recorded",
+  "baseline": {
+    "branch": "correction/owner-acceptance-slice1-3",
+    "head": "c0dfe1a4f774bef334dd2c2e0eac45f89a2e106b",
+    "initialWorktree": "CLEAN",
+    "finalWorktree": "UNCOMMITTED per Owner; no staged changes"
+  },
+  "authority": "DEC016_OWNER_AUTHORITY.md; Owner-authorized fallback because full Contract v0.3 was not in repository",
+  "tests": {
+    "backendE2E": {
+      "passed": 354,
+      "total": 354,
+      "suites": 20
+    },
+    "backendUnit": {
+      "passed": 80,
+      "total": 80,
+      "suites": 9
+    },
+    "frontend": {
+      "passed": 59,
+      "total": 59,
+      "files": 15
+    },
+    "browser": {
+      "passed": 9,
+      "total": 9,
+      "consecutiveFullPassingRuns": 2
+    },
+    "postRestoreBackendE2E": {
+      "passed": 354,
+      "total": 354,
+      "suites": 20
+    },
+    "builds": "backend/frontend PASS",
+    "prismaValidate": "PASS",
+    "migrateStatus": "11 applied; none pending",
+    "frontendLint": "exit 0; 3 pre-existing warnings"
+  },
+  "migration": {
+    "name": "20260828000000_dec016_case_pathway_investigation",
+    "sha256": "027aa3a4224b86ecd7403832986001486197878e56c3e76a13e7b1538fbfa4f8",
+    "dec015Unchanged": true
+  },
+  "backupRestore": {
+    "status": "PASS",
+    "backup": "/tmp/gastrocare-backup-verify/backup-20260828164936.sql",
+    "backupSha256": "c5022b42ca523cd8ffb39507536e48e4ecef3957fdecb1bff55d7dd50ec6a758",
+    "allTablePrePostSha256": "858e7893cf5c7fe88367795cfa4529de1a98647a7bf38754ea7534238ca1e3c9",
+    "auditEventsPreserved": 54,
+    "finalDevState": "synthetic pilot re-seeded"
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "scope": "pre-existing baseline declaration mismatch, not introduced by DEC016",
+      "details": "Prisma schema Encounter.room omits onDelete, but accepted migration 20260824100000 explicitly uses RESTRICT; actual DB matches that migration. Optional extra migrate diff exits 2 for this FK only. No legacy migration or room relation changed."
+    },
+    {
+      "id": "F2",
+      "details": "Run2 proof uses synthetic Run2-shape, not actual Owner Run2 patient data or product acceptance."
+    }
+  ],
+  "blockers": [],
+  "independentAudit": "NOT CLAIMED; Session A implemented/tested its own changes",
+  "nextGate": "FRESH CODEX SESSION B — INDEPENDENT READ-ONLY AUDIT",
+  "logs": {
+    "backend_e2e": {
+      "path": "/tmp/gastrocare-dec016-backend-final.log",
+      "sha256": "1e3745094fa374bd34bbe878913e779e2a61561544b746014451b506b83dd788"
+    },
+    "frontend_tests": {
+      "path": "/tmp/gastrocare-dec016-frontend-final2.log",
+      "sha256": "6fc27f1498cd7593dc8c635f9b3564087b771d76c49c1f3790c38170cfabfef4"
+    },
+    "browser_final": {
+      "path": "/tmp/gastrocare-dec016-browser-final.log",
+      "sha256": "fb45035304c33d78a1d240bdc3e272a45c8a65f20ee630508499fe68a32288de"
+    },
+    "backup_restore_final": {
+      "path": "/tmp/gastrocare-dec016-backup-restore-final.log",
+      "sha256": "00ada6817f33ac4169a2a3d8a7463c3905f07dbbfc089d37d632c8200771809c"
+    },
+    "backend_build": {
+      "path": "/tmp/gastrocare-dec016-backend-build-final.log",
+      "sha256": "0de4692e4208e8b05bf233ccc10cde3bb2f3a7a6e1e6fe4bdbff027b1b647179"
+    },
+    "frontend_build": {
+      "path": "/tmp/gastrocare-dec016-frontend-build2.log",
+      "sha256": "a32384cdea59571eee91c26fa8c94d133f889343383a64e3d0a9ed1d7c22a93e"
+    },
+    "frontend_lint": {
+      "path": "/tmp/gastrocare-dec016-frontend-lint2.log",
+      "sha256": "e98d3be94224f81ea7437168a41a7a37f68b25652d721a41b71de8e9785946ff"
+    },
+    "schema_parity_extra": {
+      "path": "/tmp/gastrocare-dec016-schema-diff.log",
+      "sha256": "c5dbb374cf2e8f221be149dc021d62e0715e330b9f153288a20866852bd09bb9"
+    },
+    "m0_repeat": {
+      "path": "/tmp/gastrocare-dec016-m0-repeat.log",
+      "sha256": "adb5b62a49436bee07362d170f57ba4303477bec77835e69886cea5869a644d0"
+    }
+  }
+}

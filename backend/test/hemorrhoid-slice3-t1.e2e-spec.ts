@@ -1,3 +1,4 @@
+import { decisionFixture } from './dec016-fixtures';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthRole, CareEpisodeStatus } from '@prisma/client';
@@ -33,12 +34,16 @@ describe('Hemorrhoid Vertical Slice 3 — T1 templates + ancestry/sequence (e2e)
 
   async function resetTables() {
     await prisma.auditEvent.deleteMany();
+    await prisma.investigationResult.deleteMany();
+    await prisma.investigationOrder.deleteMany();
+    await prisma.investigation.deleteMany();
     await prisma.clinicalFormSubmission.deleteMany();
     await prisma.careTask.deleteMany();
     await prisma.carePlanVersion.deleteMany();
     await prisma.carePlan.deleteMany();
     await prisma.clinicianAssignmentHistory.deleteMany();
     await prisma.encounter.deleteMany();
+    await prisma.treatmentPathway.deleteMany();
     await prisma.careEpisode.deleteMany();
     await prisma.room.deleteMany();
     await prisma.facility.deleteMany();
@@ -84,7 +89,7 @@ describe('Hemorrhoid Vertical Slice 3 — T1 templates + ancestry/sequence (e2e)
     return request(app.getHttpServer())
       .post('/clinical-forms')
       .set('Authorization', `Bearer ${token}`)
-      .send({ encounterId, templateKey, responses });
+      .send({ encounterId, templateKey, responses: decisionFixture(templateKey, responses) });
   }
 
   async function completeSubmission(token: string, id: string) {
@@ -274,11 +279,8 @@ describe('Hemorrhoid Vertical Slice 3 — T1 templates + ancestry/sequence (e2e)
         startedAt: new Date(),
       },
     });
-    const encounterId = await createEncounter(
-      doctorToken,
-      patientId,
-      longoEpisode.id,
-    );
+    const doctor=await prisma.authUser.findFirstOrThrow({where:{tenantId,role:'DOCTOR'}});
+    const encounterId=(await prisma.encounter.create({data:{tenantId,patientId,episodeId:longoEpisode.id,responsibleClinicianId:doctor.id,createdByUserId:doctor.id,occurredAt:new Date(),reasonForVisit:'synthetic historical ancestry'}})).id;
     const res = await createSubmission(
       doctorToken,
       encounterId,
@@ -299,7 +301,8 @@ describe('Hemorrhoid Vertical Slice 3 — T1 templates + ancestry/sequence (e2e)
         endedAt: new Date(),
       },
     });
-    const encounterId = await createEncounter(doctorToken, patientId, episode.id);
+    const doctor=await prisma.authUser.findFirstOrThrow({where:{tenantId,role:'DOCTOR'}});
+    const encounterId=(await prisma.encounter.create({data:{tenantId,patientId,episodeId:episode.id,responsibleClinicianId:doctor.id,createdByUserId:doctor.id,occurredAt:new Date(),reasonForVisit:'synthetic historical ancestry'}})).id;
     const res = await createSubmission(
       doctorToken,
       encounterId,

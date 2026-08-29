@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { AuthRole, Encounter } from '@prisma/client';
+import { AuthRole, Encounter, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CliniciansService } from '../clinicians/clinicians.service';
@@ -50,7 +50,13 @@ export class EncountersService {
     actorRole: AuthRole,
     dto: CreateEncounterDto,
   ): Promise<Encounter> {
+    if (actorRole !== AuthRole.DOCTOR && actorRole !== AuthRole.RECEPTIONIST)
+      throw new ForbiddenException();
     if (actorRole === AuthRole.RECEPTIONIST) {
+      if (dto.treatmentPathwayId !== undefined)
+        throw new ForbiddenException(
+          'RECEPTIONIST may not attach a TreatmentPathway',
+        );
       if (dto.episodeId !== undefined) {
         throw new ForbiddenException(
           'RECEPTIONIST may not attach an Encounter to a CareEpisode; ' +
@@ -72,38 +78,20 @@ export class EncountersService {
       }
     }
 
-    // DEC-015 §B — workflowKind and episodeId are mutually exclusive on
-    // create. An episode-bound Encounter (Longo, Hemorrhoid Return) derives
-    // its workflow identity from CareEpisode.episodeType; also stamping a
-    // workflowKind would create a duplicate/competing workflow identity.
-    // Reject 400 BEFORE any write — no Encounter is created.
-    if (dto.workflowKind != null && dto.episodeId != null) {
+    if (dto.workflowKind && dto.treatmentPathwayId)
       throw new BadRequestException(
-        'workflowKind may not be combined with episodeId — an episode-bound ' +
-          'Encounter derives its workflow identity from CareEpisode.episodeType',
+        'Initial workflow cannot attach a TreatmentPathway',
       );
-    }
+    if (dto.treatmentPathwayId && !dto.episodeId)
+      throw new BadRequestException(
+        'TreatmentPathway requires explicit Case ancestry',
+      );
 
     const patient = await this.prisma.patient.findFirst({
       where: { id: dto.patientId, tenantId },
     });
     if (!patient) {
       throw new NotFoundException('Patient not found');
-    }
-
-    if (dto.episodeId) {
-      const episode = await this.prisma.careEpisode.findFirst({
-        where: { id: dto.episodeId, tenantId },
-        select: { patientId: true },
-      });
-      if (!episode) {
-        throw new NotFoundException('Care episode not found');
-      }
-      if (episode.patientId !== dto.patientId) {
-        throw new BadRequestException(
-          'Care episode does not belong to the Encounter patient',
-        );
-      }
     }
 
     const responsibleClinician = dto.responsibleClinicianId
@@ -119,52 +107,147 @@ export class EncountersService {
       await this.rooms.assertRoomInTenant(tenantId, dto.roomId);
     }
 
-    const encounter = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.encounter.create({
-        data: {
-          tenantId,
-          patientId: dto.patientId,
-          episodeId: dto.episodeId,
-          responsibleClinicianId: responsibleClinician.id,
-          createdByUserId: actorId,
-          roomId: dto.roomId,
-          reasonForVisit: dto.reasonForVisit,
-          clinicalNote: dto.clinicalNote ?? '',
-          assessment: dto.assessment ?? '',
-          occurredAt: new Date(dto.occurredAt),
-          // DEC-015 — explicit persisted discriminator; never inferred,
-          // never normalised. Omitted -> NULL (generic Encounter).
-          workflowKind: dto.workflowKind ?? null,
+    try {
+      return await this.prisma.$transaction(
+        async (tx) => {
+          let episodeId = dto.episodeId;
+          if (dto.workflowKind === 'HEMORRHOID_INITIAL') {
+            const candidates = await tx.careEpisode.findMany({
+              where: {
+                tenantId,
+                patientId: dto.patientId,
+                episodeType: 'HEMORRHOID_TREATMENT',
+                status: 'ACTIVE',
+              },
+            });
+            if (candidates.length > 1)
+              throw new ConflictException(
+                'More than one ACTIVE Hemorrhoid Case',
+              );
+            if (episodeId && candidates[0]?.id !== episodeId)
+              throw new ConflictException(
+                'Selected Case is not the ACTIVE patient Case',
+              );
+            if (!candidates.length) {
+              const careCase = await tx.careEpisode.create({
+                data: {
+                  tenantId,
+                  patientId: dto.patientId,
+                  episodeType: 'HEMORRHOID_TREATMENT',
+                  startedAt: new Date(dto.occurredAt),
+                },
+              });
+              episodeId = careCase.id;
+              await this.audit.record(
+                {
+                  tenantId,
+                  actorId,
+                  action: 'CARE_EPISODE_STARTED',
+                  entityType: 'CareEpisode',
+                  entityId: episodeId,
+                  metadata: {
+                    patientId: dto.patientId,
+                    episodeType: 'HEMORRHOID_TREATMENT',
+                  },
+                },
+                tx,
+              );
+            } else episodeId = candidates[0].id;
+          }
+          if (episodeId) {
+            const careCase = await tx.careEpisode.findFirst({
+              where: { id: episodeId, tenantId },
+            });
+            if (!careCase) throw new NotFoundException('Case not found');
+            if (
+              careCase.patientId !== dto.patientId ||
+              careCase.episodeType !== 'HEMORRHOID_TREATMENT'
+            )
+              throw new BadRequestException(
+                'Encounter requires same-patient Hemorrhoid Case',
+              );
+            if (careCase.status !== 'ACTIVE')
+              throw new ConflictException('Case must be ACTIVE');
+            await tx.careEpisode.update({
+              where: { id: episodeId },
+              data: { status: 'ACTIVE' },
+            });
+          }
+          if (dto.treatmentPathwayId) {
+            const pathway = await tx.treatmentPathway.findFirst({
+              where: {
+                id: dto.treatmentPathwayId,
+                tenantId,
+                caseId: episodeId,
+                patientId: dto.patientId,
+              },
+            });
+            if (!pathway)
+              throw new BadRequestException(
+                'TreatmentPathway ancestry mismatch',
+              );
+          }
+
+          const created = await tx.encounter.create({
+            data: {
+              tenantId,
+              patientId: dto.patientId,
+              episodeId,
+              treatmentPathwayId: dto.treatmentPathwayId,
+              responsibleClinicianId: responsibleClinician.id,
+              createdByUserId: actorId,
+              roomId: dto.roomId,
+              reasonForVisit: dto.reasonForVisit,
+              clinicalNote: dto.clinicalNote ?? '',
+              assessment: dto.assessment ?? '',
+              occurredAt: new Date(dto.occurredAt),
+              // DEC-015 — explicit persisted discriminator; never inferred,
+              // never normalised. Omitted -> NULL (generic Encounter).
+              workflowKind: dto.workflowKind ?? null,
+            },
+          });
+
+          await tx.clinicianAssignmentHistory.create({
+            data: {
+              tenantId,
+              encounterId: created.id,
+              clinicianId: responsibleClinician.id,
+              previousClinicianId: null,
+              assignedByUserId: actorId,
+              reason: 'initial assignment at Encounter Context creation',
+            },
+          });
+
+          await this.audit.record(
+            {
+              tenantId,
+              actorId,
+              action: 'ENCOUNTER_CREATED',
+              entityType: 'Encounter',
+              entityId: created.id,
+              metadata: {
+                responsibleClinicianId: responsibleClinician.id,
+                roomId: dto.roomId ?? null,
+                episodeId: created.episodeId,
+                treatmentPathwayId: created.treatmentPathwayId,
+              },
+            },
+            tx,
+          );
+          return created;
         },
-      });
-
-      await tx.clinicianAssignmentHistory.create({
-        data: {
-          tenantId,
-          encounterId: created.id,
-          clinicianId: responsibleClinician.id,
-          previousClinicianId: null,
-          assignedByUserId: actorId,
-          reason: 'initial assignment at Encounter Context creation',
-        },
-      });
-
-      return created;
-    });
-
-    await this.audit.record({
-      tenantId,
-      actorId,
-      action: 'ENCOUNTER_CREATED',
-      entityType: 'Encounter',
-      entityId: encounter.id,
-      metadata: {
-        responsibleClinicianId: responsibleClinician.id,
-        roomId: dto.roomId ?? null,
-      },
-    });
-
-    return encounter;
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2034'
+      )
+        throw new ConflictException(
+          'Concurrent Case change; reload before retrying',
+        );
+      throw err;
+    }
   }
 
   async getById(tenantId: string, encounterId: string): Promise<Encounter> {
