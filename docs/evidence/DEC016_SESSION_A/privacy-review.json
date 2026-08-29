@@ -1,0 +1,72 @@
+{
+  "scope": "git added lines + untracked text files; no ignored runtime data or real patient corpus read",
+  "filesScanned": 83,
+  "secretPatternMatches": 0,
+  "sensitiveArtifactsInChangeSet": [],
+  "patternCounts": {
+    "private_key": 0,
+    "aws_access_key": 0,
+    "openai_key": 0,
+    "github_token": 0,
+    "email_literal": 12,
+    "phone_literal": 10
+  },
+  "findings": [
+    {
+      "file": "backend/scripts/dec016-m0-proof.ts",
+      "category": "email_literal",
+      "count": 1,
+      "review": "explicit example.test synthetic accounts"
+    },
+    {
+      "file": "backend/scripts/dec016-m0-proof.ts",
+      "category": "phone_literal",
+      "count": 4,
+      "review": "synthetic fixture values; reviewed provenance"
+    },
+    {
+      "file": "backend/test/dec016-case-workspace.e2e-spec.ts",
+      "category": "email_literal",
+      "count": 4,
+      "review": "explicit example.test synthetic accounts"
+    },
+    {
+      "file": "backend/test/dec016-case-workspace.e2e-spec.ts",
+      "category": "phone_literal",
+      "count": 6,
+      "review": "synthetic fixture values; reviewed provenance"
+    },
+    {
+      "file": "backend/test/e2e-seed.ts",
+      "category": "email_literal",
+      "count": 1,
+      "review": "explicit example.test synthetic accounts"
+    },
+    {
+      "file": "backend/test/pilot-seed.ts",
+      "category": "email_literal",
+      "count": 1,
+      "review": "explicit example.test synthetic accounts"
+    },
+    {
+      "file": "frontend/e2e/gastrocare.spec.ts",
+      "category": "email_literal",
+      "count": 2,
+      "review": "explicit example.test synthetic accounts"
+    },
+    {
+      "file": "frontend/e2e/run-e2e.sh",
+      "category": "email_literal",
+      "count": 1,
+      "review": "explicit example.test synthetic accounts"
+    },
+    {
+      "file": "frontend/src/pages/__tests__/LoginPage.test.tsx",
+      "category": "email_literal",
+      "count": 2,
+      "review": "explicit example.test synthetic accounts"
+    }
+  ],
+  "limits": "Static patterns are not a proof of absence of PII. Source provenance reviewed: synthetic fixtures/seeds only; raw backup/browser artifacts outside Git. No real patient data used.",
+  "status": "PASS"
+}

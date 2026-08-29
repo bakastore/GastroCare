@@ -143,17 +143,66 @@ describe('FollowUpPage — explicit Return Encounter completion + reschedule', (
         carePlanId: null,
         timepointCode: 'TWO_WEEK',
         sourceEncounterId: 'enc-source-1',
+        sourceEpisodeId: 'case-1',
+        treatmentPathwayId: 'pathway-1',
       },
     ]);
 
     renderFollowUpPage();
 
-    await screen.findByRole('button', { name: 'Hoàn thành' });
+    await screen.findByRole('link', { name: 'Mở lượt tái khám Longo' });
     expect(
       screen.queryByRole('button', { name: 'Hoàn thành qua lượt tái khám' }),
     ).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Dời lịch' })).not.toBeInTheDocument();
-    // Existing baseline behavior (plain Complete/Cancel) must remain intact.
+    // Cancel (not a completion) remains intact.
     expect(screen.getByRole('button', { name: 'Hủy' })).toBeInTheDocument();
+  });
+
+  describe('DEC-016 F2 — Longo timepoint task offers the pathway workflow, not generic completion', () => {
+    const longoTask = {
+      ...openTask,
+      id: 'longo-task-1',
+      carePlanId: null,
+      timepointCode: 'MONTH_3' as const,
+      sourceEncounterId: 'enc-source-1',
+      sourceEpisodeId: 'case-1',
+      treatmentPathwayId: 'pathway-1',
+    };
+
+    it('A — a generic OPEN CareTask keeps the generic "Hoàn thành" action', async () => {
+      vi.mocked(careTasksApi.complete).mockResolvedValue({ ...openTask, status: 'COMPLETED' });
+      renderFollowUpPage();
+      const user = userEvent.setup();
+      await user.click(await screen.findByRole('button', { name: 'Hoàn thành' }));
+      await waitFor(() => {
+        expect(careTasksApi.complete).toHaveBeenCalledWith('task-1', undefined);
+      });
+    });
+
+    it('B — a Longo OPEN timepoint task does NOT render generic "Hoàn thành"', async () => {
+      vi.mocked(careTasksApi.list).mockResolvedValue([longoTask]);
+      renderFollowUpPage();
+      await screen.findByRole('link', { name: 'Mở lượt tái khám Longo' });
+      expect(screen.queryByRole('button', { name: 'Hoàn thành' })).not.toBeInTheDocument();
+    });
+
+    it('C — the Longo workflow action targets the exact pathway and timepoint', async () => {
+      vi.mocked(careTasksApi.list).mockResolvedValue([longoTask]);
+      renderFollowUpPage();
+      const link = await screen.findByRole('link', { name: 'Mở lượt tái khám Longo' });
+      expect(link).toHaveAttribute(
+        'href',
+        '/patients/patient-1/encounters/new?episodeId=case-1&treatmentPathwayId=pathway-1&timepointCode=MONTH_3',
+      );
+    });
+
+    it('D — the Longo workflow action never calls generic careTasksApi.complete', async () => {
+      vi.mocked(careTasksApi.list).mockResolvedValue([longoTask]);
+      renderFollowUpPage();
+      const user = userEvent.setup();
+      await user.click(await screen.findByRole('link', { name: 'Mở lượt tái khám Longo' }));
+      expect(careTasksApi.complete).not.toHaveBeenCalled();
+    });
   });
 });

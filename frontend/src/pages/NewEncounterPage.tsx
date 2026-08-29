@@ -1,14 +1,19 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { encountersApi } from '../api/resources';
+import { encountersApi, patientsApi } from '../api/resources';
+import { useApiQuery } from '../api/useApiQuery';
 import { ApiError } from '../api/client';
+import { PageHeader } from '../components/PageHeader';
 
 export function NewEncounterPage() {
   const { patientId } = useParams<{ patientId: string }>();
   const [searchParams] = useSearchParams();
   const episodeId = searchParams.get('episodeId') ?? undefined;
+  const treatmentPathwayId = searchParams.get('treatmentPathwayId') ?? undefined;
   const navigate = useNavigate();
+  const patientQuery = useApiQuery(() => patientsApi.getById(patientId as string), [patientId]);
+  const patientName = patientQuery.data?.fullName;
 
   const [reasonForVisit, setReasonForVisit] = useState('');
   const [occurredAt, setOccurredAt] = useState('');
@@ -26,6 +31,7 @@ export function NewEncounterPage() {
       const encounter = await encountersApi.create({
         patientId,
         episodeId,
+        treatmentPathwayId,
         occurredAt: new Date(occurredAt).toISOString(),
         reasonForVisit,
         clinicalNote,
@@ -49,7 +55,12 @@ export function NewEncounterPage() {
 
   return (
     <div className="form-page">
-      <h1>Lượt khám mới</h1>
+      <PageHeader
+        parentLabel="Hồ sơ bệnh nhân"
+        parentHref={`/patients/${patientId}`}
+        title="Lượt khám mới"
+        subtitle={patientName}
+      />
       <form onSubmit={handleSubmit} noValidate>
         <label htmlFor="occurredAt">Thời điểm khám</label>
         <input

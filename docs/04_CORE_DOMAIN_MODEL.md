@@ -1,5 +1,10 @@
 # GastroCare — Core Domain Model
 
+
+## DEC-016 — cập nhật domain có thẩm quyền mới hơn
+
+Theo [yêu cầu Owner](DEC016_OWNER_AUTHORITY.md), Case dùng bảng CareEpisode; HEMORRHOID_TREATMENT bắt đầu tại Initial. TreatmentPathway là child của Case, hỗ trợ MEDICAL/PROCEDURE/SURGERY và nhiều pathway; SURGERY bắt buộc methodCode tường minh. Encounter.episodeId trỏ Case; optional treatmentPathwayId phải cùng tenant/Case/patient. Sáu Longo forms thuộc SURGERY/LONGO pathway; CareTask identity suy từ sourceEncounter, không thêm cột Case/pathway. Investigation/Order/Result và parent tường minh cùng tenant/Case/patient, không cycle; prior Result được không có local Order. Direct LONGO_TREATMENT creation bị retired; legacy rows giữ history. Những mô tả ancestry cũ dưới đây là lịch sử ở phần bị DEC-016 thay thế. Xem [ghi chú triển khai](13_DEC016_CASE_PATHWAY_IMPLEMENTATION.md).
+
 Cập nhật: 2026-08-21
 
 Đây là tài liệu domain (miền nghiệp vụ), **không phải Prisma schema**. Câu chữ mô tả trạng thái greenfield trong baseline ban đầu là bối cảnh lịch sử; Technical Core hiện đã được triển khai và `CLOSED`, còn GastroCare Core tổng thể đang `IN PROGRESS` (xem `PROJECT_STATE.md`). Các phần vẫn mang nhãn DOMAIN CANDIDATE tiếp tục là thiết kế đề xuất, trừ khi đã được một Owner Decision mới hơn khóa rõ ràng.

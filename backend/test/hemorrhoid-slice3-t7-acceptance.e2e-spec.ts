@@ -1,3 +1,4 @@
+import { decisionFixture } from './dec016-fixtures';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthRole, CareEpisodeStatus, CareTaskStatus } from '@prisma/client';
@@ -31,12 +32,16 @@ describe('Hemorrhoid Vertical Slice 3 — T7 targeted synthetic acceptance (e2e)
 
   async function resetTables() {
     await prisma.auditEvent.deleteMany();
+    await prisma.investigationResult.deleteMany();
+    await prisma.investigationOrder.deleteMany();
+    await prisma.investigation.deleteMany();
     await prisma.clinicalFormSubmission.deleteMany();
     await prisma.careTask.deleteMany();
     await prisma.carePlanVersion.deleteMany();
     await prisma.carePlan.deleteMany();
     await prisma.clinicianAssignmentHistory.deleteMany();
     await prisma.encounter.deleteMany();
+    await prisma.treatmentPathway.deleteMany();
     await prisma.careEpisode.deleteMany();
     await prisma.room.deleteMany();
     await prisma.facility.deleteMany();
@@ -66,6 +71,7 @@ describe('Hemorrhoid Vertical Slice 3 — T7 targeted synthetic acceptance (e2e)
         patientId: patient,
         occurredAt: new Date().toISOString(),
         reasonForVisit,
+        workflowKind: 'HEMORRHOID_INITIAL',
       })
       .expect(201);
     return res.body.id as string;
@@ -80,7 +86,7 @@ describe('Hemorrhoid Vertical Slice 3 — T7 targeted synthetic acceptance (e2e)
     return request(app.getHttpServer())
       .post('/clinical-forms')
       .set('Authorization', `Bearer ${token}`)
-      .send({ encounterId, templateKey, responses });
+      .send({ encounterId, templateKey, responses: decisionFixture(templateKey, responses) });
   }
 
   async function completeSubmission(token: string, id: string) {
@@ -167,7 +173,7 @@ describe('Hemorrhoid Vertical Slice 3 — T7 targeted synthetic acceptance (e2e)
     const initialEncounterBefore = await prisma.encounter.findUniqueOrThrow({
       where: { id: initialEncounterId },
     });
-    expect(initialEncounterBefore.episodeId).toBeNull();
+    expect(initialEncounterBefore.episodeId).toBeTruthy();
 
     // 2. Examination -> Diagnosis -> initial Treatment Decision.
     const exam = await createSubmission(
@@ -235,7 +241,7 @@ describe('Hemorrhoid Vertical Slice 3 — T7 targeted synthetic acceptance (e2e)
     const initialEncounterAfter = await prisma.encounter.findUniqueOrThrow({
       where: { id: initialEncounterId },
     });
-    expect(initialEncounterAfter.episodeId).toBeNull();
+    expect(initialEncounterAfter.episodeId).toBe(episodeId);
 
     const task1After = await prisma.careTask.findUniqueOrThrow({
       where: { id: task1Id },
@@ -334,7 +340,7 @@ describe('Hemorrhoid Vertical Slice 3 — T7 targeted synthetic acceptance (e2e)
     }[];
     expect(
       ungrouped.some((e) => e.type === 'ENCOUNTER' && e.data.id === initialEncounterId),
-    ).toBe(true);
+    ).toBe(false);
 
     const episodeGroup = timelineRes.body.episodes.find(
       (g: { episode: { id: string } }) => g.episode.id === episodeId,

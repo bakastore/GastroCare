@@ -31,6 +31,9 @@ function encounterEvent(overrides: Partial<Record<string, unknown>> = {}) {
       occurredAt: '2026-09-01T09:00:00.000Z',
       carePlanId: null,
       carePlanStatus: null,
+      // DEC-015 — these fixtures represent the initial Hemorrhoid workflow
+      // (they submit HEMORRHOID_DIAGNOSIS/TREATMENT_DECISION below).
+      workflowKind: 'HEMORRHOID_INITIAL',
       ...overrides,
     },
   };

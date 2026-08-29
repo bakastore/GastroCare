@@ -2,13 +2,9 @@ import { ForbiddenException } from '@nestjs/common';
 import { Encounter } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
-// The six Longo template families (docs/09_CORE04_IMPLEMENTATION_CONTRACT.md
-// §3, §13) each require their Encounter to belong to a CareEpisode of the
-// same tenant/patient. None of these six templates are implemented yet
-// (T4-T9 — out of scope for T2); this guard is structural readiness so that
-// create/complete/amend already enforce the invariant the moment those
-// templates are registered, without any T2-time behavior change for
-// existing (non-Longo) templates such as HEMORRHOID_LONGO_FOLLOWUP.
+// DEC016: the six verified Longo families require explicit Case +
+// SURGERY/LONGO TreatmentPathway ancestry on create, complete and amend.
+// The legacy generic HEMORRHOID_LONGO_FOLLOWUP template remains separate.
 export const LONGO_EPISODE_REQUIRED_TEMPLATE_KEYS: readonly string[] = [
   'LONGO_PREOP_ASSESSMENT',
   'LONGO_INTRAOP_RECORD',
@@ -27,29 +23,36 @@ export async function assertLongoEpisodeAncestry(
   prisma: PrismaService,
   tenantId: string,
   templateKey: string,
-  encounter: Pick<Encounter, 'id' | 'tenantId' | 'patientId' | 'episodeId'>,
+  encounter: Pick<
+    Encounter,
+    'id' | 'tenantId' | 'patientId' | 'episodeId' | 'treatmentPathwayId'
+  >,
 ): Promise<void> {
   if (!LONGO_EPISODE_REQUIRED_TEMPLATE_KEYS.includes(templateKey)) {
     return;
   }
 
-  if (!encounter.episodeId) {
+  if (!encounter.episodeId || !encounter.treatmentPathwayId) {
     throw new ForbiddenException(
-      `Encounter must belong to a CareEpisode for template ${templateKey}`,
+      `Longo requires Case + SURGERY/LONGO TreatmentPathway for ${templateKey}`,
     );
   }
-
-  const episode = await prisma.careEpisode.findFirst({
+  const pathway = await prisma.treatmentPathway.findFirst({
     where: {
-      id: encounter.episodeId,
+      id: encounter.treatmentPathwayId,
       tenantId,
       patientId: encounter.patientId,
+      caseId: encounter.episodeId,
+      modality: 'SURGERY',
+      methodCode: 'LONGO',
+      careCase: {
+        tenantId,
+        patientId: encounter.patientId,
+        episodeType: 'HEMORRHOID_TREATMENT',
+      },
     },
     select: { id: true },
   });
-  if (!episode) {
-    throw new ForbiddenException(
-      'Encounter CareEpisode must belong to the same tenant and patient',
-    );
-  }
+  if (!pathway)
+    throw new ForbiddenException('Longo TreatmentPathway ancestry mismatch');
 }

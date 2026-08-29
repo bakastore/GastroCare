@@ -5,6 +5,7 @@ import { carePlansApi, careTasksApi, patientsApi } from '../api/resources';
 import { useApiQuery } from '../api/useApiQuery';
 import { ApiError } from '../api/client';
 import { ErrorState, LoadingState } from '../components/AsyncStates';
+import { PageHeader } from '../components/PageHeader';
 import { formatDate, formatDateTime } from '../lib/format';
 import { flattenTimeline } from '../types/domain';
 
@@ -25,6 +26,13 @@ export function CarePlanPage() {
   const carePlanQuery = useApiQuery(() => carePlansApi.getById(carePlanId as string), [
     carePlanId,
   ]);
+  const patientQuery = useApiQuery(
+    () =>
+      carePlanQuery.data
+        ? patientsApi.getById(carePlanQuery.data.patientId)
+        : Promise.resolve(null),
+    [carePlanQuery.data?.patientId],
+  );
 
   const timelineQuery = useApiQuery(async () => {
     if (!carePlanQuery.data) return [] as SignedVersion[];
@@ -111,6 +119,13 @@ export function CarePlanPage() {
   }
 
   async function signPlan() {
+    // Correction batch C1 — never sign while the visible DRAFT has unsaved
+    // edits. signPlan() only signs the persisted server state, so signing a
+    // dirty draft would lock content the doctor never saved.
+    if (isDraftDirty || isSaving) {
+      setActionError('Có thay đổi chưa lưu. Hãy lưu bản nháp trước khi ký.');
+      return;
+    }
     setActionError(null);
     setIsSigning(true);
     try {
@@ -172,25 +187,40 @@ export function CarePlanPage() {
     }
   }
 
+  const amendDirty =
+    isAmending &&
+    Boolean(amendInstructions || amendFollowUpDate || amendReason || amendTaskAction);
+
   return (
     <div className="form-page">
-      <h1>Kế hoạch chăm sóc</h1>
-      <p className="page-subtitle">
-        Trạng thái:{' '}
-        {carePlan.status === 'DRAFT' ? (
-          <span className="badge badge-draft">Nháp</span>
-        ) : (
-          <span className="badge badge-signed">Đã ký</span>
-        )}
-      </p>
+      <PageHeader
+        parentLabel="Hồ sơ bệnh nhân"
+        parentHref={`/patients/${carePlan.patientId}`}
+        title="Kế hoạch chăm sóc"
+        subtitle={patientQuery.data?.fullName}
+        status={
+          carePlan.status === 'DRAFT' ? (
+            <span className="badge badge-draft">Nháp</span>
+          ) : (
+            <span className="badge badge-signed">Đã ký</span>
+          )
+        }
+        guardUnsavedChanges={isDraftDirty || amendDirty}
+      />
 
       {carePlan.status === 'DRAFT' && (
         <div>
+          {/* R1 — while a "Lưu bản nháp" request is in flight the visible
+              draft must not be mutable: otherwise an edit made after the
+              request started, followed by the older response clearing the
+              dirty flag, would leave the visible state ahead of the
+              persisted state and signable. */}
           <label htmlFor="instructions">Điều trị / dặn dò</label>
           <textarea
             id="instructions"
             rows={5}
             value={currentInstructions}
+            disabled={isSaving}
             onChange={(e) => {
               setInstructions(e.target.value);
               setIsDraftDirty(true);
@@ -202,6 +232,7 @@ export function CarePlanPage() {
             id="followUpDate"
             type="date"
             value={currentFollowUpDate}
+            disabled={isSaving}
             onChange={(e) => {
               setFollowUpDate(e.target.value);
               setIsDraftDirty(true);
@@ -223,7 +254,12 @@ export function CarePlanPage() {
             >
               {isSaving ? 'Đang lưu...' : 'Lưu bản nháp'}
             </button>
-            <ConfirmSignButton onConfirm={signPlan} isSigning={isSigning} />
+            <ConfirmSignButton
+              onConfirm={signPlan}
+              isSigning={isSigning}
+              isDirty={isDraftDirty}
+              isSaving={isSaving}
+            />
           </div>
         </div>
       )}
@@ -388,11 +424,35 @@ export function CarePlanPage() {
 function ConfirmSignButton({
   onConfirm,
   isSigning,
+  isDirty,
+  isSaving,
 }: {
   onConfirm: () => void;
   isSigning: boolean;
+  isDirty: boolean;
+  isSaving: boolean;
 }) {
   const [isConfirming, setIsConfirming] = useState(false);
+
+  // Correction batch C1 + R1 — signing is unavailable whenever the visible
+  // draft differs from persisted server state: it is dirty, OR a save is
+  // still in flight (R1 race). Checked before the confirm branch, so
+  // editing a field *after* opening the confirmation also disables
+  // "Xác nhận ký".
+  if (isDirty || isSaving) {
+    return (
+      <div className="confirm-inline">
+        <button type="button" className="btn btn-primary" disabled aria-disabled="true">
+          Ký kế hoạch
+        </button>
+        <p className="form-hint">
+          {isSaving
+            ? 'Đang lưu bản nháp…'
+            : 'Có thay đổi chưa lưu. Hãy lưu bản nháp trước khi ký.'}
+        </p>
+      </div>
+    );
+  }
 
   if (isConfirming) {
     return (

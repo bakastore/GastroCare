@@ -6,5 +6,16 @@ export function HomeRedirect() {
   if (!user) {
     return <Navigate to="/login" replace />;
   }
-  return <Navigate to={user.role === 'DOCTOR' ? '/today' : '/patients'} replace />;
+  return (
+    <Navigate
+      to={
+        user.role === 'DOCTOR'
+          ? '/today'
+          : user.role === 'NURSE'
+            ? '/investigations/assigned'
+            : '/patients'
+      }
+      replace
+    />
+  );
 }

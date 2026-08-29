@@ -15,6 +15,9 @@ export const E2E_RECEPTIONIST_PASSWORD = 'CoreReceptionE2E-Pass1!';
 export async function seedE2eDatabase(): Promise<void> {
   const prisma = new PrismaClient();
   try {
+    await prisma.investigationResult.deleteMany();
+    await prisma.investigationOrder.deleteMany();
+    await prisma.investigation.deleteMany();
     await prisma.clinicalFormSubmission.deleteMany();
     await prisma.auditEvent.deleteMany();
     await prisma.careTask.deleteMany();
@@ -22,6 +25,7 @@ export async function seedE2eDatabase(): Promise<void> {
     await prisma.carePlan.deleteMany();
     await prisma.clinicianAssignmentHistory.deleteMany();
     await prisma.encounter.deleteMany();
+    await prisma.treatmentPathway.deleteMany();
     await prisma.careEpisode.deleteMany();
     await prisma.room.deleteMany();
     await prisma.facility.deleteMany();
@@ -51,6 +55,8 @@ export async function seedE2eDatabase(): Promise<void> {
         tenantId: tenant.id,
       },
     });
+
+    await prisma.authUser.create({data:{email:'nurse.a@example.test',passwordHash:await bcrypt.hash('CoreNurseE2E-Pass1!',10),role:AuthRole.NURSE,tenantId:tenant.id}});
 
     console.log('CORE-02 browser E2E seed complete.');
   } finally {

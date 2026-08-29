@@ -1,9 +1,10 @@
 import { Fragment, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { careTasksApi, patientsApi } from '../api/resources';
 import { useApiQuery } from '../api/useApiQuery';
 import { ApiError } from '../api/client';
 import { EmptyState, ErrorState, LoadingState } from '../components/AsyncStates';
+import { PageHeader } from '../components/PageHeader';
 import { formatDate, formatDateTime } from '../lib/format';
 import { flattenTimeline } from '../types/domain';
 import type { CareTask, CareTaskStatus } from '../types/domain';
@@ -14,8 +15,25 @@ const filters: { value: CareTaskStatus; label: string }[] = [
   { value: 'CANCELLED', label: 'Đã hủy' },
 ];
 
+const STATUS_VALUES = new Set<CareTaskStatus>(['OPEN', 'COMPLETED', 'CANCELLED']);
+
 export function FollowUpPage() {
-  const [statusFilter, setStatusFilter] = useState<CareTaskStatus>('OPEN');
+  // Filter lives in the URL so leaving the page and coming back (or a
+  // shared link) preserves the selected status (context preservation).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const statusParam = searchParams.get('status') as CareTaskStatus | null;
+  const statusFilter: CareTaskStatus =
+    statusParam && STATUS_VALUES.has(statusParam) ? statusParam : 'OPEN';
+  const setStatusFilter = (value: CareTaskStatus) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('status', value);
+        return next;
+      },
+      { replace: true },
+    );
+  };
   const [actionError, setActionError] = useState<string | null>(null);
   const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
   // Explicit Return Encounter linkage (DEC-012 §16) and generic operational
@@ -85,8 +103,7 @@ export function FollowUpPage() {
 
   return (
     <div>
-      <h1>Theo dõi</h1>
-      <p className="page-subtitle">Hàng đợi nhiệm vụ tái khám.</p>
+      <PageHeader title="Theo dõi" subtitle="Hàng đợi nhiệm vụ tái khám." />
 
       <div className="filter-row" role="tablist" aria-label="Lọc theo trạng thái">
         {filters.map((f) => (
@@ -132,6 +149,17 @@ export function FollowUpPage() {
                 // Hemorrhoid CarePlan follow-up task, not Longo scheduling.
                 const isGenericFollowUpTask =
                   task.carePlanId !== null && task.timepointCode === null;
+                // DEC-016 F2 — a Longo timepoint task (timepointCode set) is
+                // owned by a TreatmentPathway and its completion is driven by
+                // the exact pathway/timepoint Longo clinical form, never a
+                // generic "mark completed" (the backend returns 409 for that).
+                // Offer the correct workflow action instead, carrying the
+                // authoritative treatmentPathwayId + timepointCode.
+                const isLongoTimepointTask = task.timepointCode !== null;
+                const longoFollowUpHref =
+                  task.sourceEpisodeId && task.treatmentPathwayId
+                    ? `/patients/${task.patientId}/encounters/new?episodeId=${task.sourceEpisodeId}&treatmentPathwayId=${task.treatmentPathwayId}&timepointCode=${task.timepointCode}`
+                    : null;
                 return (
                 <Fragment key={task.id}>
                   <tr>
@@ -151,14 +179,30 @@ export function FollowUpPage() {
                     <td>
                       {task.status === 'OPEN' && (
                         <div className="row-actions">
-                          <button
-                            type="button"
-                            className="btn btn-primary"
-                            disabled={pendingTaskId === task.id}
-                            onClick={() => completeTask(task.id)}
-                          >
-                            Hoàn thành
-                          </button>
+                          {isLongoTimepointTask ? (
+                            longoFollowUpHref ? (
+                              <Link className="btn btn-primary" to={longoFollowUpHref}>
+                                Mở lượt tái khám Longo
+                              </Link>
+                            ) : (
+                              <span
+                                className="btn btn-primary btn-disabled"
+                                aria-disabled="true"
+                                title="Thiếu liên kết phác đồ điều trị"
+                              >
+                                Mở lượt tái khám Longo
+                              </span>
+                            )
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn btn-primary"
+                              disabled={pendingTaskId === task.id}
+                              onClick={() => completeTask(task.id)}
+                            >
+                              Hoàn thành
+                            </button>
+                          )}
                           {isGenericFollowUpTask && (
                             <button
                               type="button"

@@ -83,6 +83,10 @@ record_counts() {
     UNION ALL SELECT 'patients', count(*) FROM patients
     UNION ALL SELECT 'encounters', count(*) FROM encounters
     UNION ALL SELECT 'care_episodes', count(*) FROM care_episodes
+    UNION ALL SELECT 'treatment_pathways', count(*) FROM treatment_pathways
+    UNION ALL SELECT 'investigations', count(*) FROM investigations
+    UNION ALL SELECT 'investigation_orders', count(*) FROM investigation_orders
+    UNION ALL SELECT 'investigation_results', count(*) FROM investigation_results
     UNION ALL SELECT 'care_plans', count(*) FROM care_plans
     UNION ALL SELECT 'care_plan_versions', count(*) FROM care_plan_versions
     UNION ALL SELECT 'care_tasks', count(*) FROM care_tasks
@@ -93,6 +97,17 @@ record_counts() {
     UNION ALL SELECT 'clinician_assignment_history', count(*) FROM clinician_assignment_history
     ORDER BY 1;
   " > "$out_file"
+}
+
+# Hash every field of every public table, including audit history and migration
+# metadata. Canonical row order avoids relying on physical restore order.
+# Raw synthetic rows stay in this pipe and are never logged or committed.
+record_full_signature() {
+  psql_in_container -t -A <<'SQL' | sha256sum | cut -d' ' -f1
+SELECT format('SELECT %L, COALESCE(jsonb_agg(to_jsonb(t) ORDER BY to_jsonb(t)::text)::text, ''[]'') FROM public.%I t;', tablename, tablename)
+FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename
+\gexec
+SQL
 }
 
 record_patient_signature() {
@@ -239,6 +254,8 @@ log "3. Seeding deterministic synthetic pilot dataset"
 # =============================================================================
 log "4. Recording baseline evidence"
 record_counts "$BASELINE_FILE"
+BASELINE_FULL_SIGNATURE="$(record_full_signature)"
+log "All-table baseline SHA256: $BASELINE_FULL_SIGNATURE"
 echo "--- baseline row counts (table,count) ---"
 cat "$BASELINE_FILE"
 echo "--- baseline Minh CarePlan lineage (fullName,status,versionNumber,reason) ---"
@@ -274,6 +291,8 @@ log "5. Creating backup: $BACKUP_FILE"
 docker exec -e PGPASSWORD="$EXPECTED_DB_USER" "$EXPECTED_CONTAINER" \
   pg_dump -U "$EXPECTED_DB_USER" -d "$EXPECTED_DB" --clean --if-exists > "$BACKUP_FILE"
 [[ -s "$BACKUP_FILE" ]] || fail "backup file is empty — aborting before any destructive step"
+sha256sum "$BACKUP_FILE" > "$BACKUP_FILE.sha256"
+cat "$BACKUP_FILE.sha256"
 log "Backup created ($(wc -l < "$BACKUP_FILE") lines) — NOT committed to git (outside repo, in $BACKUP_DIR)"
 
 # =============================================================================
@@ -296,6 +315,7 @@ log "Disposable DB data destroyed (0 tenants remain, confirming destructive step
 # 7. Restore from the backup
 # =============================================================================
 log "7. Restoring from backup"
+sha256sum --check "$BACKUP_FILE.sha256"
 psql_in_container < "$BACKUP_FILE" >/dev/null
 
 # =============================================================================
@@ -303,6 +323,9 @@ psql_in_container < "$BACKUP_FILE" >/dev/null
 # =============================================================================
 log "8. Verifying restored data against baseline"
 record_counts "$RESTORED_FILE"
+RESTORED_FULL_SIGNATURE="$(record_full_signature)"
+[[ "$RESTORED_FULL_SIGNATURE" == "$BASELINE_FULL_SIGNATURE" ]] || fail "all-table canonical row signature differs after restore"
+log "All-table restored SHA256 matches: $RESTORED_FULL_SIGNATURE"
 echo "--- restored row counts (table,count) ---"
 cat "$RESTORED_FILE"
 
@@ -362,15 +385,7 @@ log "AuditEvent count verified intact after restore ($RESTORED_AUDIT_COUNT rows)
 # touching any accepted test file.
 log "9. Running backend regression against the restored database as a smoke test"
 (cd "$BACKEND_DIR" && npx jest --config ./test/jest-e2e.json --runInBand test/core01-clinical-walking-skeleton.e2e-spec.ts)
-(cd "$BACKEND_DIR" && npx jest --config ./test/jest-e2e.json --runInBand test/core03-hardening.e2e-spec.ts)
-(cd "$BACKEND_DIR" && npx jest --config ./test/jest-e2e.json --runInBand test/core04-t1-care-episodes.e2e-spec.ts)
-(cd "$BACKEND_DIR" && npx jest --config ./test/jest-e2e.json --runInBand test/clinical-forms.e2e-spec.ts)
-(cd "$BACKEND_DIR" && npx jest --config ./test/jest-e2e.json --runInBand test/core04-t4-preop-assessment.e2e-spec.ts)
-(cd "$BACKEND_DIR" && npx jest --config ./test/jest-e2e.json --runInBand test/core04-t5-t9-longo-forms.e2e-spec.ts)
-(cd "$BACKEND_DIR" && npx jest --config ./test/jest-e2e.json --runInBand test/core04-t10-follow-up-scheduling.e2e-spec.ts)
-(cd "$BACKEND_DIR" && npx jest --config ./test/jest-e2e.json --runInBand test/core04-t11-episode-timeline.e2e-spec.ts)
-(cd "$BACKEND_DIR" && npx jest --config ./test/jest-e2e.json --runInBand test/hemorrhoid-slice1.e2e-spec.ts)
-(cd "$BACKEND_DIR" && npx jest --config ./test/jest-e2e.json --runInBand test/gate2-foundation.e2e-spec.ts)
+(cd "$BACKEND_DIR" && npm run test:e2e)
 
 # The backend e2e suite resets/creates its own tenants inside its own
 # beforeAll/afterAll hooks (disposable DB only), so re-seed the pilot

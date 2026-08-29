@@ -19,7 +19,14 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
     "seed:e2e": "ts-node -r tsconfig-paths/register test/e2e-seed.ts",
-    "seed:pilot": "ts-node -r tsconfig-paths/register test/pilot-seed.ts"
+    "seed:pilot": "ts-node -r tsconfig-paths/register test/pilot-seed.ts",
+    "pilot:up": "ts-node -r tsconfig-paths/register scripts/pilot-db.ts up",
+    "pilot:seed": "ts-node -r tsconfig-paths/register scripts/pilot-db.ts seed",
+    "pilot:migrate": "ts-node -r tsconfig-paths/register scripts/pilot-db.ts migrate",
+    "pilot:verify": "ts-node -r tsconfig-paths/register scripts/pilot-db.ts verify",
+    "pilot:smoke": "ts-node -r tsconfig-paths/register scripts/pilot-db.ts smoke",
+    "pilot:start": "ts-node -r tsconfig-paths/register scripts/pilot-db.ts start",
+    "pilot:psql-url": "ts-node -r tsconfig-paths/register scripts/pilot-db.ts psql-url"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

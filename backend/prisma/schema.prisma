@@ -53,6 +53,11 @@ model Tenant {
   rooms                      Room[]
   clinicianAssignmentHistory ClinicianAssignmentHistory[]
 
+  treatmentPathways TreatmentPathway[]
+  investigations Investigation[]
+  investigationOrders InvestigationOrder[]
+  investigationResults InvestigationResult[]
+
   @@map("tenants")
 }
 
@@ -62,6 +67,7 @@ model Tenant {
 enum AuthRole {
   DOCTOR
   RECEPTIONIST
+  NURSE
 }
 
 /// AuthUser — infrastructure authentication identity.
@@ -130,7 +136,23 @@ model Patient {
   @@index([tenantId])
   @@index([tenantId, normalizedFullName])
   @@index([tenantId, normalizedPhone])
+  treatmentPathways TreatmentPathway[]
+  investigations Investigation[]
+
+  @@unique([id, tenantId])
   @@map("patients")
+}
+
+/// DEC-015 — a generic, nullable Encounter workflow-identity extension
+/// point. v1 defines exactly one value; that this value is Hemorrhoid-
+/// specific does NOT make Core permanently Hemorrhoid-specific — future
+/// workflows may add their own values here. Longo and Hemorrhoid Return
+/// continue to derive workflow identity from CareEpisode.episodeType and
+/// must NOT be duplicated into this field. workflowKind is NEVER inferred
+/// from reasonForVisit / clinical text / ClinicalForm existence / URL /
+/// task existence / frontend state. Existing rows remain NULL (no backfill).
+enum EncounterWorkflowKind {
+  HEMORRHOID_INITIAL
 }
 
 /// Encounter — one manual clinical visit. ClinicalNote in CORE-01 is content
@@ -174,11 +196,15 @@ model Encounter {
   /// Context (DEC-010 §B) has no clinical content to record yet — the
   /// Hemorrhoid Examination clinical form captures that later. Defaults to
   /// empty string, never fabricated.
-  clinicalNote   String   @default("")
-  assessment     String   @default("")
-  source         String   @default("MANUAL")
+  clinicalNote   String                 @default("")
+  assessment     String                 @default("")
+  source         String                 @default("MANUAL")
+  /// DEC-015 M0 — nullable; set explicitly by future application code only
+  /// (initial Hemorrhoid Encounter -> HEMORRHOID_INITIAL). No default, no
+  /// backfill; existing rows stay NULL.
+  workflowKind   EncounterWorkflowKind?
   occurredAt     DateTime
-  createdAt      DateTime @default(now())
+  createdAt      DateTime               @default(now())
 
   carePlan                   CarePlan?
   clinicalFormSubmissions    ClinicalFormSubmission[]
@@ -191,6 +217,10 @@ model Encounter {
   @@index([tenantId, episodeId])
   @@index([tenantId, roomId])
   @@index([tenantId, responsibleClinicianId])
+  treatmentPathwayId String?
+  treatmentPathway TreatmentPathway? @relation(fields: [treatmentPathwayId, tenantId, episodeId, patientId], references: [id, tenantId, caseId, patientId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([tenantId, treatmentPathwayId])
   @@map("encounters")
 }
 
@@ -283,6 +313,11 @@ model CareEpisode {
 
   @@index([tenantId])
   @@index([tenantId, patientId])
+  treatmentPathways TreatmentPathway[] @relation("CasePathways")
+  legacyTreatmentPathway TreatmentPathway? @relation("LegacyEpisode")
+  investigations Investigation[]
+
+  @@unique([id, tenantId, patientId])
   @@map("care_episodes")
 }
 
@@ -489,4 +524,100 @@ model ClinicalFormSubmission {
   @@index([tenantId, patientId])
   @@index([logicalGroupId])
   @@map("clinical_form_submissions")
+}
+
+// DEC-016: CareEpisode remains physical Case storage; no second Case table.
+enum TreatmentModality {
+  MEDICAL
+  PROCEDURE
+  SURGERY
+}
+
+enum InvestigationOrigin {
+  INTERNAL_CURRENT
+  ECOSYSTEM_PRIOR
+  EXTERNAL_PRIOR
+}
+
+model TreatmentPathway {
+  id String @id @default(uuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  caseId String
+  patientId String
+  patient Patient @relation(fields: [patientId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+  careCase CareEpisode @relation("CasePathways", fields: [caseId, tenantId, patientId], references: [id, tenantId, patientId], onDelete: Restrict, onUpdate: Restrict)
+  modality TreatmentModality
+  methodCode String?
+  startedAt DateTime
+  endedAt DateTime?
+  createdAt DateTime @default(now())
+  createdByUserId String
+  legacyEpisodeId String? @unique
+  legacyEpisode CareEpisode? @relation("LegacyEpisode", fields: [legacyEpisodeId], references: [id], onDelete: Restrict)
+  encounters Encounter[]
+
+  @@unique([id, tenantId, caseId, patientId])
+  @@index([tenantId, caseId])
+  @@map("treatment_pathways")
+}
+
+model Investigation {
+  id String @id @default(uuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  caseId String
+  patientId String
+  patient Patient @relation(fields: [patientId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+  careCase CareEpisode @relation(fields: [caseId, tenantId, patientId], references: [id, tenantId, patientId], onDelete: Restrict, onUpdate: Restrict)
+  origin InvestigationOrigin
+  label String
+  parentInvestigationId String?
+  parent Investigation? @relation("InvestigationParent", fields: [parentInvestigationId, tenantId, caseId, patientId], references: [id, tenantId, caseId, patientId], onDelete: Restrict, onUpdate: Restrict)
+  children Investigation[] @relation("InvestigationParent")
+  createdByUserId String
+  createdAt DateTime @default(now())
+  orders InvestigationOrder[]
+  results InvestigationResult[]
+
+  @@unique([id, tenantId])
+  @@unique([id, tenantId, caseId, patientId])
+  @@index([tenantId, caseId])
+  @@map("investigations")
+}
+
+model InvestigationOrder {
+  id String @id @default(uuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  investigationId String
+  investigation Investigation @relation(fields: [investigationId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+  orderedByUserId String
+  assignedToUserId String?
+  requestedAt DateTime
+  requestText String
+  createdAt DateTime @default(now())
+  results InvestigationResult[]
+
+  @@unique([id, tenantId, investigationId])
+  @@index([tenantId, assignedToUserId])
+  @@map("investigation_orders")
+}
+
+// Raw evidence, not a Diagnosis or interpretation. No attachment storage.
+model InvestigationResult {
+  id String @id @default(uuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  investigationId String
+  investigation Investigation @relation(fields: [investigationId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+  orderId String?
+  order InvestigationOrder? @relation(fields: [orderId, tenantId, investigationId], references: [id, tenantId, investigationId], onDelete: Restrict, onUpdate: Restrict)
+  rawText String
+  observedAt DateTime
+  recordedByUserId String
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, investigationId])
+  @@map("investigation_results")
 }

@@ -1,0 +1,18 @@
+{
+  "status": "PASS",
+  "fixture": "synthetic Run2-shape, NOT actual Owner Run2 data",
+  "backupSha256": "4cb54f54d73588a36f577856a6cc355e03096eea02d581937917545b3a3714ad",
+  "preSignature": "9c2e9e7dfc50cd8984b29e52a92f0ee95725d9ada62ace891a0489019c1e1bd6",
+  "postSignature": "888f624424cac06d2ca730e737eb076b4ec93bb60102bce4b4c450be727368a1",
+  "proofs": [
+    "Run2 A/B/C/D/E/E1/E2 mapping",
+    "0/1/>1 candidates",
+    "full legacy row and timestamp preservation",
+    "audit and amendment lineage preserved",
+    "no fabricated clinical records",
+    "idempotency",
+    "destroy + PRE restore",
+    "deterministic reapply"
+  ],
+  "artifactDirectory": "/tmp/gastrocare-dec016-m0-1787900435991"
+}

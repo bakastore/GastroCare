@@ -2,10 +2,17 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { cliniciansApi, encountersApi, facilitiesApi, roomsApi } from '../api/resources';
+import {
+  cliniciansApi,
+  encountersApi,
+  facilitiesApi,
+  patientsApi,
+  roomsApi,
+} from '../api/resources';
 import { useApiQuery } from '../api/useApiQuery';
 import { ApiError } from '../api/client';
 import { ErrorState, LoadingState } from '../components/AsyncStates';
+import { PageHeader } from '../components/PageHeader';
 import type { Encounter } from '../types/domain';
 
 // Hemorrhoid Vertical Slice 1 correction (DEC-010, ChatGPT review Finding
@@ -25,6 +32,8 @@ export function NewHemorrhoidEncounterPage() {
 
   const facilitiesQuery = useApiQuery(() => facilitiesApi.list(), []);
   const cliniciansQuery = useApiQuery(() => cliniciansApi.list(), []);
+  const patientQuery = useApiQuery(() => patientsApi.getById(patientId as string), [patientId]);
+  const patientName = patientQuery.data?.fullName;
 
   const [facilityId, setFacilityId] = useState('');
   const [roomId, setRoomId] = useState('');
@@ -63,6 +72,11 @@ export function NewHemorrhoidEncounterPage() {
         // configured pilot default clinician (DEC-010 §B), never a
         // hardcoded id here.
         responsibleClinicianId: responsibleClinicianId || undefined,
+        // DEC-015 — this IS the initial Hemorrhoid Encounter entrypoint, so
+        // stamp the explicit persisted discriminator. The generic
+        // "+ Lượt khám mới (ngoài đợt điều trị)" flow (NewEncounterPage)
+        // must never send this.
+        workflowKind: 'HEMORRHOID_INITIAL',
       });
       setCreated(encounter);
     } catch (err) {
@@ -80,7 +94,12 @@ export function NewHemorrhoidEncounterPage() {
     );
     return (
       <div className="form-page">
-        <h1>Đã tạo lượt khám trĩ</h1>
+        <PageHeader
+          parentLabel="Hồ sơ bệnh nhân"
+          parentHref={`/patients/${patientId}`}
+          title="Đã tạo lượt khám trĩ"
+          subtitle={patientName}
+        />
         <dl className="identity-summary">
           <dt>Cơ sở</dt>
           <dd>{facility?.name ?? '—'}</dd>
@@ -124,7 +143,12 @@ export function NewHemorrhoidEncounterPage() {
 
   return (
     <div className="form-page">
-      <h1>Lượt khám trĩ mới (tiếp đón)</h1>
+      <PageHeader
+        parentLabel="Hồ sơ bệnh nhân"
+        parentHref={`/patients/${patientId}`}
+        title="Lượt khám trĩ mới (tiếp đón)"
+        subtitle={patientName}
+      />
       <form onSubmit={handleSubmit} noValidate>
         <label htmlFor="occurredAt">Thời điểm khám</label>
         <input

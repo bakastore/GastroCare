@@ -1,3 +1,4 @@
+import { createLongoPathway } from './dec016-fixtures';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthRole } from '@prisma/client';
@@ -30,8 +31,12 @@ describe('CORE-04 T5-T9 — remaining five Longo form families (e2e)', () => {
   let patientId: string;
   let doctorToken: string;
   let episodeId: string;
+  let treatmentPathwayId: string;
 
   async function resetTables() {
+    await prisma.investigationResult.deleteMany();
+    await prisma.investigationOrder.deleteMany();
+    await prisma.investigation.deleteMany();
     await prisma.clinicalFormSubmission.deleteMany();
     await prisma.auditEvent.deleteMany();
     await prisma.careTask.deleteMany();
@@ -39,6 +44,7 @@ describe('CORE-04 T5-T9 — remaining five Longo form families (e2e)', () => {
     await prisma.carePlan.deleteMany();
     await prisma.clinicianAssignmentHistory.deleteMany();
     await prisma.encounter.deleteMany();
+    await prisma.treatmentPathway.deleteMany();
     await prisma.careEpisode.deleteMany();
     await prisma.room.deleteMany();
     await prisma.facility.deleteMany();
@@ -63,6 +69,7 @@ describe('CORE-04 T5-T9 — remaining five Longo form families (e2e)', () => {
       .send({
         patientId,
         episodeId,
+        treatmentPathwayId,
         occurredAt,
         reasonForVisit,
         clinicalNote: 'x',
@@ -145,11 +152,12 @@ describe('CORE-04 T5-T9 — remaining five Longo form families (e2e)', () => {
       .set('Authorization', `Bearer ${doctorToken}`)
       .send({
         patientId,
-        episodeType: 'LONGO_TREATMENT',
+        episodeType: 'HEMORRHOID_TREATMENT',
         startedAt: '2026-01-01T02:00:00.000Z',
       })
       .expect(201);
     episodeId = episodeRes.body.id;
+    treatmentPathwayId = await createLongoPathway(app, doctorToken, episodeId);
   });
 
   afterAll(async () => {

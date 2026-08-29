@@ -95,19 +95,17 @@ export async function assertHemorrhoidSequencePrerequisite(
 }
 
 /**
- * An Encounter is part of the Hemorrhoid workflow iff a HEMORRHOID_EXAMINATION
- * chain (any status) has been started on it. Used to scope the CarePlan
- * sequence prerequisite (DEC-012 CD-05) to Hemorrhoid encounters only, so
- * unrelated Core/Longo CarePlan flows — which never have this submission —
- * are never affected.
+ * DEC015/016: Initial identity comes only from the persisted workflowKind.
+ * Form existence and free text never establish this identity. The CarePlan
+ * prerequisite applies from Initial creation, even before Examination starts.
  */
 export async function isHemorrhoidWorkflowEncounter(
   prisma: SequenceQueryClient,
   tenantId: string,
   encounterId: string,
 ): Promise<boolean> {
-  const found = await prisma.clinicalFormSubmission.findFirst({
-    where: { tenantId, encounterId, templateKey: 'HEMORRHOID_EXAMINATION' },
+  const found = await prisma.encounter.findFirst({
+    where: { id: encounterId, tenantId, workflowKind: 'HEMORRHOID_INITIAL' },
     select: { id: true },
   });
   return found !== null;

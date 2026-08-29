@@ -1,15 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   clinicalFormsApi,
   cliniciansApi,
   encountersApi,
   facilitiesApi,
+  patientsApi,
   roomsApi,
 } from '../api/resources';
 import { useApiQuery } from '../api/useApiQuery';
 import { ApiError } from '../api/client';
 import { EmptyState, ErrorState, LoadingState } from '../components/AsyncStates';
+import { PageHeader } from '../components/PageHeader';
 import { formatDateTime } from '../lib/format';
 import type {
   ClinicalFieldDef,
@@ -30,7 +32,82 @@ import type {
 // baseline. Adds two things the Longo page does not need: vital-sign
 // copy-forward prefill on create (DEC-010 §6) and an Encounter Context
 // panel (Facility/Room/responsible clinician + handover, DEC-010 §B/§C).
+//
+// A3-UX-01 (Owner Synthetic Acceptance) — the clinical layout only:
+// page-scoped section cards, a label-above field grid, readable
+// completed/read-only controls and a header "back to patient record"
+// action. No clinical-model / responses / validation / navigation change:
+// the same 29 template-driven fields still render from the template query,
+// Draft/Completed/amend/version-history behaviour is untouched.
 const TEMPLATE_KEY = 'HEMORRHOID_EXAMINATION';
+
+// A textarea or a (multi-)select needs the full grid row to stay readable.
+function fieldSpansFullRow(field: ClinicalFieldDef): boolean {
+  return field.type === 'textarea' || field.type === 'multi_select';
+}
+
+// A3-UX-02 — explicit presentation mapping: the clock-face position
+// multi-selects (internal / external / mixed HemorrhoidLocation — the
+// established key convention, options = CLOCK_FACE_OPTIONS 1h..12h) render
+// as a compact ring of circular toggle buttons instead of a scrolling
+// list box. Presentation only — same field key, same multi-select
+// semantics, same stored number[] format. No other multi-select is
+// affected.
+const CLOCK_POSITION_KEY_RE = /HemorrhoidLocation$/;
+function isClockPositionField(field: ClinicalFieldDef): boolean {
+  return field.type === 'multi_select' && CLOCK_POSITION_KEY_RE.test(field.key);
+}
+
+function ClockPositionSelector({
+  field,
+  value,
+  disabled,
+  onChange,
+}: {
+  field: ClinicalFieldDef;
+  value: ClinicalFormResponseValue | undefined;
+  disabled: boolean;
+  onChange: (value: ClinicalFormResponseValue) => void;
+}) {
+  const selectedKeys = Array.isArray(value) ? value.map(String) : [];
+
+  function toggle(optionValue: number | string) {
+    const key = String(optionValue);
+    const isSelected = selectedKeys.includes(key);
+    // Keep existing order and append new selections at the end — never
+    // reorder or normalise the stored array (Finding §7). Map each key
+    // back to its declared option value so the stored type (number for
+    // clock hours) is preserved exactly as before.
+    const nextKeys = isSelected
+      ? selectedKeys.filter((k) => k !== key)
+      : [...selectedKeys, key];
+    const next = nextKeys.map((k) => {
+      const option = field.options?.find((o) => String(o.value) === k);
+      return option ? option.value : k;
+    });
+    onChange(next);
+  }
+
+  return (
+    <div className="clinical-clock" role="group" aria-label={field.label}>
+      {(field.options ?? []).map((option) => {
+        const isSelected = selectedKeys.includes(String(option.value));
+        return (
+          <button
+            key={String(option.value)}
+            type="button"
+            className="clock-btn"
+            aria-pressed={isSelected}
+            disabled={disabled}
+            onClick={() => toggle(option.value)}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 function FieldControl({
   field,
@@ -150,6 +227,50 @@ function FieldControl({
   );
 }
 
+function FormField({
+  field,
+  value,
+  disabled,
+  onChange,
+}: {
+  field: ClinicalFieldDef;
+  value: ClinicalFormResponseValue | undefined;
+  disabled: boolean;
+  onChange: (value: ClinicalFormResponseValue) => void;
+}) {
+  const isClock = isClockPositionField(field);
+  return (
+    <div
+      className={
+        fieldSpansFullRow(field) ? 'clinical-field clinical-field--full' : 'clinical-field'
+      }
+    >
+      {isClock ? (
+        <span className="clinical-field-label">
+          {field.label}
+          {field.required ? ' *' : ''}
+        </span>
+      ) : (
+        <label htmlFor={field.key}>
+          {field.label}
+          {field.unit ? ` (${field.unit})` : ''}
+          {field.required ? ' *' : ''}
+        </label>
+      )}
+      {isClock ? (
+        <ClockPositionSelector
+          field={field}
+          value={value}
+          disabled={disabled}
+          onChange={onChange}
+        />
+      ) : (
+        <FieldControl field={field} value={value} disabled={disabled} onChange={onChange} />
+      )}
+    </div>
+  );
+}
+
 function EncounterContextPanel({ encounterId }: { encounterId: string }) {
   const encounterQuery = useApiQuery(() => encountersApi.getById(encounterId), [encounterId]);
   const cliniciansQuery = useApiQuery(() => cliniciansApi.list(), []);
@@ -202,7 +323,7 @@ function EncounterContextPanel({ encounterId }: { encounterId: string }) {
   }
 
   return (
-    <section>
+    <section className="clinical-section">
       <h2>Bối cảnh lượt khám</h2>
       <dl className="identity-summary">
         <dt>Cơ sở</dt>
@@ -214,7 +335,11 @@ function EncounterContextPanel({ encounterId }: { encounterId: string }) {
       </dl>
 
       {!isHandingOver && (
-        <button type="button" className="btn btn-ghost" onClick={() => setIsHandingOver(true)}>
+        <button
+          type="button"
+          className="btn btn-ghost"
+          onClick={() => setIsHandingOver(true)}
+        >
           Đổi bác sĩ phụ trách (bàn giao)
         </button>
       )}
@@ -271,7 +396,12 @@ export function HemorrhoidExaminationPage() {
     patientId: string;
     encounterId: string;
   }>();
+  const [formDirty, setFormDirty] = useState(false);
 
+  const patientQuery = useApiQuery(
+    () => patientsApi.getById(patientId as string),
+    [patientId],
+  );
   const templateQuery = useApiQuery(
     () => clinicalFormsApi.getTemplate(TEMPLATE_KEY),
     [],
@@ -294,13 +424,40 @@ export function HemorrhoidExaminationPage() {
   const template = templateQuery.data;
   if (!template) return null;
 
+  const submission = submissionQuery.data;
+  const isCompleted = submission?.status === 'COMPLETED';
+  const patientName = patientQuery.data?.fullName;
+
   return (
-    <div className="form-page">
-      <h1>Khám trĩ</h1>
+    <div className="clinical-form-page">
+      <PageHeader
+        parentLabel="Hồ sơ bệnh nhân"
+        parentHref={`/patients/${patientId}`}
+        breadcrumb={[
+          { label: 'Bệnh nhân', href: '/patients' },
+          ...(patientName
+            ? [{ label: patientName, href: `/patients/${patientId}` }]
+            : []),
+          { label: 'Khám trĩ' },
+        ]}
+        title="Khám trĩ"
+        subtitle={patientName}
+        status={
+          submission &&
+          (isCompleted ? (
+            <span className="badge badge-signed">
+              Đã hoàn tất (phiên bản {submission.revisionNumber})
+            </span>
+          ) : (
+            <span className="badge badge-draft">Nháp</span>
+          ))
+        }
+        guardUnsavedChanges={formDirty}
+      />
 
       <EncounterContextPanel encounterId={encounterId as string} />
 
-      {!submissionQuery.data ? (
+      {!submission ? (
         <StartForm
           patientId={patientId as string}
           encounterId={encounterId as string}
@@ -309,9 +466,10 @@ export function HemorrhoidExaminationPage() {
       ) : (
         <FormEditor
           template={template}
-          submission={submissionQuery.data}
+          submission={submission}
           patientId={patientId as string}
           onChanged={submissionQuery.reload}
+          onDirtyChange={setFormDirty}
         />
       )}
     </div>
@@ -361,7 +519,7 @@ function StartForm({
   }
 
   return (
-    <div>
+    <section className="clinical-section">
       {vitalsQuery.data && (
         <p className="form-hint">
           Đã sao chép sinh hiệu từ lần khám gần nhất đã hoàn tất (
@@ -386,7 +544,7 @@ function StartForm({
           {isCreating ? 'Đang tạo...' : 'Bắt đầu phiếu khám trĩ'}
         </button>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -395,11 +553,13 @@ function FormEditor({
   submission,
   patientId,
   onChanged,
+  onDirtyChange,
 }: {
   template: ClinicalFormTemplateDef;
   submission: ClinicalFormSubmission;
   patientId: string;
   onChanged: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }) {
   const navigate = useNavigate();
   const isCompleted = submission.status === 'COMPLETED';
@@ -410,6 +570,16 @@ function FormEditor({
   const [isAmending, setIsAmending] = useState(false);
   const [amendmentReason, setAmendmentReason] = useState('');
   const [isSubmittingAmend, setIsSubmittingAmend] = useState(false);
+
+  // Dirty tracking for the unsaved-changes guard (Finding H). A completed
+  // form that is NOT in amendment mode is read-only → never "dirty".
+  const isDirty =
+    (!isCompleted || isAmending) &&
+    JSON.stringify(responses) !== JSON.stringify(submission.responses);
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+    return () => onDirtyChange?.(false);
+  }, [isDirty, onDirtyChange]);
 
   const historyQuery = useApiQuery(
     () => (isCompleted ? clinicalFormsApi.getHistory(submission.id) : Promise.resolve(null)),
@@ -463,43 +633,26 @@ function FormEditor({
     }
   }
 
-  return (
-    <div>
-      <p className="page-subtitle">
-        Trạng thái:{' '}
-        {isCompleted ? (
-          <span className="badge badge-signed">
-            Đã hoàn tất (phiên bản {submission.revisionNumber})
-          </span>
-        ) : (
-          <span className="badge badge-draft">Nháp</span>
-        )}
-      </p>
+  // Finding 5 correction — a COMPLETED submission is read-only UNLESS the
+  // user has explicitly entered amendment mode ("Sửa (tạo phiên bản mới)").
+  const fieldsDisabled = isCompleted && !isAmending;
 
+  return (
+    <div className={fieldsDisabled ? 'clinical-form-body clinical-readonly' : 'clinical-form-body'}>
       {template.sections.map((section) => (
-        <section key={section.key}>
+        <section key={section.key} className="clinical-section">
           <h2>{section.label}</h2>
-          {section.fields.map((field) => (
-            <div key={field.key}>
-              <label htmlFor={field.key}>
-                {field.label}
-                {field.unit ? ` (${field.unit})` : ''}
-                {field.required ? ' *' : ''}
-              </label>
-              <FieldControl
+          <div className="clinical-grid">
+            {section.fields.map((field) => (
+              <FormField
+                key={field.key}
                 field={field}
                 value={responses[field.key]}
-                // Finding 5 correction — a COMPLETED submission is
-                // read-only UNLESS the user has explicitly entered
-                // amendment mode ("Sửa (tạo phiên bản mới)"): while
-                // isCompleted && isAmending, fields must be editable so the
-                // amendment can actually change content, not just resubmit
-                // the old snapshot with a reason attached.
-                disabled={isCompleted && !isAmending}
+                disabled={fieldsDisabled}
                 onChange={(value) => setField(field.key, value)}
               />
-            </div>
-          ))}
+            ))}
+          </div>
         </section>
       ))}
 
@@ -578,7 +731,7 @@ function FormEditor({
       )}
 
       {isCompleted && (
-        <section>
+        <section className="clinical-section">
           <h2>Lịch sử phiên bản</h2>
           {historyQuery.isLoading && <LoadingState />}
           {historyQuery.data && historyQuery.data.revisions.length === 0 && (

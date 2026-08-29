@@ -1,5 +1,9 @@
 import { api } from './client';
 import type {
+  TreatmentPathway,
+  Investigation,
+  InvestigationOrder,
+  InvestigationResult,
   CareEpisode,
   CarePlan,
   CareTask,
@@ -10,6 +14,7 @@ import type {
   ClinicalFormTemplateDef,
   CreatePatientResult,
   Encounter,
+  EncounterWorkflowKind,
   Facility,
   Patient,
   PatientTimeline,
@@ -19,18 +24,14 @@ import type {
 
 export const authApi = {
   login: (email: string, password: string) =>
-    api.post<{ accessToken: string }>('/auth/login', { email, password }),
+    api.postAuth<{ accessToken: string }>('/auth/login', { email, password }),
 };
 
 export const patientsApi = {
   list: () => api.get<Patient[]>('/patients'),
   getById: (id: string) => api.get<Patient>(`/patients/${id}`),
-  create: (dto: {
-    fullName: string;
-    dateOfBirth: string;
-    gender: string;
-    phone: string;
-  }) => api.post<CreatePatientResult>('/patients', dto),
+  create: (dto: { fullName: string; dateOfBirth: string; gender: string; phone: string }) =>
+    api.post<CreatePatientResult>('/patients', dto),
   checkDuplicates: (dto: { fullName: string; dateOfBirth: string; phone: string }) =>
     api.post<Patient[]>('/patients/duplicate-check', dto),
   getTimeline: (id: string) => api.get<PatientTimeline>(`/patients/${id}/timeline`),
@@ -40,6 +41,7 @@ export const encountersApi = {
   create: (dto: {
     patientId: string;
     episodeId?: string;
+    treatmentPathwayId?: string;
     /** DEC-010 §B — omit to resolve the default pilot clinician server-side. */
     responsibleClinicianId?: string;
     /** DEC-010 §C — physical room, optional. */
@@ -50,15 +52,19 @@ export const encountersApi = {
      * clinical content yet (DEC-010 §B/§D). */
     clinicalNote?: string;
     assessment?: string;
+    /**
+     * DEC-015 — only the initial Hemorrhoid Encounter sets this
+     * ('HEMORRHOID_INITIAL'). Generic new-encounter flows must NOT send it;
+     * never combined with episodeId (backend rejects 400).
+     */
+    workflowKind?: EncounterWorkflowKind;
   }) => api.post<Encounter>('/encounters', dto),
   getById: (id: string) => api.get<Encounter>(`/encounters/${id}`),
   /** Clinician handover — DOCTOR-only (DEC-010 §B). */
   handover: (id: string, dto: { newClinicianId: string; reason?: string }) =>
     api.post<Encounter>(`/encounters/${id}/handover`, dto),
   getClinicianHistory: (id: string) =>
-    api.get<ClinicianAssignmentHistoryEntry[]>(
-      `/encounters/${id}/clinician-history`,
-    ),
+    api.get<ClinicianAssignmentHistoryEntry[]>(`/encounters/${id}/clinician-history`),
   /**
    * Dedicated atomic Return Encounter orchestration — Hemorrhoid Vertical
    * Slice 3 T2 (DEC-013; docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md
@@ -84,11 +90,9 @@ export const facilitiesApi = {
 
 /** Room lookup/management (DEC-010 §C). */
 export const roomsApi = {
-  listByFacility: (facilityId: string) =>
-    api.get<Room[]>(`/rooms?facilityId=${facilityId}`),
+  listByFacility: (facilityId: string) => api.get<Room[]>(`/rooms?facilityId=${facilityId}`),
   getById: (id: string) => api.get<Room>(`/rooms/${id}`),
-  create: (dto: { facilityId: string; name: string }) =>
-    api.post<Room>('/rooms', dto),
+  create: (dto: { facilityId: string; name: string }) => api.post<Room>('/rooms', dto),
 };
 
 /** Selectable DOCTOR-role clinician lookup (DEC-010 §B). */
@@ -124,7 +128,9 @@ export const careTasksApi = {
    * Encounter explicitly and the backend validates tenant/patient/OPEN.
    */
   complete: (id: string, completedByEncounterId?: string) =>
-    api.post<CareTask>(`/care-tasks/${id}/complete`, { completedByEncounterId }),
+    api.post<CareTask>(`/care-tasks/${id}/complete`, {
+      completedByEncounterId,
+    }),
   cancel: (id: string) => api.post<CareTask>(`/care-tasks/${id}/cancel`),
   /** Generic operational reschedule (DEC-012 §15) — distinct from the
    * CarePlan.followUpDate signed clinical intent amended via carePlansApi.amend. */
@@ -133,26 +139,25 @@ export const careTasksApi = {
 };
 
 export const clinicalFormsApi = {
-  create: (dto: {
-    encounterId: string;
-    templateKey: string;
-    responses: ClinicalFormResponses;
-  }) => api.post<ClinicalFormSubmission>('/clinical-forms', dto),
+  create: (dto: { encounterId: string; templateKey: string; responses: ClinicalFormResponses }) =>
+    api.post<ClinicalFormSubmission>('/clinical-forms', dto),
   getById: (id: string) => api.get<ClinicalFormSubmission>(`/clinical-forms/${id}`),
   listByPatient: (patientId: string) =>
     api.get<ClinicalFormSubmission[]>(`/clinical-forms?patientId=${patientId}`),
   updateDraft: (id: string, dto: { responses: ClinicalFormResponses }) =>
     api.patch<ClinicalFormSubmission>(`/clinical-forms/${id}/draft`, dto),
-  complete: (id: string) =>
-    api.post<ClinicalFormSubmission>(`/clinical-forms/${id}/complete`),
+  complete: (id: string) => api.post<ClinicalFormSubmission>(`/clinical-forms/${id}/complete`),
   amend: (id: string, dto: { responses: ClinicalFormResponses; amendmentReason: string }) =>
     api.post<ClinicalFormSubmission>(`/clinical-forms/${id}/amend`, dto),
   getHistory: (id: string) =>
-    api.get<{ revisions: ClinicalFormSubmission[]; current: ClinicalFormSubmission }>(
-      `/clinical-forms/${id}/history`,
+    api.get<{
+      revisions: ClinicalFormSubmission[];
+      current: ClinicalFormSubmission;
+    }>(`/clinical-forms/${id}/history`),
+  getTemplate: (templateKey: string, version?: number) =>
+    api.get<ClinicalFormTemplateDef>(
+      `/clinical-forms/templates/${templateKey}${version ? `?version=${version}` : ''}`,
     ),
-  getTemplate: (templateKey: string) =>
-    api.get<ClinicalFormTemplateDef>(`/clinical-forms/templates/${templateKey}`),
   /**
    * Vital-sign copy-forward for a new HEMORRHOID_EXAMINATION (DEC-010 §6).
    * Finding 2 correction — target-aware: pass the target Encounter id, not
@@ -183,4 +188,37 @@ export const followUpTasksApi = {
     api.post<CareTask[]>('/follow-up-tasks/generate', { sourceEncounterId }),
   reschedule: (id: string, dueDate: string) =>
     api.patch<CareTask>(`/follow-up-tasks/${id}/reschedule`, { dueDate }),
+};
+
+export const treatmentPathwaysApi = {
+  list: (caseId: string) =>
+    api.get<TreatmentPathway[]>(`/care-episodes/${caseId}/treatment-pathways`),
+  create: (dto: {
+    caseId: string;
+    modality: TreatmentPathway['modality'];
+    methodCode?: string;
+    startedAt: string;
+  }) => api.post<TreatmentPathway>('/treatment-pathways', dto),
+};
+export const investigationsApi = {
+  list: (caseId: string) => api.get<Investigation[]>(`/care-episodes/${caseId}/investigations`),
+  assigned: () => api.get<Investigation[]>('/investigations/assigned'),
+  assignees: () =>
+    api.get<{ id: string; email: string; role: string }[]>('/investigations/assignees'),
+  create: (dto: {
+    caseId: string;
+    label: string;
+    origin: Investigation['origin'];
+    parentInvestigationId?: string;
+  }) => api.post<Investigation>('/investigations', dto),
+  order: (
+    id: string,
+    dto: {
+      requestedAt: string;
+      requestText: string;
+      assignedToUserId?: string;
+    },
+  ) => api.post<InvestigationOrder>(`/investigations/${id}/orders`, dto),
+  result: (id: string, dto: { observedAt: string; rawText: string; orderId?: string }) =>
+    api.post<InvestigationResult>(`/investigations/${id}/results`, dto),
 };

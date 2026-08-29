@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { clinicalFormsApi } from '../api/resources';
+import { clinicalFormsApi, patientsApi } from '../api/resources';
 import { useApiQuery } from '../api/useApiQuery';
 import { ApiError } from '../api/client';
 import { EmptyState, ErrorState, LoadingState } from '../components/AsyncStates';
+import { PageHeader } from '../components/PageHeader';
 import { formatDateTime } from '../lib/format';
 import type {
   ClinicalFieldDef,
@@ -28,8 +29,8 @@ const TEMPLATE_LABELS: Record<string, string> = {
   ANAL_DILATION_ASSESSMENT: 'Đánh giá nong hậu môn',
   LONGO_LONG_TERM_FOLLOWUP: 'Tái khám dài hạn sau phẫu thuật Longo',
   // Hemorrhoid Vertical Slice 2 (DEC-012 §6-7) — reuses this same
-  // schema-driven renderer rather than a new page, since both templates are
-  // a single required free-text field with no score/coding.
+  // schema-driven renderer. DEC016 adds multimodal Treatment Decision v2;
+  // existing v1 submissions keep their original definition.
   HEMORRHOID_DIAGNOSIS: 'Chẩn đoán',
   HEMORRHOID_TREATMENT_DECISION: 'Quyết định điều trị',
   // Hemorrhoid Vertical Slice 3 continuous-care loop (DEC-013 §D-§E) — same
@@ -38,17 +39,64 @@ const TEMPLATE_LABELS: Record<string, string> = {
   HEMORRHOID_NEXT_CLINICAL_DECISION: 'Quyết định điều trị tiếp theo',
 };
 
+// Longo pathway forms return to the Case; the Slice-2/3 Hemorrhoid forms
+// return to the patient record. Clinician-facing labels either way.
+const LONGO_PATHWAY_TEMPLATES = new Set([
+  'LONGO_PREOP_ASSESSMENT',
+  'LONGO_INTRAOP_RECORD',
+  'LONGO_EARLY_POSTOP',
+  'LONGO_TWO_WEEK_FOLLOWUP',
+  'ANAL_DILATION_ASSESSMENT',
+  'LONGO_LONG_TERM_FOLLOWUP',
+]);
+
+function ClinicalFormHeader({
+  templateKey,
+  patientId,
+  patientName,
+  status,
+  guardUnsavedChanges,
+}: {
+  templateKey: string;
+  patientId: string;
+  patientName?: string;
+  status?: React.ReactNode;
+  guardUnsavedChanges?: boolean;
+}) {
+  const toCase = LONGO_PATHWAY_TEMPLATES.has(templateKey);
+  const title = TEMPLATE_LABELS[templateKey] ?? templateKey;
+  return (
+    <PageHeader
+      parentLabel={toCase ? 'Đợt điều trị' : 'Hồ sơ bệnh nhân'}
+      parentHref={
+        toCase
+          ? `/patients/${patientId}?tab=${encodeURIComponent('Điều trị')}#case-workspace`
+          : `/patients/${patientId}`
+      }
+      breadcrumb={[
+        { label: 'Bệnh nhân', href: '/patients' },
+        ...(patientName ? [{ label: patientName, href: `/patients/${patientId}` }] : []),
+        { label: title },
+      ]}
+      title={title}
+      subtitle={patientName}
+      status={status}
+      guardUnsavedChanges={guardUnsavedChanges}
+    />
+  );
+}
+
 export function LongoClinicalFormPage() {
   const { patientId, encounterId, templateKey } = useParams<{
     patientId: string;
     encounterId: string;
     templateKey: string;
   }>();
-
-  const templateQuery = useApiQuery(
-    () => clinicalFormsApi.getTemplate(templateKey as string),
-    [templateKey],
+  const patientQuery = useApiQuery(
+    () => patientsApi.getById(patientId as string),
+    [patientId],
   );
+  const patientName = patientQuery.data?.fullName;
 
   const submissionQuery = useApiQuery(async () => {
     const submissions = await clinicalFormsApi.listByPatient(patientId as string);
@@ -58,10 +106,14 @@ export function LongoClinicalFormPage() {
     if (chain.length === 0) return null;
     // Pick the latest revision (the current head of the amendment chain),
     // not just the first chain member found.
-    return chain.reduce((latest, s) =>
-      s.revisionNumber > latest.revisionNumber ? s : latest,
-    );
+    return chain.reduce((latest, s) => (s.revisionNumber > latest.revisionNumber ? s : latest));
   }, [patientId, encounterId, templateKey]);
+
+  const templateQuery = useApiQuery(
+    () =>
+      clinicalFormsApi.getTemplate(templateKey as string, submissionQuery.data?.templateVersion),
+    [templateKey, submissionQuery.data?.templateVersion],
+  );
 
   if (templateQuery.isLoading || submissionQuery.isLoading) return <LoadingState />;
   if (templateQuery.error) return <ErrorState message={templateQuery.error} />;
@@ -75,6 +127,7 @@ export function LongoClinicalFormPage() {
         template={template}
         encounterId={encounterId as string}
         patientId={patientId as string}
+        patientName={patientName}
         onCreated={submissionQuery.reload}
       />
     );
@@ -82,9 +135,11 @@ export function LongoClinicalFormPage() {
 
   return (
     <FormEditor
+      key={submissionQuery.data.id}
       template={template}
       submission={submissionQuery.data}
       patientId={patientId as string}
+      patientName={patientName}
       onChanged={submissionQuery.reload}
     />
   );
@@ -94,11 +149,13 @@ function StartForm({
   template,
   encounterId,
   patientId,
+  patientName,
   onCreated,
 }: {
   template: ClinicalFormTemplateDef;
   encounterId: string;
   patientId: string;
+  patientName?: string;
   onCreated: () => void;
 }) {
   const navigate = useNavigate();
@@ -123,15 +180,23 @@ function StartForm({
   }
 
   return (
-    <div className="form-page">
-      <h1>{TEMPLATE_LABELS[template.templateKey] ?? template.displayName}</h1>
+    <div className="clinical-form-page">
+      <ClinicalFormHeader
+        templateKey={template.templateKey}
+        patientId={patientId}
+        patientName={patientName}
+      />
       {error && (
         <p className="form-error" role="alert">
           {error}
         </p>
       )}
       <div className="form-actions">
-        <button type="button" className="btn btn-ghost" onClick={() => navigate(`/patients/${patientId}`)}>
+        <button
+          type="button"
+          className="btn btn-ghost"
+          onClick={() => navigate(`/patients/${patientId}`)}
+        >
           Hủy
         </button>
         <button type="button" className="btn btn-primary" disabled={isCreating} onClick={start}>
@@ -264,11 +329,13 @@ function FormEditor({
   template,
   submission,
   patientId,
+  patientName,
   onChanged,
 }: {
   template: ClinicalFormTemplateDef;
   submission: ClinicalFormSubmission;
   patientId: string;
+  patientName?: string;
   onChanged: () => void;
 }) {
   const navigate = useNavigate();
@@ -281,13 +348,31 @@ function FormEditor({
   const [amendmentReason, setAmendmentReason] = useState('');
   const [isSubmittingAmend, setIsSubmittingAmend] = useState(false);
 
+  const isDirty =
+    (!isCompleted || isAmending) &&
+    JSON.stringify(responses) !== JSON.stringify(submission.responses);
+
   const historyQuery = useApiQuery(
     () => (isCompleted ? clinicalFormsApi.getHistory(submission.id) : Promise.resolve(null)),
     [submission.id, isCompleted, submission.revisionNumber],
   );
 
   function setField(key: string, value: ClinicalFormResponseValue) {
-    setResponses((prev) => ({ ...prev, [key]: value }));
+    setResponses((prev) => {
+      const next = { ...prev, [key]: value };
+      if (
+        template.templateKey === 'HEMORRHOID_TREATMENT_DECISION' &&
+        template.version === 2 &&
+        key === 'treatmentModalities' &&
+        Array.isArray(value)
+      ) {
+        if (!value.includes('MEDICAL')) delete next.medicalCareSetting;
+        if (!value.includes('PROCEDURE')) delete next.procedureCareSetting;
+        if (!value.includes('SURGERY')) delete next.surgeryCareSetting;
+        else next.surgeryCareSetting = 'HOSPITAL';
+      }
+      return next;
+    });
   }
 
   async function saveDraft() {
@@ -321,7 +406,10 @@ function FormEditor({
     setError(null);
     setIsSubmittingAmend(true);
     try {
-      await clinicalFormsApi.amend(submission.id, { responses, amendmentReason });
+      await clinicalFormsApi.amend(submission.id, {
+        responses,
+        amendmentReason,
+      });
       setIsAmending(false);
       setAmendmentReason('');
       onChanged();
@@ -334,35 +422,61 @@ function FormEditor({
   }
 
   return (
-    <div className="form-page">
-      <h1>{TEMPLATE_LABELS[template.templateKey] ?? template.displayName}</h1>
-      <p className="page-subtitle">
-        Trạng thái:{' '}
-        {isCompleted ? (
-          <span className="badge badge-signed">Đã hoàn tất (phiên bản {submission.revisionNumber})</span>
-        ) : (
-          <span className="badge badge-draft">Nháp</span>
-        )}
-      </p>
+    <div className="clinical-form-page">
+      <ClinicalFormHeader
+        templateKey={template.templateKey}
+        patientId={patientId}
+        patientName={patientName}
+        guardUnsavedChanges={isDirty}
+        status={
+          isCompleted ? (
+            <span className="badge badge-signed">
+              Đã hoàn tất (phiên bản {submission.revisionNumber})
+            </span>
+          ) : (
+            <span className="badge badge-draft">Nháp</span>
+          )
+        }
+      />
 
       {template.sections.map((section) => (
         <section key={section.key}>
           <h2>{section.label}</h2>
-          {section.fields.map((field) => (
-            <div key={field.key}>
-              <label htmlFor={field.key}>
-                {field.label}
-                {field.unit ? ` (${field.unit})` : ''}
-                {field.required ? ' *' : ''}
-              </label>
-              <FieldControl
-                field={field}
-                value={responses[field.key]}
-                disabled={isCompleted}
-                onChange={(value) => setField(field.key, value)}
-              />
-            </div>
-          ))}
+          {section.fields
+            .filter((field) => {
+              if (
+                template.templateKey !== 'HEMORRHOID_TREATMENT_DECISION' ||
+                template.version !== 2
+              )
+                return true;
+              const modality = (
+                {
+                  medicalCareSetting: 'MEDICAL',
+                  procedureCareSetting: 'PROCEDURE',
+                  surgeryCareSetting: 'SURGERY',
+                } as Record<string, string>
+              )[field.key];
+              return (
+                !modality ||
+                (Array.isArray(responses.treatmentModalities) &&
+                  responses.treatmentModalities.includes(modality))
+              );
+            })
+            .map((field) => (
+              <div key={field.key}>
+                <label htmlFor={field.key}>
+                  {field.label}
+                  {field.unit ? ` (${field.unit})` : ''}
+                  {field.required ? ' *' : ''}
+                </label>
+                <FieldControl
+                  field={field}
+                  value={responses[field.key]}
+                  disabled={isCompleted}
+                  onChange={(value) => setField(field.key, value)}
+                />
+              </div>
+            ))}
         </section>
       ))}
 
@@ -385,7 +499,11 @@ function FormEditor({
       )}
 
       <div className="form-actions">
-        <button type="button" className="btn btn-ghost" onClick={() => navigate(`/patients/${patientId}`)}>
+        <button
+          type="button"
+          className="btn btn-ghost"
+          onClick={() => navigate(`/patients/${patientId}`)}
+        >
           Về hồ sơ bệnh nhân
         </button>
         {!isCompleted && (

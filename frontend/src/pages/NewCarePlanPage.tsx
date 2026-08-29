@@ -1,14 +1,18 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { carePlansApi } from '../api/resources';
+import { carePlansApi, patientsApi } from '../api/resources';
+import { useApiQuery } from '../api/useApiQuery';
 import { ApiError } from '../api/client';
+import { PageHeader } from '../components/PageHeader';
 
 export function NewCarePlanPage() {
   const { patientId } = useParams<{ patientId: string }>();
   const [searchParams] = useSearchParams();
   const encounterId = searchParams.get('encounterId');
   const navigate = useNavigate();
+  const patientQuery = useApiQuery(() => patientsApi.getById(patientId as string), [patientId]);
+  const patientName = patientQuery.data?.fullName;
 
   const [instructions, setInstructions] = useState('');
   const [followUpDate, setFollowUpDate] = useState('');
@@ -39,8 +43,16 @@ export function NewCarePlanPage() {
 
   return (
     <div className="form-page">
-      <h1>Kế hoạch chăm sóc</h1>
-      <p className="page-subtitle">Đã lưu lượt khám. Nhập kế hoạch điều trị / dặn dò.</p>
+      <PageHeader
+        parentLabel="Hồ sơ bệnh nhân"
+        parentHref={`/patients/${patientId}`}
+        title="Kế hoạch chăm sóc"
+        subtitle={
+          patientName
+            ? `${patientName} — đã lưu lượt khám, nhập kế hoạch điều trị / dặn dò`
+            : 'Đã lưu lượt khám. Nhập kế hoạch điều trị / dặn dò.'
+        }
+      />
       <form onSubmit={handleSubmit} noValidate>
         <label htmlFor="instructions">Điều trị / dặn dò</label>
         <textarea

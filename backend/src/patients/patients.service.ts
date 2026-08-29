@@ -145,12 +145,19 @@ export class PatientsService {
     const [episodes, encounters, completedClinicalForms, followUpTasks] =
       await Promise.all([
         this.prisma.careEpisode.findMany({
-          where: { tenantId, patientId },
+          where: { tenantId, patientId, legacyTreatmentPathway: { is: null } },
+          include: {
+            treatmentPathways: {
+              where: { tenantId },
+              orderBy: [{ startedAt: 'asc' }, { id: 'asc' }],
+            },
+          },
           orderBy: [{ startedAt: 'asc' }, { createdAt: 'asc' }],
         }),
         this.prisma.encounter.findMany({
           where: { tenantId, patientId },
           include: {
+            treatmentPathway: true,
             carePlan: {
               include: {
                 versions: { orderBy: { versionNumber: 'asc' } },
@@ -158,7 +165,7 @@ export class PatientsService {
               },
             },
           },
-          orderBy: { occurredAt: 'asc' },
+          orderBy: [{ occurredAt: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
         }),
         this.prisma.clinicalFormSubmission.findMany({
           where: { tenantId, patientId, status: 'COMPLETED' },
@@ -166,7 +173,11 @@ export class PatientsService {
         }),
         this.prisma.careTask.findMany({
           where: { tenantId, patientId, timepointCode: { not: null } },
-          include: { sourceEncounter: { select: { episodeId: true } } },
+          include: {
+            sourceEncounter: {
+              select: { episodeId: true, treatmentPathwayId: true },
+            },
+          },
         }),
       ]);
 
@@ -191,16 +202,25 @@ export class PatientsService {
         timestamp: encounter.occurredAt,
         data: {
           id: encounter.id,
+          episodeId: encounter.episodeId,
+          treatmentPathwayId: encounter.treatmentPathwayId,
+          treatmentModality: encounter.treatmentPathway?.modality ?? null,
+          methodCode: encounter.treatmentPathway?.methodCode ?? null,
           reasonForVisit: encounter.reasonForVisit,
           clinicalNote: encounter.clinicalNote,
           assessment: encounter.assessment,
           occurredAt: encounter.occurredAt,
+          createdAt: encounter.createdAt,
           // F2 — lets the UI offer "Xem kế hoạch chăm sóc" instead of
           // re-offering CarePlan creation once one already exists for this
           // Encounter (DRAFT or SIGNED); no new storage, CarePlan is already
           // fetched 1:1 with Encounter above.
           carePlanId: encounter.carePlan?.id ?? null,
           carePlanStatus: encounter.carePlan?.status ?? null,
+          // DEC-015 — explicit persisted workflow discriminator, read
+          // straight from the column. 'HEMORRHOID_INITIAL' | null. Never
+          // inferred from reasonForVisit / clinical text / form existence.
+          workflowKind: encounter.workflowKind ?? null,
         },
       });
 
@@ -235,6 +255,15 @@ export class PatientsService {
               timepointCode: task.timepointCode,
               completedAt: task.completedAt,
               completedByEncounterId: task.completedByEncounterId,
+              // C4-E — authoritative source of this generic follow-up task:
+              // the Encounter its CarePlan belongs to (CareTask -> CarePlan
+              // -> Encounter, an explicit relation, never a heuristic), plus
+              // that Encounter's persisted DEC-015 workflowKind. The
+              // frontend uses these + the episode bucket type to decide
+              // whether the dedicated Hemorrhoid Return trigger applies.
+              sourceEncounterId: encounter.id,
+              sourceWorkflowKind: encounter.workflowKind ?? null,
+              treatmentPathwayId: encounter.treatmentPathwayId,
             },
           });
         }
@@ -288,6 +317,7 @@ export class PatientsService {
           dueDate: task.dueDate,
           timepointCode: task.timepointCode,
           sourceEncounterId: task.sourceEncounterId,
+          treatmentPathwayId: task.sourceEncounter?.treatmentPathwayId ?? null,
           completedByEncounterId: task.completedByEncounterId,
         },
       });

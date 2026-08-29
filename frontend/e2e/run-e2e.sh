@@ -15,8 +15,8 @@ BACKEND_PORT=3100
 FRONTEND_PORT=4173
 
 cleanup() {
-  [[ -n "${BACKEND_PID:-}" ]] && kill "$BACKEND_PID" 2>/dev/null || true
-  [[ -n "${FRONTEND_PID:-}" ]] && kill "$FRONTEND_PID" 2>/dev/null || true
+  [[ -n "${BACKEND_PID:-}" ]] && kill -- "-$BACKEND_PID" 2>/dev/null || true
+  [[ -n "${FRONTEND_PID:-}" ]] && kill -- "-$FRONTEND_PID" 2>/dev/null || true
   # The suite creates real synthetic Patient/Encounter/CarePlan/CareTask
   # rows against the shared disposable test DB — reset back to the known
   # seeded state so a subsequent backend regression run (which assumes a
@@ -24,6 +24,13 @@ cleanup() {
   (cd "$BACKEND_DIR" && npm run seed:e2e >/dev/null 2>&1) || true
 }
 trap cleanup EXIT
+
+# Never silently reuse an old server/build from a previous run.
+if curl -sf "http://localhost:$BACKEND_PORT/health" >/dev/null 2>&1 || curl -sf "http://localhost:$FRONTEND_PORT" >/dev/null 2>&1; then
+  echo "E2E ports are occupied; stop the known test servers before retrying" >&2
+  trap - EXIT
+  exit 1
+fi
 
 echo "== Starting disposable test PostgreSQL =="
 docker compose -f "$ROOT_DIR/docker-compose.test.yml" up -d
@@ -39,7 +46,7 @@ echo "== Starting backend on :$BACKEND_PORT =="
 # backend/test/e2e-seed.ts — default-clinician resolution is fail-closed
 # (Finding 3 correction), so the Receptionist "new Encounter Context"
 # browser flow needs a real, seeded DOCTOR configured explicitly here.
-(cd "$BACKEND_DIR" && PORT=$BACKEND_PORT FRONTEND_ORIGIN="http://localhost:$FRONTEND_PORT" PILOT_DEFAULT_CLINICIAN_EMAIL="doctor.a@example.test" npm run start >/tmp/gastrocare-e2e-backend.log 2>&1) &
+setsid env PORT="$BACKEND_PORT" FRONTEND_ORIGIN="http://localhost:$FRONTEND_PORT" PILOT_DEFAULT_CLINICIAN_EMAIL="doctor.a@example.test" bash -c 'cd "$1" && exec npm run start' _ "$BACKEND_DIR" >/tmp/gastrocare-e2e-backend.log 2>&1 &
 BACKEND_PID=$!
 
 for _ in $(seq 1 60); do
@@ -56,7 +63,7 @@ echo "== Building frontend against backend :$BACKEND_PORT =="
 (cd "$FRONTEND_DIR" && VITE_API_URL="http://localhost:$BACKEND_PORT" npm run build)
 
 echo "== Starting frontend preview on :$FRONTEND_PORT =="
-(cd "$FRONTEND_DIR" && npm run preview -- --port $FRONTEND_PORT --strictPort >/tmp/gastrocare-e2e-frontend.log 2>&1) &
+setsid bash -c 'cd "$1" && exec npm run preview -- --port "$2" --strictPort' _ "$FRONTEND_DIR" "$FRONTEND_PORT" >/tmp/gastrocare-e2e-frontend.log 2>&1 &
 FRONTEND_PID=$!
 
 for _ in $(seq 1 60); do

@@ -11,10 +11,40 @@ import { CompleteCareTaskDto } from './dto/complete-care-task.dto';
 
 type CareTaskWithDerivedOverdue = CareTask & { overdue: boolean };
 
+/**
+ * DEC-016 F2 — additive, read-only linkage projection. A Longo timepoint
+ * CareTask (timepointCode != null) is owned by a TreatmentPathway via its
+ * source Encounter (CareTask -> sourceEncounter -> treatmentPathwayId /
+ * episodeId). The frontend needs the authoritative pathway/case linkage to
+ * route the clinician into the correct Longo clinical follow-up flow instead
+ * of offering generic manual completion (which the backend guard rejects).
+ * Nothing is stored on CareTask — these fields are resolved at read time.
+ */
+type CareTaskWithLinkage = CareTaskWithDerivedOverdue & {
+  sourceEpisodeId: string | null;
+  treatmentPathwayId: string | null;
+};
+
 function withDerivedOverdue(task: CareTask): CareTaskWithDerivedOverdue {
   return {
     ...task,
     overdue: task.status === CareTaskStatus.OPEN && task.dueDate < new Date(),
+  };
+}
+
+function withLinkage(
+  task: CareTask & {
+    sourceEncounter: {
+      episodeId: string | null;
+      treatmentPathwayId: string | null;
+    } | null;
+  },
+): CareTaskWithLinkage {
+  const { sourceEncounter, ...rest } = task;
+  return {
+    ...withDerivedOverdue(rest),
+    sourceEpisodeId: sourceEncounter?.episodeId ?? null,
+    treatmentPathwayId: sourceEncounter?.treatmentPathwayId ?? null,
   };
 }
 
@@ -30,12 +60,17 @@ export class CareTasksService {
     private readonly audit: AuditService,
   ) {}
 
-  async list(tenantId: string): Promise<CareTaskWithDerivedOverdue[]> {
+  async list(tenantId: string): Promise<CareTaskWithLinkage[]> {
     const tasks = await this.prisma.careTask.findMany({
       where: { tenantId },
       orderBy: { dueDate: 'asc' },
+      include: {
+        sourceEncounter: {
+          select: { episodeId: true, treatmentPathwayId: true },
+        },
+      },
     });
-    return tasks.map(withDerivedOverdue);
+    return tasks.map(withLinkage);
   }
 
   private async findOrThrow(tenantId: string, taskId: string) {
@@ -58,6 +93,11 @@ export class CareTasksService {
     if (task.status !== CareTaskStatus.OPEN) {
       throw new ConflictException('Only an OPEN CareTask can be completed');
     }
+
+    if (task.timepointCode !== null)
+      throw new ConflictException(
+        'Longo tasks require completion of the exact pathway/timepoint clinical form',
+      );
 
     const completedByEncounterId = dto?.completedByEncounterId;
     if (completedByEncounterId) {

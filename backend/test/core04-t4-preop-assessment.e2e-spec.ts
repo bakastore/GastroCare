@@ -1,3 +1,4 @@
+import { createLongoPathway } from './dec016-fixtures';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthRole } from '@prisma/client';
@@ -33,6 +34,9 @@ describe('CORE-04 T4 — LONGO_PREOP_ASSESSMENT (e2e)', () => {
   const occurredAt = '2026-08-23T08:00:00.000Z';
 
   async function resetTables() {
+    await prisma.investigationResult.deleteMany();
+    await prisma.investigationOrder.deleteMany();
+    await prisma.investigation.deleteMany();
     await prisma.clinicalFormSubmission.deleteMany();
     await prisma.auditEvent.deleteMany();
     await prisma.careTask.deleteMany();
@@ -40,6 +44,7 @@ describe('CORE-04 T4 — LONGO_PREOP_ASSESSMENT (e2e)', () => {
     await prisma.carePlan.deleteMany();
     await prisma.clinicianAssignmentHistory.deleteMany();
     await prisma.encounter.deleteMany();
+    await prisma.treatmentPathway.deleteMany();
     await prisma.careEpisode.deleteMany();
     await prisma.room.deleteMany();
     await prisma.facility.deleteMany();
@@ -269,7 +274,7 @@ describe('CORE-04 T4 — LONGO_PREOP_ASSESSMENT (e2e)', () => {
         .set('Authorization', `Bearer ${doctorAToken}`)
         .send({
           patientId: patientA1Id,
-          episodeType: 'LONGO_TREATMENT',
+          episodeType: 'HEMORRHOID_TREATMENT',
           startedAt: '2026-08-20T02:00:00.000Z',
         })
         .expect(201);
@@ -281,6 +286,7 @@ describe('CORE-04 T4 — LONGO_PREOP_ASSESSMENT (e2e)', () => {
         .send({
           patientId: patientA1Id,
           episodeId: episodeAId,
+          treatmentPathwayId: await createLongoPathway(app, doctorAToken, episodeAId),
           occurredAt,
           reasonForVisit: 'Khám tiền phẫu Longo (dữ liệu giả lập)',
           clinicalNote: 'x',

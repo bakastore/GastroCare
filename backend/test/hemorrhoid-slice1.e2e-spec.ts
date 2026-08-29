@@ -46,6 +46,9 @@ describe('Hemorrhoid Vertical Slice 1 (e2e)', () => {
   let roomBId: string;
 
   async function resetTables() {
+    await prisma.investigationResult.deleteMany();
+    await prisma.investigationOrder.deleteMany();
+    await prisma.investigation.deleteMany();
     await prisma.clinicalFormSubmission.deleteMany();
     await prisma.auditEvent.deleteMany();
     await prisma.careTask.deleteMany();
@@ -53,6 +56,7 @@ describe('Hemorrhoid Vertical Slice 1 (e2e)', () => {
     await prisma.carePlan.deleteMany();
     await prisma.clinicianAssignmentHistory.deleteMany();
     await prisma.encounter.deleteMany();
+    await prisma.treatmentPathway.deleteMany();
     await prisma.careEpisode.deleteMany();
     await prisma.room.deleteMany();
     await prisma.facility.deleteMany();
@@ -401,7 +405,7 @@ describe('Hemorrhoid Vertical Slice 1 (e2e)', () => {
         .set('Authorization', `Bearer ${doctorA1Token}`)
         .send({
           patientId: patientAId,
-          episodeType: 'LONGO_TREATMENT',
+          episodeType: 'HEMORRHOID_TREATMENT',
           startedAt: '2026-08-14T00:00:00.000Z',
         })
         .expect(201);
@@ -644,6 +648,7 @@ describe('Hemorrhoid Vertical Slice 1 (e2e)', () => {
         responsibleClinicianId: doctorA1Id,
         occurredAt: '2026-08-12T02:00:00.000Z',
         reasonForVisit: 'Khám trĩ (synthetic empty exam)',
+        workflowKind: 'HEMORRHOID_INITIAL',
       });
       emptyEncounterId = encounter.body.id;
 
@@ -711,6 +716,7 @@ describe('Hemorrhoid Vertical Slice 1 (e2e)', () => {
         responsibleClinicianId: doctorA1Id,
         occurredAt: '2026-08-13T02:00:00.000Z',
         reasonForVisit: 'Khám trĩ (synthetic morphology)',
+        workflowKind: 'HEMORRHOID_INITIAL',
       });
 
       const responses = {
@@ -775,6 +781,7 @@ describe('Hemorrhoid Vertical Slice 1 (e2e)', () => {
         responsibleClinicianId: doctorA1Id,
         occurredAt: '2026-08-13T02:30:00.000Z',
         reasonForVisit: 'Khám trĩ (synthetic reject legacy field)',
+        workflowKind: 'HEMORRHOID_INITIAL',
       });
 
       await request(app.getHttpServer())
@@ -794,6 +801,7 @@ describe('Hemorrhoid Vertical Slice 1 (e2e)', () => {
         responsibleClinicianId: doctorA1Id,
         occurredAt: '2026-08-13T03:00:00.000Z',
         reasonForVisit: 'Khám trĩ (synthetic reject unknown field)',
+        workflowKind: 'HEMORRHOID_INITIAL',
       });
 
       await request(app.getHttpServer())
@@ -820,7 +828,7 @@ describe('Hemorrhoid Vertical Slice 1 (e2e)', () => {
         type: string;
         data: { templateKey?: string };
       };
-      const events = timeline.body.ungroupedEncounters as TimelineEvent[];
+      const events = [...timeline.body.ungroupedEncounters,...timeline.body.episodes.flatMap((g:{events:TimelineEvent[]})=>g.events)] as TimelineEvent[];
       const hasHemorrhoidExam = events.some(
         (event) =>
           event.type === 'CLINICAL_FORM_SUBMITTED' &&
@@ -857,6 +865,7 @@ describe('Hemorrhoid Vertical Slice 1 (e2e)', () => {
         responsibleClinicianId: doctorA1Id,
         occurredAt,
         reasonForVisit: 'Khám trĩ (synthetic vitals)',
+        workflowKind: 'HEMORRHOID_INITIAL',
       });
       const created = await request(app.getHttpServer())
         .post('/clinical-forms')
@@ -888,6 +897,7 @@ describe('Hemorrhoid Vertical Slice 1 (e2e)', () => {
         responsibleClinicianId: doctorA1Id,
         occurredAt,
         reasonForVisit: 'Khám trĩ (synthetic copy-forward probe)',
+        workflowKind: 'HEMORRHOID_INITIAL',
       });
       return encounter.body.id as string;
     }
@@ -914,6 +924,7 @@ describe('Hemorrhoid Vertical Slice 1 (e2e)', () => {
         responsibleClinicianId: doctorA1Id,
         occurredAt: '2026-09-01T02:00:00.000Z',
         reasonForVisit: 'Khám trĩ (synthetic draft only)',
+        workflowKind: 'HEMORRHOID_INITIAL',
       });
       await request(app.getHttpServer())
         .post('/clinical-forms')
@@ -978,6 +989,7 @@ describe('Hemorrhoid Vertical Slice 1 (e2e)', () => {
         responsibleClinicianId: doctorA1Id,
         occurredAt: '2026-09-15T02:00:00.000Z',
         reasonForVisit: 'Khám trĩ (synthetic new exam from copy-forward)',
+        workflowKind: 'HEMORRHOID_INITIAL',
       });
 
       const copyForward = await copyForwardFor(

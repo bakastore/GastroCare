@@ -1,3 +1,4 @@
+import { createLongoPathway } from './dec016-fixtures';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthRole } from '@prisma/client';
@@ -25,6 +26,9 @@ describe('CORE-04 T11 — Episode-aware Timeline (e2e)', () => {
   let patientId: string;
 
   async function resetTables() {
+    await prisma.investigationResult.deleteMany();
+    await prisma.investigationOrder.deleteMany();
+    await prisma.investigation.deleteMany();
     await prisma.clinicalFormSubmission.deleteMany();
     await prisma.auditEvent.deleteMany();
     await prisma.careTask.deleteMany();
@@ -32,6 +36,7 @@ describe('CORE-04 T11 — Episode-aware Timeline (e2e)', () => {
     await prisma.carePlan.deleteMany();
     await prisma.clinicianAssignmentHistory.deleteMany();
     await prisma.encounter.deleteMany();
+    await prisma.treatmentPathway.deleteMany();
     await prisma.careEpisode.deleteMany();
     await prisma.room.deleteMany();
     await prisma.facility.deleteMany();
@@ -96,6 +101,12 @@ describe('CORE-04 T11 — Episode-aware Timeline (e2e)', () => {
     patientId = patient.id;
   });
 
+  beforeEach(async()=>{
+    const original=await prisma.patient.findUniqueOrThrow({where:{id:patientId}});
+    const {id,createdAt,updatedAt,...data}=original;
+    patientId=(await prisma.patient.create({data})).id;
+  });
+
   afterAll(async () => {
     await resetTables();
     await app.close();
@@ -108,11 +119,12 @@ describe('CORE-04 T11 — Episode-aware Timeline (e2e)', () => {
       .set('Authorization', `Bearer ${doctorToken}`)
       .send({
         patientId,
-        episodeType: 'LONGO_TREATMENT',
+        episodeType: 'HEMORRHOID_TREATMENT',
         startedAt: '2026-01-01T02:00:00.000Z',
       })
       .expect(201);
     const episodeId = episodeRes.body.id as string;
+    const treatmentPathwayId = await createLongoPathway(app, doctorToken, episodeId);
 
     const episodeEncounterRes = await request(app.getHttpServer())
       .post('/encounters')
@@ -120,6 +132,7 @@ describe('CORE-04 T11 — Episode-aware Timeline (e2e)', () => {
       .send({
         patientId,
         episodeId,
+        treatmentPathwayId,
         occurredAt: '2026-01-05T02:00:00.000Z',
         reasonForVisit: 'Trong đợt điều trị (dữ liệu giả lập)',
         clinicalNote: 'x',
@@ -164,11 +177,12 @@ describe('CORE-04 T11 — Episode-aware Timeline (e2e)', () => {
       .set('Authorization', `Bearer ${doctorToken}`)
       .send({
         patientId,
-        episodeType: 'LONGO_TREATMENT',
+        episodeType: 'HEMORRHOID_TREATMENT',
         startedAt: '2026-02-01T02:00:00.000Z',
       })
       .expect(201);
     const episodeId = episodeRes.body.id as string;
+    const treatmentPathwayId = await createLongoPathway(app, doctorToken, episodeId);
 
     // Created in reverse chronological order (later occurredAt created
     // first) — proves sorting genuinely uses occurredAt, not insertion/
@@ -179,6 +193,7 @@ describe('CORE-04 T11 — Episode-aware Timeline (e2e)', () => {
       .send({
         patientId,
         episodeId,
+        treatmentPathwayId,
         occurredAt: '2026-02-20T02:00:00.000Z',
         reasonForVisit: 'Sự kiện sau (dữ liệu giả lập)',
         clinicalNote: 'x',
@@ -192,6 +207,7 @@ describe('CORE-04 T11 — Episode-aware Timeline (e2e)', () => {
       .send({
         patientId,
         episodeId,
+        treatmentPathwayId,
         occurredAt: '2026-02-05T02:00:00.000Z',
         reasonForVisit: 'Sự kiện trước (dữ liệu giả lập)',
         clinicalNote: 'x',
@@ -222,11 +238,12 @@ describe('CORE-04 T11 — Episode-aware Timeline (e2e)', () => {
       .set('Authorization', `Bearer ${doctorToken}`)
       .send({
         patientId,
-        episodeType: 'LONGO_TREATMENT',
+        episodeType: 'HEMORRHOID_TREATMENT',
         startedAt: '2026-03-01T02:00:00.000Z',
       })
       .expect(201);
     const episodeId = episodeRes.body.id as string;
+    const treatmentPathwayId = await createLongoPathway(app, doctorToken, episodeId);
 
     const encounterRes = await request(app.getHttpServer())
       .post('/encounters')
@@ -234,6 +251,7 @@ describe('CORE-04 T11 — Episode-aware Timeline (e2e)', () => {
       .send({
         patientId,
         episodeId,
+        treatmentPathwayId,
         occurredAt: '2026-03-05T02:00:00.000Z',
         reasonForVisit: 'Khám tiền phẫu (dữ liệu giả lập)',
         clinicalNote: 'x',

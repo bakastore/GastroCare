@@ -49,8 +49,16 @@ export class ClinicalFormsController {
   // Declared before ':id' so 'templates/:templateKey' is not swallowed by
   // the ':id' route.
   @Get('templates/:templateKey')
-  getTemplateDefinition(@Param('templateKey') templateKey: string) {
-    return this.clinicalFormsService.getTemplateDefinition(templateKey);
+  getTemplateDefinition(
+    @Param('templateKey') templateKey: string,
+    @Query('version') version?: string,
+  ) {
+    if (version !== undefined && !/^[1-9][0-9]*$/.test(version))
+      throw new BadRequestException('Invalid template version');
+    return this.clinicalFormsService.getTemplateDefinition(
+      templateKey,
+      version === undefined ? undefined : Number(version),
+    );
   }
 
   // Declared before ':id' for the same reason as 'templates/:templateKey'.

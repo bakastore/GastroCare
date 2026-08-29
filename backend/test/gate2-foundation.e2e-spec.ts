@@ -48,6 +48,9 @@ describe('Gate 2 — Technical Foundation (e2e)', () => {
     // Also defensively clears Core clinical tables that FK-reference
     // AuthUser (clinicianAssignmentHistory/encounters) in case an earlier
     // suite in the same run left rows behind.
+    await prisma.investigationResult.deleteMany();
+    await prisma.investigationOrder.deleteMany();
+    await prisma.investigation.deleteMany();
     await prisma.clinicalFormSubmission.deleteMany();
     await prisma.auditEvent.deleteMany();
     await prisma.careTask.deleteMany();
@@ -55,6 +58,7 @@ describe('Gate 2 — Technical Foundation (e2e)', () => {
     await prisma.carePlan.deleteMany();
     await prisma.clinicianAssignmentHistory.deleteMany();
     await prisma.encounter.deleteMany();
+    await prisma.treatmentPathway.deleteMany();
     await prisma.careEpisode.deleteMany();
     await prisma.room.deleteMany();
     await prisma.facility.deleteMany();

@@ -1,3 +1,4 @@
+import { createLongoPathway } from './dec016-fixtures';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthRole } from '@prisma/client';
@@ -24,6 +25,9 @@ describe('CORE-04 T10 — Follow-up Scheduling (e2e)', () => {
   let doctorToken: string;
 
   async function resetTables() {
+    await prisma.investigationResult.deleteMany();
+    await prisma.investigationOrder.deleteMany();
+    await prisma.investigation.deleteMany();
     await prisma.clinicalFormSubmission.deleteMany();
     await prisma.auditEvent.deleteMany();
     await prisma.careTask.deleteMany();
@@ -31,6 +35,7 @@ describe('CORE-04 T10 — Follow-up Scheduling (e2e)', () => {
     await prisma.carePlan.deleteMany();
     await prisma.clinicianAssignmentHistory.deleteMany();
     await prisma.encounter.deleteMany();
+    await prisma.treatmentPathway.deleteMany();
     await prisma.careEpisode.deleteMany();
     await prisma.room.deleteMany();
     await prisma.facility.deleteMany();
@@ -63,12 +68,14 @@ describe('CORE-04 T10 — Follow-up Scheduling (e2e)', () => {
     return res.id;
   }
 
+  const pathways = new Map<string,string>();
   async function startEpisode(patientId: string, startedAt: string) {
     const res = await request(app.getHttpServer())
       .post('/care-episodes')
       .set('Authorization', `Bearer ${doctorToken}`)
-      .send({ patientId, episodeType: 'LONGO_TREATMENT', startedAt })
+      .send({ patientId, episodeType: 'HEMORRHOID_TREATMENT', startedAt })
       .expect(201);
+    pathways.set(res.body.id, await createLongoPathway(app, doctorToken, res.body.id, startedAt));
     return res.body.id as string;
   }
 
@@ -84,6 +91,7 @@ describe('CORE-04 T10 — Follow-up Scheduling (e2e)', () => {
       .send({
         patientId,
         episodeId,
+        treatmentPathwayId: pathways.get(episodeId),
         occurredAt,
         reasonForVisit,
         clinicalNote: 'x',
@@ -500,20 +508,12 @@ describe('CORE-04 T10 — Follow-up Scheduling (e2e)', () => {
         operativeDurationMinutes: 45,
       });
 
-      // Directly corrupt the Encounter's patientId at the data layer to
-      // simulate a mismatched-ancestry row (the API itself has no update
-      // path for this field, so this proves the service-level guard, not
-      // just a DTO-level one).
-      await prisma.encounter.update({
-        where: { id: surgeryEncounterId },
-        data: { patientId: otherPatientId },
-      });
+      // DEC-016 composite FK rejects this invalid ancestry before it can
+      // reach the application. API cross-patient rejection is also covered.
+      await expect(prisma.encounter.update({where:{id:surgeryEncounterId},data:{patientId:otherPatientId}})).rejects.toMatchObject({code:'P2003'});
+      expect((await prisma.encounter.findUniqueOrThrow({where:{id:surgeryEncounterId}})).patientId).toBe(patientId);
+      await request(app.getHttpServer()).post('/follow-up-tasks/generate').auth(doctorToken,{type:'bearer'}).send({sourceEncounterId:surgeryEncounterId}).expect(201);
 
-      await request(app.getHttpServer())
-        .post('/follow-up-tasks/generate')
-        .set('Authorization', `Bearer ${doctorToken}`)
-        .send({ sourceEncounterId: surgeryEncounterId })
-        .expect(403);
     });
 
     it('wrong tenant (Encounter belongs to a different tenant) -> REJECT (not found)', async () => {

@@ -39,7 +39,7 @@ export function onUnauthorized(listener: UnauthorizedListener): void {
 
 async function request<T>(
   path: string,
-  options: { method?: string; body?: unknown } = {},
+  options: { method?: string; body?: unknown; isAuthAttempt?: boolean } = {},
 ): Promise<T> {
   const token = getStoredToken();
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -59,6 +59,15 @@ async function request<T>(
   }
 
   if (response.status === 401) {
+    // A 401 on a credential-check request (POST /auth/login) means the email
+    // or password was wrong — it is NOT an expired authenticated session, so
+    // it must not trip the global logout/session-clearing handler or show the
+    // "session expired" message. Every other 401 is an authenticated request
+    // whose token is missing/expired/rejected → drop to a safe logged-out
+    // state (see AuthProvider.onUnauthorized).
+    if (options.isAuthAttempt) {
+      throw new ApiError(401, 'Email hoặc mật khẩu không đúng.');
+    }
     unauthorizedListener?.();
     throw new ApiError(401, 'Phiên đăng nhập đã hết hạn.');
   }
@@ -85,4 +94,8 @@ export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) => request<T>(path, { method: 'POST', body }),
   patch: <T>(path: string, body?: unknown) => request<T>(path, { method: 'PATCH', body }),
+  // Credential-check POST (login): a 401 here is "wrong email/password", not an
+  // expired session — see the 401 branch in request().
+  postAuth: <T>(path: string, body?: unknown) =>
+    request<T>(path, { method: 'POST', body, isAuthAttempt: true }),
 };

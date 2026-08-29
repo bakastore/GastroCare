@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -23,16 +24,20 @@ export class CareEpisodesService {
    * docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md §L): direct
    * creation of a HEMORRHOID_TREATMENT episode must not become an
    * uncontrolled path that can produce a second ACTIVE episode for the same
-   * tenant+patient — the same 0..1 ACTIVE invariant the dedicated Return
-   * Encounter endpoint enforces. Scoped to HEMORRHOID_TREATMENT only —
-   * LONGO_TREATMENT behavior is unchanged (no such invariant is Owner
-   * Locked for it).
+   * tenant+patient. DEC016 uses this row as physical Case storage; Initial
+   * creates/reuses it, Return only reuses it. Direct LONGO_TREATMENT creation
+   * is retired in favor of explicit child TreatmentPathways.
    */
   async create(
     tenantId: string,
     actorId: string,
     dto: CreateCareEpisodeDto,
   ): Promise<CareEpisode> {
+    if (dto.episodeType !== HEMORRHOID_TREATMENT_EPISODE_TYPE) {
+      throw new BadRequestException(
+        'Direct LONGO_TREATMENT creation is retired; create a SURGERY/LONGO TreatmentPathway under a Case',
+      );
+    }
     const patient = await this.prisma.patient.findFirst({
       where: { id: dto.patientId, tenantId },
       select: { id: true },
@@ -118,7 +123,7 @@ export class CareEpisodesService {
     }
 
     return this.prisma.careEpisode.findMany({
-      where: { tenantId, patientId },
+      where: { tenantId, patientId, legacyTreatmentPathway: { is: null } },
       orderBy: [{ startedAt: 'desc' }, { createdAt: 'desc' }],
     });
   }
@@ -156,8 +161,8 @@ export class CareEpisodesService {
           }
 
           if (existing.episodeType === HEMORRHOID_TREATMENT_EPISODE_TYPE) {
-            const completedAssessment = await tx.clinicalFormSubmission.findFirst(
-              {
+            const completedAssessment =
+              await tx.clinicalFormSubmission.findFirst({
                 where: {
                   tenantId,
                   templateKey: 'HEMORRHOID_FOLLOW_UP_ASSESSMENT',
@@ -165,8 +170,7 @@ export class CareEpisodesService {
                   encounter: { episodeId: id },
                 },
                 select: { id: true },
-              },
-            );
+              });
             if (!completedAssessment) {
               throw new ConflictException(
                 'A COMPLETED HEMORRHOID_FOLLOW_UP_ASSESSMENT on an Encounter in this episode is required before it can be closed',

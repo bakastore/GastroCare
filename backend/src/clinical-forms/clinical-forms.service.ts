@@ -378,8 +378,11 @@ export class ClinicalFormsService {
    * frontend does not hand-duplicate (and risk drifting from) the same
    * clinical field definitions that live here.
    */
-  getTemplateDefinition(templateKey: string) {
-    const template = getLatestTemplate(templateKey);
+  getTemplateDefinition(templateKey: string, version?: number) {
+    const template =
+      version === undefined
+        ? getLatestTemplate(templateKey)
+        : getTemplate(templateKey, version);
     if (!template) {
       throw new NotFoundException('Unknown clinical form template');
     }
