@@ -1,6 +1,6 @@
 # GastroCare — Decision Log
 
-Cập nhật: 2026-08-27
+Cập nhật: 2026-08-29
 
 Đây là Decision Log hiện hành và là nguồn chuẩn cho Owner Decisions
 và Working Assumptions của GastroCare.
@@ -372,6 +372,44 @@ Owner mở T0 → M0 → M7 liên tục, không routine checkpoint approval, imp
 DEC-016 supersedes DEC-015 §6 ở phần Longo identity: identity nay qua TreatmentPathway, không còn direct LONGO_TREATMENT Case. Supersedes quy tắc Initial permanently ungrouped và Return creates Case của Slice 2/3, cùng giới hạn không được schema/Investigation/Surgery của các work package cũ. Không đổi clinical scoring, clinical semantics deferred hoặc quyền Owner product acceptance.
 
 Domain/architecture/privacy normative overlays: docs/04, 05, 06. Implementation notes/evidence: [13_DEC016_CASE_PATHWAY_IMPLEMENTATION.md](13_DEC016_CASE_PATHWAY_IMPLEMENTATION.md). Sau M7: **FRESH CODEX SESSION B — INDEPENDENT READ-ONLY AUDIT**; Session A không tự gọi mình là independent auditor.
+
+---
+
+### DEC-017 — SSOT Reconciliation: baseline 6dd8d52, DEC-016 audit outstanding, AppSidebar OWNER LOCKED
+
+**Ngày:** 2026-08-29
+
+**Trạng thái:** OWNER LOCKED
+
+Owner xác nhận commit `6dd8d5226b6f4d2c264227226cb996900aa3d9f6` trên branch
+`correction/owner-acceptance-slice1-3` là chủ đích, chấp nhận tạm thời do áp
+lực thời gian — cần bản demo UI/UX để trình bày cho BS Thái. Commit này gộp
+hai việc: (1) DEC-016 backend implementation T0→M7, (2) Demo UI/UX
+(`frontend/src/pages/admin/*`, `AppSidebar.tsx`, các route `/admin/*`).
+
+Owner xác nhận `frontend/src/components/AppSidebar.tsx` — "DEMO UI
+NAVIGATION STRUCTURE v1" — là OWNER LOCKED.
+
+Baseline implementation checkpoint thực tế của
+`correction/owner-acceptance-slice1-3` tại thời điểm DEC-017 là `6dd8d52`.
+Baseline `c0dfe1a4` ghi trong PROJECT_STATE.md trước DEC-017 đã lỗi thời kể
+từ checkpoint trên; mô tả "Worktree chưa commit theo lệnh Owner" không còn
+phản ánh trạng thái repository checkpoint và được thay thế bởi DEC-017.
+
+Commit/push diễn ra trước khi FRESH CODEX SESSION B — INDEPENDENT READ-ONLY
+AUDIT chạy trên DEC-016 backend. Đây không phải waiver cho yêu cầu independent
+audit. DEC-016 backend giữ nguyên trạng thái `TECHNICAL EXECUTION COMPLETE
+(SELF-ATTESTED BY SESSION A) — INDEPENDENT AUDIT OUTSTANDING` cho đến khi
+Codex Session B chạy trên implementation checkpoint `6dd8d52` và PASS, hoặc
+mọi finding được xử lý và đóng theo governance.
+
+Không đổi: DEC-016 clinical/domain scope
+(Case/TreatmentPathway/Investigation), Owner product acceptance và các Owner
+Decision trước đó.
+
+Next gate: Codex Session B — Independent Read-only Audit trên implementation
+checkpoint `6dd8d52`, không sửa code. Sau khi audit gate DEC-016 được đóng
+mới mở DEC-018 — Admin Boundary / User Management.
 
 ---
 

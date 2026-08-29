@@ -1,6 +1,6 @@
 # GastroCare — Roadmap và Acceptance Gates
 
-**Cập nhật:** 28/08/2026
+**Cập nhật:** 29/08/2026 — DEC-017 SSOT reconciliation.
 
 Roadmap này được điều khiển bởi năng lực, không có mốc tuần/tháng cố định. Một phase (giai đoạn) chỉ hoàn thành khi acceptance gate (cổng chấp nhận) tương ứng được thỏa.
 
@@ -30,7 +30,7 @@ FOUNDATION
 | Hemorrhoid Vertical Slice 1 | CLOSED — TECHNICAL ACCEPTANCE at `2ea529ee200a0a37a77cebb9a750f70adde57618` (historical) |
 | Hemorrhoid Vertical Slice 2 | TECHNICAL EXECUTION COMPLETE (historical completed work package) — DEC-012 + Contract v0.1 OWNER LOCKED; Owner product acceptance NOT CLAIMED |
 | Hemorrhoid Vertical Slice 3 | TECHNICAL EXECUTION COMPLETE và đã MERGED vào `main` tại `4a73a0c8764558d2776adffcf1d26092f6456634` — DEC-013 + Contract `docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md` OWNER LOCKED; Owner product acceptance NOT CLAIMED |
-| Current checkpoint | DEC-016 Session A T0→M7 technical execution PASS; next: FRESH CODEX SESSION B — INDEPENDENT READ-ONLY AUDIT; chưa commit; Owner product acceptance NOT CLAIMED |
+| Current checkpoint | DEC-016 T0→M7 TECHNICAL EXECUTION COMPLETE (SELF-ATTESTED BY SESSION A); implementation checkpoint `6dd8d52` COMMITTED/PUSHED theo DEC-017; INDEPENDENT AUDIT OUTSTANDING; next gate: FRESH CODEX SESSION B — INDEPENDENT READ-ONLY AUDIT trên `6dd8d52`; Owner product acceptance NOT CLAIMED |
 | GASTROCARE CORE tổng thể | IN PROGRESS |
 | CONTINUOUS CARE | NOT COMPLETE |
 | PRODUCT REFINEMENT / UI-UX | NOT STARTED — bị chặn đến khi Clinical Core được chấp nhận |
@@ -122,9 +122,9 @@ Cho đến khi Owner/BS Thái xác nhận:
 
 ### 3.2.3 Current package — DEC-016 Case / Pathway / Investigation
 
-Authority: [DEC016_OWNER_AUTHORITY.md](DEC016_OWNER_AUTHORITY.md), Owner cho phép Session A thực hiện liên tục T0 → M0 schema/reconciliation proof → M1 Case → M2 TreatmentPathway/Longo → M3 Initial/Return → M4 Decision v2 → M5 Investigation → M6 workspace → M7 synthetic acceptance. Toàn bộ technical execution PASS, chưa commit/push.
+Authority: [DEC016_OWNER_AUTHORITY.md](DEC016_OWNER_AUTHORITY.md), Owner cho phép Session A thực hiện liên tục T0 → M0 schema/reconciliation proof → M1 Case → M2 TreatmentPathway/Longo → M3 Initial/Return → M4 Decision v2 → M5 Investigation → M6 workspace → M7 synthetic acceptance. Toàn bộ technical execution T0→M7 đã hoàn tất và được commit/push tại implementation checkpoint `6dd8d52` theo DEC-017. Trạng thái hiện tại vẫn là `TECHNICAL EXECUTION COMPLETE (SELF-ATTESTED BY SESSION A) — INDEPENDENT AUDIT OUTSTANDING`.
 
-Next gate: **FRESH CODEX SESSION B — INDEPENDENT READ-ONLY AUDIT**. Session A không phải independent audit. [Bằng chứng implementation](13_DEC016_CASE_PATHWAY_IMPLEMENTATION.md). Clinical Core chưa Owner product accepted; CORE-05, AI, real-patient runtime, production và PDF/image storage không mở. Giới hạn Procedure/Surgery/Investigation của package cũ không phủ quyết phạm vi DEC-016 đã được Owner khóa mới hơn.
+Next gate: **FRESH CODEX SESSION B — INDEPENDENT READ-ONLY AUDIT** trên implementation checkpoint `6dd8d52`. Session A không phải independent audit. [Bằng chứng implementation](13_DEC016_CASE_PATHWAY_IMPLEMENTATION.md). Clinical Core chưa Owner product accepted; CORE-05, AI, real-patient runtime, production và PDF/image storage không mở. Giới hạn Procedure/Surgery/Investigation của package cũ không phủ quyết phạm vi DEC-016 đã được Owner khóa mới hơn.
 
 ### 3.3 Preserved Longo Clinical Core baseline
 

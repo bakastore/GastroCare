@@ -1,6 +1,13 @@
 # GastroCare — Trạng thái dự án
 
-**Cập nhật:** 28/08/2026 — DEC-016 Session A T0 → M7 implementation/testing PASS trên branch `correction/owner-acceptance-slice1-3`, baseline HEAD `c0dfe1a4f774bef334dd2c2e0eac45f89a2e106b` giữ nguyên. Backend 354/354, frontend 59/59, browser 9/9; M0 và backup/restore PASS. Worktree có implementation chưa commit theo lệnh Owner. Next gate: **FRESH CODEX SESSION B — INDEPENDENT READ-ONLY AUDIT**. Session A không phải independent audit; Owner product acceptance NOT CLAIMED. [Nguồn authority](DEC016_OWNER_AUTHORITY.md), [implementation notes](13_DEC016_CASE_PATHWAY_IMPLEMENTATION.md).
+**Cập nhật:** 29/08/2026 — DEC-017: implementation checkpoint thực tế của
+`correction/owner-acceptance-slice1-3` là `6dd8d52` (Owner xác nhận, commit
+tạm thời do gấp demo). DEC-016 backend: TECHNICAL EXECUTION COMPLETE
+(SELF-ATTESTED) — INDEPENDENT AUDIT OUTSTANDING, chưa PASS. AppSidebar.tsx
+Demo UI Navigation v1 — OWNER LOCKED. Next gate: Codex Session B —
+Independent Read-only Audit trên implementation checkpoint `6dd8d52`.
+
+DEC-016 Session A T0 → M7 implementation/testing PASS (self-attested). Backend 354/354, frontend 59/59, browser 9/9; M0 và backup/restore PASS. Session A không phải independent audit; Owner product acceptance NOT CLAIMED. [Nguồn authority](DEC016_OWNER_AUTHORITY.md), [implementation notes](13_DEC016_CASE_PATHWAY_IMPLEMENTATION.md).
 
 **Loại dự án:** GREENFIELD
 
@@ -183,7 +190,7 @@ CORE-05: NOT OPENED
 
 **Last completed checkpoint trước DEC-016 (history):** `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 3` — T0→T7 TECHNICAL EXECUTION COMPLETE, MERGED to `main` (PR #5) at baseline `4a73a0c8764558d2776adffcf1d26092f6456634`.
 
-**Current work package:** `DEC-016 FULL IMPLEMENTATION — CODEX SESSION A`; T0 → M7 technical execution PASS, chưa commit.
+**Current work package:** `DEC-016 FULL IMPLEMENTATION — CODEX SESSION A`; T0 → M7 technical execution PASS (self-attested). Committed as implementation checkpoint `6dd8d52` per DEC-017 (Owner xác nhận, commit tạm thời do gấp demo); `6dd8d52` cũng gộp Demo UI/UX (`frontend/src/pages/admin/*`, `AppSidebar.tsx`, route `/admin/*`). Local working-tree state được kiểm tra riêng tại mỗi execution gate.
 
 **Authority:** `DEC-016 / IMPLEMENTATION CONTRACT v0.3 — OWNER LOCKED`, theo fallback requirements Owner cung cấp tại `docs/DEC016_OWNER_AUTHORITY.md`. Cho phép schema, migration, reconciliation và local synthetic implementation/testing; không mở real data/production/CORE-05.
 
@@ -217,7 +224,7 @@ Slice 2 remains historical evidence only (technical execution complete, historic
 
 Owner product acceptance: NOT CLAIMED. Technical PASS at every gate above does not equal Owner product acceptance.
 
-**Current gate: FRESH CODEX SESSION B — INDEPENDENT READ-ONLY AUDIT.** M7 của Session A là tự kiểm thử implementation; không phải independent audit. Không commit/push.
+**Current gate: FRESH CODEX SESSION B — INDEPENDENT READ-ONLY AUDIT** trên implementation checkpoint `6dd8d52`, không sửa code. M7 của Session A là tự kiểm thử implementation; không phải independent audit. Commit/push checkpoint `6dd8d52` đã diễn ra trước audit theo DEC-017 và không phải waiver cho yêu cầu independent audit.
 
 **Owner Synthetic Product Acceptance:** NOT CLAIMED. M0 dùng fixture synthetic Run2-shape, không phải dữ liệu Run2 thực tế của Owner. Quyền product acceptance vẫn thuộc Owner/BS Thái.
 
@@ -246,18 +253,22 @@ Chỉ được dùng synthetic data (dữ liệu giả lập) cho triển khai, 
 | Thuộc tính | Giá trị |
 |---|---|
 | Current branch | `correction/owner-acceptance-slice1-3` |
-| Baseline HEAD | `c0dfe1a4f774bef334dd2c2e0eac45f89a2e106b` — giữ nguyên; NO COMMIT/PUSH |
-| Baseline T0 | CLEAN; C1–C5 + DEC-015 CLOSED / PASS theo Owner authority |
+| DEC-016 implementation checkpoint | `6dd8d5226b6f4d2c264227226cb996900aa3d9f6` — COMMITTED/PUSHED; Owner xác nhận theo DEC-017 |
+| Repository state reconciliation | Mô tả trước đây "chưa commit theo lệnh Owner" / baseline `c0dfe1a4` đã lỗi thời kể từ checkpoint `6dd8d52`; local worktree state được kiểm tra riêng tại mỗi execution gate |
+| Pre-DEC-016 T0 baseline (history) | `c0dfe1a4f774bef334dd2c2e0eac45f89a2e106b` — CLEAN; C1–C5 + DEC-015 CLOSED / PASS theo Owner authority |
 | Current phase | `GASTROCARE CORE — IN PROGRESS` |
 | Current work package | `DEC-016 FULL IMPLEMENTATION — CODEX SESSION A` |
 | Current authority | DEC-016 / IMPLEMENTATION CONTRACT v0.3 OWNER LOCKED; explicit Owner prompt fallback |
 | Governing local authority | `docs/DEC016_OWNER_AUTHORITY.md` — bản lưu prompt; không tự nhận là bản Contract đầy đủ |
 | Task-specific implementation notes/evidence | `docs/13_DEC016_CASE_PATHWAY_IMPLEMENTATION.md`, `docs/DEC016_SESSION_A_REPORT.md`, `docs/evidence/DEC016_SESSION_A/` |
 | Startup domain/schema/privacy SSOT | docs/04, 05, 06 và DEC-016 overlays; Longo 08/09; Hemorrhoid 10/12 chỉ giữ phần không bị DEC-016 supersede |
-| Implementation status | T0 → M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 PASS (technical execution) |
-| Worktree | Implementation/tests/docs chưa commit theo lệnh Owner; đây là trạng thái dự kiến, không phải unexplained baseline drift |
-| Current authorized task | Hoàn tất implementation/testing DEC-016; không commit, push, merge, tag hoặc deploy |
-| Next gate | **FRESH CODEX SESSION B — INDEPENDENT READ-ONLY AUDIT** |
+| Implementation status | T0 → M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 PASS (technical execution, self-attested); committed as `6dd8d52` per DEC-017 |
+| Current authorized task | Governance/audit gate only. DEC-016 clinical/domain code frozen tại `6dd8d52`; không sửa application code, schema, migration, test cho tới khi Session B audit gate được đóng |
+| DEC-016 backend | TECHNICAL EXECUTION COMPLETE (SELF-ATTESTED BY SESSION A) — INDEPENDENT AUDIT OUTSTANDING |
+| Demo Admin UI (`frontend/src/pages/admin/*`) | DEMO-oriented/view-only ở frontend. `UsersPage` chưa có user-lifecycle write API. Backend Facility/Room có write API hiện hữu; DEC-017 không thay đổi authorization semantics của các API đó |
+| AppSidebar.tsx nav v1 | OWNER LOCKED (DEC-017) |
+| Next gate | Codex Session B — Independent Read-only Audit, implementation checkpoint `6dd8d52`, không sửa code |
+| Gate sau khi DEC-016 audit được đóng | DEC-018 + Admin Boundary/User Management Contract → external review → Owner Lock → implementation |
 | Session A role | Implementation executor; không phải independent auditor |
 | M0 | Disposable synthetic PRE backup/hash → migrate → explicit reconciliation → actual destroy/restore PRE → deterministic reapply PASS; repeatable from immutable baseline Git |
 | Migration | Additive `20260828000000_dec016_case_pathway_investigation`; 11 migrations, none pending; DEC-015 immutable |
