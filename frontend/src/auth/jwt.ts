@@ -1,26 +1,25 @@
-import type { AuthRole } from '../types/domain';
+// DEC-018 — the tenant access token carries only `sub`, `realm` and
+// `sessionVersion` (plus `iat`/`exp`). It is NOT an authorization document:
+// role / tenant / capability are resolved from GET /auth/me on every load and
+// re-checked server-side on every request. This decoder exists only so the
+// app can drop an obviously-expired token before making a request with it.
 
-export interface JwtClaims {
+export interface TenantJwtClaims {
   sub: string;
-  tenantId: string;
-  email: string;
-  role: AuthRole;
+  realm?: string;
+  sessionVersion?: number;
   exp: number;
 }
 
-// Decodes (does not verify) the payload of a server-issued JWT purely to
-// drive role-aware navigation. This is NOT a security check — the token is
-// opaque to the frontend for authorization purposes; every protected route
-// re-checks role/tenant server-side (see Owner Execution Contract section 7).
-export function decodeJwtClaims(token: string): JwtClaims | null {
+export function decodeJwtClaims(token: string): TenantJwtClaims | null {
   const parts = token.split('.');
   if (parts.length !== 3) {
     return null;
   }
   try {
     const payloadJson = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
-    const claims = JSON.parse(payloadJson) as JwtClaims;
-    if (!claims.sub || !claims.role || !claims.tenantId) {
+    const claims = JSON.parse(payloadJson) as TenantJwtClaims;
+    if (!claims.sub || typeof claims.exp !== 'number') {
       return null;
     }
     return claims;
@@ -29,6 +28,12 @@ export function decodeJwtClaims(token: string): JwtClaims | null {
   }
 }
 
-export function isExpired(claims: JwtClaims): boolean {
+export function isExpired(claims: TenantJwtClaims): boolean {
   return claims.exp * 1000 <= Date.now();
+}
+
+/** True when a stored token is well-formed and not past its expiry. */
+export function isTokenUsable(token: string): boolean {
+  const claims = decodeJwtClaims(token);
+  return claims !== null && !isExpired(claims);
 }

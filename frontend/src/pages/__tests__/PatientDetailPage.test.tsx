@@ -23,10 +23,20 @@ vi.mock('../../api/resources', () => ({
 
 function mockDoctor() {
   vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
-    user: { userId: 'u1', tenantId: 't1', email: 'doctor@example.test', role: 'DOCTOR' },
+    user: {
+      userId: 'u1',
+      tenantId: 't1',
+      email: 'doctor@example.test',
+      displayName: null,
+      role: 'DOCTOR',
+      isClinicAdmin: false,
+      status: 'ACTIVE',
+      mustChangePassword: false,
+    },
     isInitializing: false,
     login: vi.fn(),
     logout: vi.fn(),
+    refresh: vi.fn(),
   });
 }
 

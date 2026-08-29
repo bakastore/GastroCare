@@ -881,4 +881,105 @@ describe('DEC-016 Case/Pathway/Investigation synthetic acceptance', () => {
       }),
     ).toBe(0);
   });
+
+  // DEC-018 T7 F1 — a DISABLED account must not be a NEW Investigation
+  // assignment target, in either the selectable list or order() validation.
+  // Historical assignments and NURSE result-entry semantics are unchanged.
+  it('DEC-018: DISABLED DOCTOR/NURSE excluded from Investigation assignee list and rejected as a new Order assignee; ACTIVE and tenant isolation unchanged', async () => {
+    const mk = (email: string, role: AuthRole, status: 'ACTIVE' | 'DISABLED', tenant = tenantId) =>
+      prisma.authUser.create({
+        data: {
+          email,
+          role,
+          status,
+          tenantId: tenant,
+          passwordHash: 'x',
+        },
+      });
+    const activeNurse = await mk('f1-active-nurse@example.test', 'NURSE', 'ACTIVE');
+    const disabledNurse = await mk('f1-disabled-nurse@example.test', 'NURSE', 'DISABLED');
+    const activeDoctor = await mk('f1-active-doctor@example.test', 'DOCTOR', 'ACTIVE');
+    const disabledDoctor = await mk('f1-disabled-doctor@example.test', 'DOCTOR', 'DISABLED');
+    const foreignActive = await mk('f1-foreign-active@example.test', 'NURSE', 'ACTIVE', otherTenantId);
+    const foreignDisabled = await mk('f1-foreign-disabled@example.test', 'NURSE', 'DISABLED', otherTenantId);
+
+    // CASE 1 — selectable assignee list
+    const assignees = (await get('/investigations/assignees').expect(200)).body as {
+      id: string;
+    }[];
+    const ids = assignees.map((a) => a.id);
+    expect(ids).toEqual(expect.arrayContaining([activeNurse.id, activeDoctor.id]));
+    expect(ids).not.toContain(disabledNurse.id);
+    expect(ids).not.toContain(disabledDoctor.id);
+    expect(ids).not.toContain(foreignActive.id);
+    expect(ids).not.toContain(foreignDisabled.id);
+
+    const c = await initial();
+    const inv = await post('/investigations', {
+      caseId: c.caseId,
+      origin: 'INTERNAL_CURRENT',
+      label: 'synthetic F1',
+    }).expect(201);
+
+    // CASE 2 — assignment validation rejects a DISABLED same-tenant user, no Order created
+    for (const bad of [disabledNurse.id, disabledDoctor.id]) {
+      await post(`/investigations/${inv.body.id}/orders`, {
+        requestedAt: at,
+        requestText: 'synthetic F1 disabled assignee',
+        assignedToUserId: bad,
+      }).expect(400);
+    }
+    expect(
+      await prisma.investigationOrder.count({
+        where: {
+          investigationId: inv.body.id,
+          assignedToUserId: { in: [disabledNurse.id, disabledDoctor.id] },
+        },
+      }),
+    ).toBe(0);
+
+    // CASE 3 — ACTIVE same-tenant DOCTOR/NURSE remain assignable
+    await post(`/investigations/${inv.body.id}/orders`, {
+      requestedAt: at,
+      requestText: 'synthetic F1 active nurse',
+      assignedToUserId: activeNurse.id,
+    }).expect(201);
+    await post(`/investigations/${inv.body.id}/orders`, {
+      requestedAt: at,
+      requestText: 'synthetic F1 active doctor',
+      assignedToUserId: activeDoctor.id,
+    }).expect(201);
+
+    // CASE 4 — foreign-tenant user (ACTIVE or DISABLED) rejected exactly as before
+    for (const bad of [foreignActive.id, foreignDisabled.id]) {
+      await post(`/investigations/${inv.body.id}/orders`, {
+        requestedAt: at,
+        requestText: 'synthetic F1 foreign assignee',
+        assignedToUserId: bad,
+      }).expect(400);
+    }
+
+    // Historical assignment survives the assignee being disabled afterward.
+    const histInv = await post('/investigations', {
+      caseId: c.caseId,
+      origin: 'INTERNAL_CURRENT',
+      label: 'synthetic F1 history',
+    }).expect(201);
+    const histOrder = await post(`/investigations/${histInv.body.id}/orders`, {
+      requestedAt: at,
+      requestText: 'synthetic F1 history',
+      assignedToUserId: activeNurse.id,
+    }).expect(201);
+    await prisma.authUser.update({
+      where: { id: activeNurse.id },
+      data: { status: 'DISABLED' },
+    });
+    expect(
+      (
+        await prisma.investigationOrder.findUnique({
+          where: { id: histOrder.body.id },
+        })
+      )?.assignedToUserId,
+    ).toBe(activeNurse.id);
+  });
 });

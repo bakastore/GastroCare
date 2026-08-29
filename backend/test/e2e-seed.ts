@@ -38,12 +38,16 @@ export async function seedE2eDatabase(): Promise<void> {
       data: { name: 'CORE-02 Browser E2E Tenant' },
     });
 
+    // DEC-018 — the browser-E2E DOCTOR also holds the Clinic Admin capability
+    // so Playwright can exercise the /clinic-admin/* area. Operational role
+    // stays DOCTOR; the capability is explicit.
     await prisma.authUser.create({
       data: {
         email: E2E_DOCTOR_EMAIL,
         passwordHash: await bcrypt.hash(E2E_DOCTOR_PASSWORD, 10),
         role: AuthRole.DOCTOR,
         tenantId: tenant.id,
+        isClinicAdmin: true,
       },
     });
 

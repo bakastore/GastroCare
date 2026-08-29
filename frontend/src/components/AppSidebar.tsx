@@ -1,11 +1,13 @@
 import { NavLink } from 'react-router-dom';
 import type { AuthRole } from '../types/domain';
 
-// DEMO UI NAVIGATION STRUCTURE v1 (OWNER LOCKED) — doctor-centered,
-// clinical-first, compact. Frontend visibility only; the backend re-checks
-// role/tenant on every request (see RouteGuards). Max two levels (group ->
-// item). No Longo top-level entry. Clinician-facing wording: "Đợt điều trị"
-// (Case), "Cận lâm sàng" (Investigation).
+// DEMO UI NAVIGATION STRUCTURE v1 (DEC-017, OWNER LOCKED) — doctor-centered,
+// clinical-first, compact. DEC-018 supersedes only the admin-route /
+// admin-visibility portion: the "Quản trị" group is now gated by the Clinic
+// Admin capability (isClinicAdmin), not by operational role, and its Phase 1
+// items live under the canonical /clinic-admin/* namespace. Frontend
+// visibility is not the security boundary — the backend re-checks
+// role/tenant/capability on every request (see RouteGuards).
 
 export interface NavItem {
   to: string;
@@ -39,11 +41,9 @@ const GROUPS_BY_ROLE: Record<AuthRole, NavGroup[]> = {
       ],
     },
     {
-      key: 'admin',
-      label: 'Quản trị',
+      key: 'tools',
+      label: 'Tiện ích',
       items: [
-        { to: '/admin/users', label: 'Người dùng' },
-        { to: '/admin/facilities', label: 'Cơ sở & phòng' },
         { to: '/admin/form-templates', label: 'Mẫu biểu' },
         { to: '/admin/audit-log', label: 'Nhật ký' },
       ],
@@ -55,14 +55,6 @@ const GROUPS_BY_ROLE: Record<AuthRole, NavGroup[]> = {
       label: 'Lâm sàng',
       items: [{ to: '/patients', label: 'Bệnh nhân', end: false }],
     },
-    {
-      key: 'admin',
-      label: 'Quản trị',
-      items: [
-        { to: '/admin/users', label: 'Người dùng' },
-        { to: '/admin/facilities', label: 'Cơ sở & phòng' },
-      ],
-    },
   ],
   NURSE: [
     {
@@ -73,8 +65,23 @@ const GROUPS_BY_ROLE: Record<AuthRole, NavGroup[]> = {
   ],
 };
 
-export function navGroupsForRole(role: AuthRole): NavGroup[] {
-  return GROUPS_BY_ROLE[role] ?? [];
+// DEC-018 — the Clinic Admin group, shown to any ACTIVE user who holds the
+// capability regardless of operational role.
+const CLINIC_ADMIN_GROUP: NavGroup = {
+  key: 'admin',
+  label: 'Quản trị',
+  items: [
+    { to: '/clinic-admin/users', label: 'Người dùng' },
+    { to: '/clinic-admin/facilities', label: 'Cơ sở & phòng' },
+  ],
+};
+
+export function navGroupsFor(
+  role: AuthRole,
+  isClinicAdmin: boolean,
+): NavGroup[] {
+  const base = GROUPS_BY_ROLE[role] ?? [];
+  return isClinicAdmin ? [...base, CLINIC_ADMIN_GROUP] : base;
 }
 
 function itemClass({ isActive }: { isActive: boolean }): string {
@@ -83,15 +90,17 @@ function itemClass({ isActive }: { isActive: boolean }): string {
 
 export function AppSidebar({
   role,
+  isClinicAdmin,
   onNavigate,
 }: {
   role: AuthRole;
+  isClinicAdmin: boolean;
   /** called after any nav item is chosen — lets the mobile drawer close */
   onNavigate?: () => void;
 }) {
   return (
     <nav className="sidebar-nav" aria-label="Điều hướng chính">
-      {navGroupsForRole(role).map((group) => (
+      {navGroupsFor(role, isClinicAdmin).map((group) => (
         <div key={group.key} className="sidebar-group">
           <p className="sidebar-group-label">{group.label}</p>
           <ul>

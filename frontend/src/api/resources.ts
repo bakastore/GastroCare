@@ -22,9 +22,79 @@ import type {
   VitalsCopyForwardResult,
 } from '../types/domain';
 
+export interface AuthMe {
+  userId: string;
+  tenantId: string;
+  email: string;
+  displayName: string | null;
+  role: 'DOCTOR' | 'RECEPTIONIST' | 'NURSE';
+  isClinicAdmin: boolean;
+  status: 'ACTIVE' | 'DISABLED';
+  mustChangePassword: boolean;
+}
+
 export const authApi = {
   login: (email: string, password: string) =>
     api.postAuth<{ accessToken: string }>('/auth/login', { email, password }),
+  me: () => api.get<AuthMe>('/auth/me'),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    api.post<{ accessToken: string }>('/auth/change-password', {
+      currentPassword,
+      newPassword,
+    }),
+};
+
+export interface ClinicAdminUser {
+  id: string;
+  email: string;
+  displayName: string | null;
+  role: 'DOCTOR' | 'RECEPTIONIST' | 'NURSE';
+  status: 'ACTIVE' | 'DISABLED';
+  isClinicAdmin: boolean;
+  mustChangePassword: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ClinicAdminUserAuditEntry {
+  id: string;
+  seq: number;
+  action: string;
+  actorId: string;
+  createdAt: string;
+  metadata: Record<string, unknown> | null;
+}
+
+export const clinicAdminUsersApi = {
+  list: (search?: string) =>
+    api.get<ClinicAdminUser[]>(
+      `/clinic-admin/users${search ? `?search=${encodeURIComponent(search)}` : ''}`,
+    ),
+  getById: (id: string) => api.get<ClinicAdminUser>(`/clinic-admin/users/${id}`),
+  create: (dto: {
+    email: string;
+    role: string;
+    displayName?: string;
+    isClinicAdmin?: boolean;
+  }) =>
+    api.post<{ user: ClinicAdminUser; temporaryPassword: string }>(
+      '/clinic-admin/users',
+      dto,
+    ),
+  update: (
+    id: string,
+    dto: { displayName?: string; role?: string; isClinicAdmin?: boolean },
+  ) => api.patch<ClinicAdminUser>(`/clinic-admin/users/${id}`, dto),
+  disable: (id: string) =>
+    api.post<ClinicAdminUser>(`/clinic-admin/users/${id}/disable`),
+  reactivate: (id: string) =>
+    api.post<ClinicAdminUser>(`/clinic-admin/users/${id}/reactivate`),
+  resetPassword: (id: string) =>
+    api.post<{ user: ClinicAdminUser; temporaryPassword: string }>(
+      `/clinic-admin/users/${id}/reset-password`,
+    ),
+  getAudit: (id: string) =>
+    api.get<ClinicAdminUserAuditEntry[]>(`/clinic-admin/users/${id}/audit`),
 };
 
 export const patientsApi = {

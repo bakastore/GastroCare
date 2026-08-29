@@ -29,10 +29,17 @@ export function AppShell() {
         <div className="sidebar-brand">
           <Link to="/">GastroCare</Link>
         </div>
-        <AppSidebar role={user.role} onNavigate={() => setDrawerOpen(false)} />
+        <AppSidebar
+          role={user.role}
+          isClinicAdmin={user.isClinicAdmin}
+          onNavigate={() => setDrawerOpen(false)}
+        />
         <div className="sidebar-footer">
-          <span className="user-role">{roleLabel[user.role] ?? user.role}</span>
-          <span className="user-email">{user.email}</span>
+          <span className="user-role">
+            {roleLabel[user.role] ?? user.role}
+            {user.isClinicAdmin ? ' · Quản trị viên' : ''}
+          </span>
+          <span className="user-email">{user.displayName ?? user.email}</span>
           <button type="button" className="btn btn-ghost" onClick={logout}>
             Đăng xuất
           </button>
