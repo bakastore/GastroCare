@@ -1,7 +1,8 @@
 import { NurseInvestigationsPage } from './pages/InvestigationPanel';
 import { Route, Routes } from 'react-router-dom';
 import { AppShell } from './components/AppShell';
-import { RequireAuth, RequireRole } from './components/RouteGuards';
+import { RequireAuth, RequireClinicAdmin, RequireRole } from './components/RouteGuards';
+import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { LoginPage } from './pages/LoginPage';
 import { NotAuthorizedPage } from './pages/NotAuthorizedPage';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -32,6 +33,12 @@ export default function App() {
 
         <Route element={<RequireAuth />}>
           <Route path="/" element={<HomeRedirect />} />
+          <Route path="/change-password" element={<ChangePasswordPage />} />
+
+          <Route element={<RequireClinicAdmin />}>
+            <Route path="/clinic-admin/users" element={<UsersPage />} />
+            <Route path="/clinic-admin/facilities" element={<FacilitiesRoomsPage />} />
+          </Route>
 
           <Route element={<RequireRole allowed={['DOCTOR', 'NURSE']} />}>
             <Route path="/investigations/assigned" element={<NurseInvestigationsPage />} />
@@ -71,8 +78,6 @@ export default function App() {
               path="/patients/:patientId/hemorrhoid/new-encounter"
               element={<NewHemorrhoidEncounterPage />}
             />
-            <Route path="/admin/users" element={<UsersPage />} />
-            <Route path="/admin/facilities" element={<FacilitiesRoomsPage />} />
           </Route>
 
           <Route path="*" element={<NotFoundPage />} />

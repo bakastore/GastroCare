@@ -105,12 +105,17 @@ export async function seedPilotDataset(): Promise<void> {
       data: { name: 'GastroCare CORE-03 Synthetic Pilot Tenant' },
     });
 
+    // DEC-018 — the synthetic pilot admin. Operational role stays DOCTOR;
+    // Clinic Admin is granted as an explicit, independent capability (never
+    // inferred from role, never a heuristic backfill in the migration).
     const doctor = await prisma.authUser.create({
       data: {
         email: PILOT_DOCTOR_EMAIL,
         passwordHash: await bcrypt.hash(PILOT_DOCTOR_PASSWORD, 10),
         role: AuthRole.DOCTOR,
         tenantId: tenant.id,
+        isClinicAdmin: true,
+        displayName: 'BS. Pilot A',
       },
     });
     const receptionist = await prisma.authUser.create({
@@ -330,6 +335,8 @@ export async function seedPilotDataset(): Promise<void> {
       userId: doctor.id,
       role: doctor.role,
       email: doctor.email,
+      isClinicAdmin: doctor.isClinicAdmin,
+      mustChangePassword: doctor.mustChangePassword,
     };
     const currentInvestigation = await investigationsService.create(
       doctorContext,
@@ -354,6 +361,8 @@ export async function seedPilotDataset(): Promise<void> {
         userId: nurse.id,
         role: nurse.role,
         email: nurse.email,
+        isClinicAdmin: nurse.isClinicAdmin,
+        mustChangePassword: nurse.mustChangePassword,
       },
       currentInvestigation.id,
       {
@@ -580,14 +589,21 @@ export async function seedPilotDataset(): Promise<void> {
       },
     );
 
+    // DEC-018 — Facility/Room creation is a Clinic Admin action; `doctor` is
+    // the synthetic pilot Clinic Admin.
     const facility = await facilitiesService.create(
       tenant.id,
       'Cơ sở khám bệnh CORE (dữ liệu tổng hợp)',
+      doctor.id,
     );
-    const examRoom = await roomsService.create(tenant.id, {
-      facilityId: facility.id,
-      name: 'Phòng khám 01',
-    });
+    const examRoom = await roomsService.create(
+      tenant.id,
+      {
+        facilityId: facility.id,
+        name: 'Phòng khám 01',
+      },
+      doctor.id,
+    );
 
     // Receptionist creates the Encounter Context: no responsibleClinicianId
     // supplied (resolves the pilot default clinician via CliniciansService

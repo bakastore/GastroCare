@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AuthRole, AuthUser } from '@prisma/client';
+import { AuthRole, AuthUser, AuthUserStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
@@ -54,7 +54,13 @@ export class CliniciansService {
     }
 
     const byEmail = await this.prisma.authUser.findFirst({
-      where: { tenantId, role: AuthRole.DOCTOR, email: configuredEmail },
+      // DEC-018 — a DISABLED account can never be resolved as a clinician.
+      where: {
+        tenantId,
+        role: AuthRole.DOCTOR,
+        email: configuredEmail,
+        status: AuthUserStatus.ACTIVE,
+      },
     });
     if (!byEmail) {
       throw new NotFoundException(
@@ -76,11 +82,18 @@ export class CliniciansService {
     clinicianId: string,
   ): Promise<AuthUser> {
     const clinician = await this.prisma.authUser.findFirst({
-      where: { id: clinicianId, tenantId, role: AuthRole.DOCTOR },
+      // DEC-018 — a DISABLED account cannot be an explicit assignment or
+      // handover target.
+      where: {
+        id: clinicianId,
+        tenantId,
+        role: AuthRole.DOCTOR,
+        status: AuthUserStatus.ACTIVE,
+      },
     });
     if (!clinician) {
       throw new NotFoundException(
-        'Clinician not found in this tenant, or is not a DOCTOR-role account',
+        'Clinician not found in this tenant, or is not an active DOCTOR-role account',
       );
     }
     return clinician;
@@ -89,7 +102,8 @@ export class CliniciansService {
   /** Lists selectable DOCTOR-role clinicians for the current tenant. */
   async listClinicians(tenantId: string) {
     const clinicians = await this.prisma.authUser.findMany({
-      where: { tenantId, role: AuthRole.DOCTOR },
+      // DEC-018 — only ACTIVE DOCTOR accounts are selectable.
+      where: { tenantId, role: AuthRole.DOCTOR, status: AuthUserStatus.ACTIVE },
       orderBy: { createdAt: 'asc' },
       select: { id: true, email: true },
     });

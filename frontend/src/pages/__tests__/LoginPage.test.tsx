@@ -5,11 +5,26 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { LoginPage } from '../LoginPage';
 import { AuthProvider } from '../../auth/AuthContext';
 import { authApi } from '../../api/resources';
+import type { AuthMe } from '../../api/resources';
 import { ApiError } from '../../api/client';
 
 vi.mock('../../api/resources', () => ({
-  authApi: { login: vi.fn() },
+  authApi: { login: vi.fn(), me: vi.fn(), changePassword: vi.fn() },
 }));
+
+function meFixture(overrides: Partial<AuthMe> = {}): AuthMe {
+  return {
+    userId: 'user-1',
+    tenantId: 'tenant-1',
+    email: 'doctor.a@example.test',
+    displayName: null,
+    role: 'DOCTOR',
+    isClinicAdmin: false,
+    status: 'ACTIVE',
+    mustChangePassword: false,
+    ...overrides,
+  };
+}
 
 beforeEach(() => {
   window.localStorage.clear();
@@ -41,6 +56,7 @@ describe('LoginPage', () => {
       ) +
       '.signature';
     vi.mocked(authApi.login).mockResolvedValueOnce({ accessToken: fakeToken });
+    vi.mocked(authApi.me).mockResolvedValueOnce(meFixture());
 
     renderLogin();
     const user = userEvent.setup();
@@ -68,6 +84,9 @@ describe('LoginPage', () => {
       ) +
       '.signature';
     vi.mocked(authApi.login).mockResolvedValueOnce({ accessToken: token });
+    vi.mocked(authApi.me).mockResolvedValueOnce(
+      meFixture({ userId: 'nurse-1', email: 'nurse@example.test', role: 'NURSE' }),
+    );
     render(
       <MemoryRouter
         initialEntries={[

@@ -538,6 +538,7 @@ form textarea {
 }
 
 .modal-card {
+  position: relative;
   background: var(--color-surface);
   border-radius: 8px;
   padding: 24px;
@@ -545,6 +546,18 @@ form textarea {
   max-width: 480px;
   max-height: 90vh;
   overflow-y: auto;
+}
+
+.modal-x {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--color-text);
 }
 
 .duplicate-warning {
@@ -671,6 +684,74 @@ form textarea {
 .row-actions {
   display: flex;
   gap: 8px;
+}
+
+/* DEC-018 Người dùng — toolbar (search + add) */
+.user-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.btn-icon {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  font-size: 22px;
+  line-height: 1;
+}
+
+/* DEC-018 toast notifications */
+.toast-region {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(360px, calc(100vw - 32px));
+}
+
+.toast {
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  color: white;
+  box-shadow: 0 4px 12px rgba(15, 23, 30, 0.2);
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.toast-kind {
+  font-weight: 600;
+}
+
+.toast-success {
+  background: #1f7a4d;
+}
+
+.toast-info {
+  background: #2d6cb5;
+}
+
+.toast-error {
+  background: var(--color-danger);
+}
+
+.toast-close {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
 }
 
 /* Unified visit entry (DEMO UI) */

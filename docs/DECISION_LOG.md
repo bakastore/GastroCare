@@ -398,18 +398,152 @@ phản ánh trạng thái repository checkpoint và được thay thế bởi DE
 
 Commit/push diễn ra trước khi FRESH CODEX SESSION B — INDEPENDENT READ-ONLY
 AUDIT chạy trên DEC-016 backend. Đây không phải waiver cho yêu cầu independent
-audit. DEC-016 backend giữ nguyên trạng thái `TECHNICAL EXECUTION COMPLETE
-(SELF-ATTESTED BY SESSION A) — INDEPENDENT AUDIT OUTSTANDING` cho đến khi
-Codex Session B chạy trên implementation checkpoint `6dd8d52` và PASS, hoặc
-mọi finding được xử lý và đóng theo governance.
+audit. Tại thời điểm DEC-017, DEC-016 backend giữ trạng thái `TECHNICAL
+EXECUTION COMPLETE (SELF-ATTESTED BY SESSION A) — INDEPENDENT AUDIT
+OUTSTANDING` cho đến khi Codex Session B chạy trên implementation checkpoint
+`6dd8d52` và PASS, hoặc mọi finding được xử lý và đóng theo governance. Điều
+kiện này đã được thỏa vào 2026-08-29 — xem "DEC-016 independent audit
+closure" bên dưới.
 
 Không đổi: DEC-016 clinical/domain scope
 (Case/TreatmentPathway/Investigation), Owner product acceptance và các Owner
 Decision trước đó.
 
-Next gate: Codex Session B — Independent Read-only Audit trên implementation
-checkpoint `6dd8d52`, không sửa code. Sau khi audit gate DEC-016 được đóng
-mới mở DEC-018 — Admin Boundary / User Management.
+Next gate tại thời điểm DEC-017: Codex Session B — Independent Read-only Audit
+trên implementation checkpoint `6dd8d52`, không sửa code (đã hoàn tất
+2026-08-29). Sau khi audit gate DEC-016 được đóng mới mở DEC-018 — Admin
+Boundary / User Management.
+
+**DEC-016 independent audit closure — 2026-08-29**
+
+Fresh Codex Session B completed an independent focused read-only audit against
+DEC-016 implementation checkpoint
+`6dd8d5226b6f4d2c264227226cb996900aa3d9f6`.
+
+Result: **PASS**.
+
+Audited risk areas:
+- Schema/Migration — PASS
+- Case/TreatmentPathway domain invariants — PASS
+- Investigation/Authorization — PASS
+- Transaction/Concurrency — PASS
+- Tenant Isolation/Provenance — PASS
+
+Targeted DEC-016/concurrency tests: 27/27 PASS.
+PRE-DEC016 → DEC-016 migration deployment probe: PASS.
+Prisma schema validation: PASS.
+Findings: NONE.
+Blockers: NONE.
+Audit changed no repository files.
+
+DEC-016 technical status is therefore:
+`TECHNICAL EXECUTION COMPLETE — INDEPENDENT FOCUSED AUDIT CLOSED — PASS`.
+
+This closes the technical independent-audit gate only. This audit result is a
+verified technical verification, not a new Owner Decision. Owner product
+acceptance remains NOT CLAIMED; real-patient runtime, production and CORE-05
+remain NOT AUTHORIZED / NOT OPENED.
+
+Next work package eligible to open: DEC-018 — Admin Boundary / User Management
+(architecture + Implementation Contract). DEC-018 is not yet OWNER LOCKED and
+implementation remains unopened.
+
+---
+
+### DEC-018 — Admin Boundary & Identity Realms
+
+**Ngày:** 2026-08-29
+
+**Trạng thái:** OWNER LOCKED
+
+Operational roles giữ nguyên DOCTOR / NURSE / RECEPTIONIST.
+
+Clinic Admin là capability độc lập (`AuthUser.isClinicAdmin`), không phải
+operational role. `AuthUser.tenantId` tiếp tục bắt buộc.
+
+System Admin là identity realm riêng (`SystemAdminUser`) và không có clinical
+access mặc định; System Admin implementation deferred ngoài Phase 1.
+
+Tenant JWT v1 chỉ chứa `sub`, `realm=TENANT`, `sessionVersion`. Request
+authority (`tenantId`, `role`, `email`, `isClinicAdmin`, `status`,
+`mustChangePassword`) phải resolve từ current AuthUser trong DB.
+
+Last Clinic Admin invariant phải concurrency-safe bằng SERIALIZABLE
+transaction; no automatic retry; serialization/write conflict map 409;
+mandatory concurrent test phải chứng minh ACTIVE Clinic Admin không xuống < 1.
+
+Canonical Clinic Admin routes là `/clinic-admin/*`; legacy frontend
+`/admin/*` bị loại bỏ, không compatibility redirect.
+
+DEC-018 supersedes chỉ admin-route/admin-visibility portion của DEC-017 Demo
+Navigation v1. Các nguyên tắc navigation còn lại không đổi.
+
+Owner cho phép implementation T0→T8 theo
+`docs/14_ADMIN_BOUNDARY_USER_MANAGEMENT_IMPLEMENTATION_CONTRACT.md`
+với SYNTHETIC DATA ONLY.
+
+System Admin implementation, real-patient runtime, production, CORE-05,
+break-glass access và generic permission engine vẫn OUT OF SCOPE.
+
+External review requirement: CLOSED — PASS.
+
+---
+
+### DEC-018 CLOSURE — Owner Synthetic Acceptance PASS
+
+**Ngày:** 2026-08-30
+
+**Trạng thái:** OWNER ACCEPTED — DEC-018 Admin Boundary / User Management v1
+T0 → T8 CLOSED.
+
+Không sửa hay rút gọn phần OWNER LOCKED phía trên; đây là mục bổ sung ghi
+nhận việc đóng gate. Contract v0.2 locked requirements không đổi.
+
+**T7 — Fresh Codex independent focused read-only audit:** COMPLETED.
+
+- Kết quả đầu tiên: **FAIL** với đúng 1 finding mức **MEDIUM** — một AuthUser
+  đã `DISABLED` (role DOCTOR hoặc NURSE) vẫn có thể xuất hiện trong
+  `GET /investigations/assignees` và được chấp nhận làm assignee MỚI qua
+  `POST /investigations/:id/orders`, trái với invariant DEC-018 "DISABLED
+  account must not be a NEW assignment target".
+- Remediation (F1): thêm điều kiện `status = ACTIVE` vào cả hai đường dẫn
+  trong `backend/src/investigations/investigations.service.ts` (`order()`
+  assignee validation và `assignees()` selectable list); giữ nguyên tenant
+  scoping, lifecycle, completion semantics, NURSE result-entry, và các
+  historical assignment đã tồn tại. Bổ sung E2E targeted trong
+  `backend/test/dec016-case-workspace.e2e-spec.ts` (CASE 1 danh sách,
+  CASE 2 validation, CASE 3 active vẫn hợp lệ, CASE 4 tenant isolation, +
+  historical assignment sống sót sau khi user bị disable). Full backend
+  e2e 378/378.
+- Owner đã review remediation và **chấp nhận đóng T7**. Lịch sử FAIL +
+  remediation ở trên được giữ nguyên làm hồ sơ.
+
+**T8 — Owner Synthetic Acceptance:** **PASS** (Owner declaration 2026-08-30),
+gồm **T8.9 Last Clinic Admin protection PASS** (SERIALIZABLE transaction,
+no automatic retry, serialization/write conflict → 409, mandatory concurrent
+acceptance test chứng minh ACTIVE Clinic Admin không xuống < 1).
+
+Các correction UX được Owner chấp nhận trong T8:
+
+- reset-password: modal bàn giao mật khẩu tạm một lần (one-time handoff);
+- hệ thống thông báo (toast) thống nhất cho mọi mutation DEC-018
+  (PROCESSING / SUCCESS / ERROR, chống double-click);
+- đơn giản hoá trang Người dùng (tìm kiếm + danh sách + nút "+");
+- create-user chuyển sang modal;
+- edit-user chuyển từ inline form sang modal.
+
+**Non-blocking UX note (ghi nhận, không chặn acceptance):** tương tác thẻ
+Cơ sở/Phòng (Facility/Room card) có thể làm rõ hơn ở một pass sau.
+
+**OUT OF SCOPE không đổi:** System Admin (`SystemAdminUser`,
+`/system-admin/*`), production deployment, real-patient runtime, CORE-05,
+break-glass access, generic permission engine.
+
+**Next:** chưa mở work package mới. Bước kế tiếp là Owner Decision /
+DEC-019 discovery. DEC-019 CHƯA được tạo.
+
+DEC-018 worktree tại thời điểm acceptance chưa commit; việc commit/merge do
+Owner chỉ đạo riêng.
 
 ---
 

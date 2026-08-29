@@ -1,6 +1,6 @@
 # GastroCare — Roadmap và Acceptance Gates
 
-**Cập nhật:** 29/08/2026 — DEC-017 SSOT reconciliation.
+**Cập nhật:** 30/08/2026 — **DEC-018 Admin Boundary / User Management v1 acceptance gate CLOSED — OWNER ACCEPTED** (T0→T8; T7 independent audit completed with 1 MEDIUM finding remediated + Owner-accepted; T8 Owner Synthetic Acceptance PASS incl. T8.9 Last Clinic Admin protection). Next = Owner Decision / DEC-019 discovery. Prior: DEC-017 SSOT reconciliation; DEC-016 independent audit gate CLOSED — PASS.
 
 Roadmap này được điều khiển bởi năng lực, không có mốc tuần/tháng cố định. Một phase (giai đoạn) chỉ hoàn thành khi acceptance gate (cổng chấp nhận) tương ứng được thỏa.
 
@@ -30,7 +30,7 @@ FOUNDATION
 | Hemorrhoid Vertical Slice 1 | CLOSED — TECHNICAL ACCEPTANCE at `2ea529ee200a0a37a77cebb9a750f70adde57618` (historical) |
 | Hemorrhoid Vertical Slice 2 | TECHNICAL EXECUTION COMPLETE (historical completed work package) — DEC-012 + Contract v0.1 OWNER LOCKED; Owner product acceptance NOT CLAIMED |
 | Hemorrhoid Vertical Slice 3 | TECHNICAL EXECUTION COMPLETE và đã MERGED vào `main` tại `4a73a0c8764558d2776adffcf1d26092f6456634` — DEC-013 + Contract `docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md` OWNER LOCKED; Owner product acceptance NOT CLAIMED |
-| Current checkpoint | DEC-016 T0→M7 TECHNICAL EXECUTION COMPLETE (SELF-ATTESTED BY SESSION A); implementation checkpoint `6dd8d52` COMMITTED/PUSHED theo DEC-017; INDEPENDENT AUDIT OUTSTANDING; next gate: FRESH CODEX SESSION B — INDEPENDENT READ-ONLY AUDIT trên `6dd8d52`; Owner product acceptance NOT CLAIMED |
+| Current checkpoint | DEC-016 T0→M7 technical execution complete; implementation checkpoint `6dd8d52` COMMITTED/PUSHED theo DEC-017; Fresh Codex Session B independent focused audit `CLOSED — PASS` (2026-08-29; findings NONE; blockers NONE); status `TECHNICAL EXECUTION COMPLETE — INDEPENDENT FOCUSED AUDIT CLOSED — PASS`; Owner product acceptance NOT CLAIMED. `DEC-018 — ADMIN BOUNDARY / USER MANAGEMENT v1`: **acceptance gate CLOSED — OWNER ACCEPTED (2026-08-30)**, T0→T8 complete per `docs/14_ADMIN_BOUNDARY_USER_MANAGEMENT_IMPLEMENTATION_CONTRACT.md` v0.2 (SYNTHETIC DATA ONLY). No work package currently open; next = Owner Decision / DEC-019 discovery |
 | GASTROCARE CORE tổng thể | IN PROGRESS |
 | CONTINUOUS CARE | NOT COMPLETE |
 | PRODUCT REFINEMENT / UI-UX | NOT STARTED — bị chặn đến khi Clinical Core được chấp nhận |
@@ -122,9 +122,34 @@ Cho đến khi Owner/BS Thái xác nhận:
 
 ### 3.2.3 Current package — DEC-016 Case / Pathway / Investigation
 
-Authority: [DEC016_OWNER_AUTHORITY.md](DEC016_OWNER_AUTHORITY.md), Owner cho phép Session A thực hiện liên tục T0 → M0 schema/reconciliation proof → M1 Case → M2 TreatmentPathway/Longo → M3 Initial/Return → M4 Decision v2 → M5 Investigation → M6 workspace → M7 synthetic acceptance. Toàn bộ technical execution T0→M7 đã hoàn tất và được commit/push tại implementation checkpoint `6dd8d52` theo DEC-017. Trạng thái hiện tại vẫn là `TECHNICAL EXECUTION COMPLETE (SELF-ATTESTED BY SESSION A) — INDEPENDENT AUDIT OUTSTANDING`.
+Authority: [DEC016_OWNER_AUTHORITY.md](DEC016_OWNER_AUTHORITY.md), Owner cho phép Session A thực hiện liên tục T0 → M0 schema/reconciliation proof → M1 Case → M2 TreatmentPathway/Longo → M3 Initial/Return → M4 Decision v2 → M5 Investigation → M6 workspace → M7 synthetic acceptance. Toàn bộ technical execution T0→M7 đã hoàn tất và được commit/push tại implementation checkpoint `6dd8d52` theo DEC-017.
 
-Next gate: **FRESH CODEX SESSION B — INDEPENDENT READ-ONLY AUDIT** trên implementation checkpoint `6dd8d52`. Session A không phải independent audit. [Bằng chứng implementation](13_DEC016_CASE_PATHWAY_IMPLEMENTATION.md). Clinical Core chưa Owner product accepted; CORE-05, AI, real-patient runtime, production và PDF/image storage không mở. Giới hạn Procedure/Surgery/Investigation của package cũ không phủ quyết phạm vi DEC-016 đã được Owner khóa mới hơn.
+Fresh Codex Session B independent focused read-only audit trên implementation checkpoint `6dd8d52`: **CLOSED — PASS** (2026-08-29). R1 Schema/Migration, R2 Case/TreatmentPathway, R3 Investigation/Authorization, R4 Transaction/Concurrency, R5 Tenant/Provenance — tất cả PASS; targeted DEC-016/concurrency tests 27/27 PASS; PRE-DEC016 → DEC-016 migration probe PASS; Prisma schema validation PASS; findings NONE; blockers NONE; audit không đổi file nào trong repo. Session A không phải independent audit; kết quả audit này là verified technical verification, không phải Owner Decision mới. DEC-016 technical status: `TECHNICAL EXECUTION COMPLETE — INDEPENDENT FOCUSED AUDIT CLOSED — PASS`.
+
+### 3.2.4 DEC-018 Admin Boundary / User Management v1 — CLOSED — OWNER ACCEPTED (2026-08-30)
+
+Authority: DEC-018 OWNER LOCKED (2026-08-29); external review CLOSED — PASS;
+Contract [`docs/14_ADMIN_BOUNDARY_USER_MANAGEMENT_IMPLEMENTATION_CONTRACT.md`](14_ADMIN_BOUNDARY_USER_MANAGEMENT_IMPLEMENTATION_CONTRACT.md) v0.2.
+Owner cho phép implementation liên tục T0 → T6 (Claude Code); T7 = Fresh Codex
+independent focused read-only audit (không tự thực hiện); T8 = Owner Synthetic
+Acceptance (Claude không tự đóng PASS). SYNTHETIC DATA ONLY; real-patient
+runtime / production NOT AUTHORIZED. Scope: `AuthUser.isClinicAdmin` capability,
+tenant JWT v1 (`sub` / `realm=TENANT` / `sessionVersion`), DB-backed request
+authority, `/clinic-admin/*` canonical routes, last-Clinic-Admin SERIALIZABLE
+invariant, Facility/Room write = Clinic Admin capability. Out of scope:
+`SystemAdminUser`, `/system-admin/*`, generic permission engine, break-glass,
+SSO/MFA/SCIM, CORE-05, AI. Không thay clinical semantics DEC-010→016.
+
+Trạng thái: **T0 → T8 CLOSED — OWNER ACCEPTED (2026-08-30)**.
+
+- T0 → T6: Claude Code implementation complete. Migration additive `20260829040958_dec018_admin_boundary_user_management` (prisma validate PASS; backup/restore verification PASS). Backend build PASS, unit 80/80, e2e 378/378. Frontend build PASS, vitest 139/139, lint clean. Browser `e2e/dec018-admin.spec.ts` PASS; 3 pre-existing browser failures unrelated to DEC-018 (components byte-identical với baseline `5a7fd67`).
+- T7 Fresh Codex independent focused read-only audit: COMPLETED. 1 MEDIUM finding — disabled DOCTOR/NURSE could still be selected via `GET /investigations/assignees` and accepted via `POST /investigations/:id/orders` as a NEW assignee. Remediation: `status = ACTIVE` filter added to both paths; targeted E2E (`dec016-case-workspace.e2e-spec.ts`). Owner accepted the remediation as closing T7.
+- T8 Owner Synthetic Acceptance: **PASS**. Accepted T8 corrections — reset-password one-time temporary-password handoff modal; unified mutation notification (toast) system; simplified UsersPage; create-user modal; edit-user modal. **T8.9 Last Clinic Admin protection: PASS.**
+- Non-blocking UX note: Facility/Room card interaction can be made clearer in a later pass (recorded, not blocking).
+- Out of scope, unchanged: `SystemAdminUser` / `/system-admin/*`, production, real-patient runtime, CORE-05.
+- Next: Owner Decision / DEC-019 discovery. No work package currently open.
+
+[Bằng chứng implementation DEC-016](13_DEC016_CASE_PATHWAY_IMPLEMENTATION.md). Clinical Core chưa Owner product accepted; CORE-05, AI, real-patient runtime, production và PDF/image storage không mở. Giới hạn Procedure/Surgery/Investigation của package cũ không phủ quyết phạm vi DEC-016 đã được Owner khóa mới hơn.
 
 ### 3.3 Preserved Longo Clinical Core baseline
 

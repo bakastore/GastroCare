@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { Room } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 
 /**
  * Room — physical location within a Facility, tenant-scoped (DEC-010 §C).
@@ -16,11 +17,20 @@ import { PrismaService } from '../prisma/prisma.service';
  */
 @Injectable()
 export class RoomsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
+  /**
+   * DEC-018 — creation is a Clinic Admin action (gated in the controller).
+   * The Room row and its ROOM_CREATED AuditEvent are written in the same
+   * transaction.
+   */
   async create(
     tenantId: string,
     dto: { facilityId: string; name: string },
+    actorId: string,
   ): Promise<Room> {
     const facility = await this.prisma.facility.findFirst({
       where: { id: dto.facilityId, tenantId },
@@ -32,8 +42,26 @@ export class RoomsService {
       );
     }
 
-    return this.prisma.room.create({
-      data: { tenantId, facilityId: dto.facilityId, name: dto.name },
+    return this.prisma.$transaction(async (tx) => {
+      const room = await tx.room.create({
+        data: { tenantId, facilityId: dto.facilityId, name: dto.name },
+      });
+      await this.audit.record(
+        {
+          tenantId,
+          actorId,
+          action: 'ROOM_CREATED',
+          entityType: 'Room',
+          entityId: room.id,
+          metadata: {
+            roomId: room.id,
+            facilityId: room.facilityId,
+            name: room.name,
+          },
+        },
+        tx,
+      );
+      return room;
     });
   }
 

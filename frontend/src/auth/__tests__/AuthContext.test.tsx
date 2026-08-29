@@ -3,22 +3,36 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { AuthProvider, useAuth } from '../AuthContext';
 import { authApi } from '../../api/resources';
+import type { AuthMe } from '../../api/resources';
 import { getStoredToken } from '../../api/client';
 
 vi.mock('../../api/resources', () => ({
-  authApi: { login: vi.fn() },
+  authApi: { login: vi.fn(), me: vi.fn(), changePassword: vi.fn() },
 }));
 
 function fakeToken(overrides: Record<string, unknown> = {}) {
   const payload = {
     sub: 'user-1',
-    tenantId: 'tenant-1',
-    email: 'doctor.a@example.test',
-    role: 'DOCTOR',
+    realm: 'TENANT',
+    sessionVersion: 0,
     exp: Math.floor(Date.now() / 1000) + 900,
     ...overrides,
   };
   return 'eyJhbGciOiJIUzI1NiJ9.' + btoa(JSON.stringify(payload)) + '.signature';
+}
+
+function meFixture(overrides: Partial<AuthMe> = {}): AuthMe {
+  return {
+    userId: 'user-1',
+    tenantId: 'tenant-1',
+    email: 'doctor.a@example.test',
+    displayName: null,
+    role: 'DOCTOR',
+    isClinicAdmin: false,
+    status: 'ACTIVE',
+    mustChangePassword: false,
+    ...overrides,
+  };
 }
 
 function Probe() {
@@ -40,6 +54,7 @@ beforeEach(() => {
 describe('AuthContext — session/logout hardening', () => {
   it('clears the stored token and user state on logout', async () => {
     vi.mocked(authApi.login).mockResolvedValueOnce({ accessToken: fakeToken() });
+    vi.mocked(authApi.me).mockResolvedValue(meFixture());
 
     render(
       <AuthProvider>
@@ -61,6 +76,7 @@ describe('AuthContext — session/logout hardening', () => {
 
   it('drops back to a safe logged-out state when a real API call comes back 401', async () => {
     vi.mocked(authApi.login).mockResolvedValueOnce({ accessToken: fakeToken() });
+    vi.mocked(authApi.me).mockResolvedValue(meFixture());
 
     render(
       <AuthProvider>

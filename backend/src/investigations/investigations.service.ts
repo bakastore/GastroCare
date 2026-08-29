@@ -175,11 +175,13 @@ export class InvestigationsService {
             id: dto.assignedToUserId,
             tenantId: u.tenantId,
             role: { in: ['DOCTOR', 'NURSE'] },
+            // DEC-018 — a DISABLED account cannot be a NEW assignment target.
+            status: 'ACTIVE',
           },
         }))
       )
         throw new BadRequestException(
-          'Assignee must be a same-tenant DOCTOR or NURSE',
+          'Assignee must be an active same-tenant DOCTOR or NURSE',
         );
       const order = await tx.investigationOrder.create({
         data: {
@@ -300,7 +302,12 @@ export class InvestigationsService {
   }
   async assignees(u: AuthenticatedUser) {
     return this.prisma.authUser.findMany({
-      where: { tenantId: u.tenantId, role: { in: ['DOCTOR', 'NURSE'] } },
+      // DEC-018 — only ACTIVE accounts are selectable as new assignees.
+      where: {
+        tenantId: u.tenantId,
+        role: { in: ['DOCTOR', 'NURSE'] },
+        status: 'ACTIVE',
+      },
       select: { id: true, email: true, role: true },
       orderBy: { email: 'asc' },
     });

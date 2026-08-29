@@ -70,6 +70,14 @@ enum AuthRole {
   NURSE
 }
 
+/// AuthUser lifecycle status (DEC-018). ACTIVE users can authenticate and act;
+/// DISABLED users cannot login, any previously issued token is rejected, and
+/// they cannot be selected as clinician / handover / assignment targets.
+enum AuthUserStatus {
+  ACTIVE
+  DISABLED
+}
+
 /// AuthUser — infrastructure authentication identity.
 /// This is NOT Patient and is NOT a clinical domain entity.
 model AuthUser {
@@ -80,6 +88,22 @@ model AuthUser {
   tenantId     String
   tenant       Tenant   @relation(fields: [tenantId], references: [id])
   createdAt    DateTime @default(now())
+
+  // DEC-018 — Admin Boundary / User Management v1.
+  // displayName: optional human-facing name managed by Clinic Admin.
+  // isClinicAdmin: independent administrative capability — NOT an operational
+  //   role. Any ACTIVE tenant user may hold it. Operational role never confers
+  //   administrative authority.
+  // status: ACTIVE | DISABLED lifecycle (see AuthUserStatus).
+  // mustChangePassword: forces a password change before any normal action.
+  // sessionVersion: bumped on change-password / password-reset / disable to
+  //   revoke every previously issued token immediately.
+  displayName        String?
+  isClinicAdmin      Boolean        @default(false)
+  status             AuthUserStatus @default(ACTIVE)
+  mustChangePassword Boolean        @default(false)
+  sessionVersion     Int            @default(0)
+  updatedAt          DateTime       @updatedAt
 
   responsibleForEncounters Encounter[]                  @relation("EncounterResponsibleClinician")
   createdEncounters        Encounter[]                  @relation("EncounterCreatedBy")

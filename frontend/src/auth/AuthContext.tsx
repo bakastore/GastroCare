@@ -1,15 +1,26 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { authApi } from '../api/resources';
-import { clearStoredToken, getStoredToken, onUnauthorized, setStoredToken } from '../api/client';
-import { decodeJwtClaims, isExpired } from './jwt';
+import type { AuthMe } from '../api/resources';
+import {
+  ApiError,
+  clearStoredToken,
+  getStoredToken,
+  onUnauthorized,
+  setStoredToken,
+} from '../api/client';
+import { isTokenUsable } from './jwt';
 import type { AuthRole } from '../types/domain';
 
 export interface CurrentUser {
   userId: string;
   tenantId: string;
   email: string;
+  displayName: string | null;
   role: AuthRole;
+  isClinicAdmin: boolean;
+  status: 'ACTIVE' | 'DISABLED';
+  mustChangePassword: boolean;
 }
 
 interface AuthContextValue {
@@ -17,20 +28,22 @@ interface AuthContextValue {
   isInitializing: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  /** Re-fetch GET /auth/me — used after a password change bumps the token. */
+  refresh: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-function userFromToken(token: string): CurrentUser | null {
-  const claims = decodeJwtClaims(token);
-  if (!claims || isExpired(claims)) {
-    return null;
-  }
+function toCurrentUser(me: AuthMe): CurrentUser {
   return {
-    userId: claims.sub,
-    tenantId: claims.tenantId,
-    email: claims.email,
-    role: claims.role,
+    userId: me.userId,
+    tenantId: me.tenantId,
+    email: me.email,
+    displayName: me.displayName,
+    role: me.role,
+    isClinicAdmin: me.isClinicAdmin,
+    status: me.status,
+    mustChangePassword: me.mustChangePassword,
   };
 }
 
@@ -43,17 +56,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const refresh = useCallback(async () => {
+    // DEC-018 — authority always comes from GET /auth/me, never the token.
+    const me = await authApi.me();
+    setUser(toCurrentUser(me));
+  }, []);
+
   useEffect(() => {
-    const existingToken = getStoredToken();
-    if (existingToken) {
-      const restoredUser = userFromToken(existingToken);
-      if (restoredUser) {
-        setUser(restoredUser);
-      } else {
-        clearStoredToken();
-      }
+    let cancelled = false;
+    const token = getStoredToken();
+    if (!token || !isTokenUsable(token)) {
+      clearStoredToken();
+      setIsInitializing(false);
+      return;
     }
-    setIsInitializing(false);
+    authApi
+      .me()
+      .then((me) => {
+        if (!cancelled) {
+          setUser(toCurrentUser(me));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          clearStoredToken();
+          setUser(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsInitializing(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -65,17 +102,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     const { accessToken } = await authApi.login(email, password);
-    const loggedInUser = userFromToken(accessToken);
-    if (!loggedInUser) {
-      throw new Error('Phiên đăng nhập không hợp lệ.');
-    }
     setStoredToken(accessToken);
-    setUser(loggedInUser);
+    try {
+      const me = await authApi.me();
+      setUser(toCurrentUser(me));
+    } catch (err) {
+      clearStoredToken();
+      setUser(null);
+      throw err instanceof ApiError
+        ? err
+        : new Error('Phiên đăng nhập không hợp lệ.');
+    }
   }, []);
 
   const value = useMemo(
-    () => ({ user, isInitializing, login, logout }),
-    [user, isInitializing, login, logout],
+    () => ({ user, isInitializing, login, logout, refresh }),
+    [user, isInitializing, login, logout, refresh],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -4,13 +4,23 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { AppShell } from '../AppShell';
 import * as AuthContextModule from '../../auth/AuthContext';
+import { makeCurrentUser } from '../../test/currentUser';
 
-function mockUser(role: 'DOCTOR' | 'RECEPTIONIST' | 'NURSE', logout = vi.fn()) {
+function mockUser(
+  role: 'DOCTOR' | 'RECEPTIONIST' | 'NURSE',
+  logout = vi.fn(),
+  overrides: Partial<ReturnType<typeof makeCurrentUser>> = {},
+) {
   vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
-    user: { userId: 'u1', tenantId: 't1', email: `${role.toLowerCase()}@example.test`, role },
+    user: makeCurrentUser({
+      email: `${role.toLowerCase()}@example.test`,
+      role,
+      ...overrides,
+    }),
     isInitializing: false,
     login: vi.fn(),
     logout,
+    refresh: vi.fn(),
   });
   return logout;
 }
@@ -70,6 +80,7 @@ describe('AppShell — sidebar navigation', () => {
       isInitializing: false,
       login: vi.fn(),
       logout: vi.fn(),
+      refresh: vi.fn(),
     });
     render(
       <MemoryRouter initialEntries={['/login']}>

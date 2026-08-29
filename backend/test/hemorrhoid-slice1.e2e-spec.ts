@@ -132,6 +132,10 @@ describe('Hemorrhoid Vertical Slice 1 (e2e)', () => {
         passwordHash: await bcrypt.hash(doctorA1Password, 10),
         role: AuthRole.DOCTOR,
         tenantId: tenantAId,
+        // DEC-018 — Facility/Room writes now require the Clinic Admin
+        // capability; this synthetic default clinician also holds it so the
+        // slice-1 setup (which provisions Facility/Room over HTTP) still runs.
+        isClinicAdmin: true,
       },
     });
     doctorA1Id = doctorA1.id;
@@ -142,6 +146,7 @@ describe('Hemorrhoid Vertical Slice 1 (e2e)', () => {
         passwordHash: await bcrypt.hash(doctorBPassword, 10),
         role: AuthRole.DOCTOR,
         tenantId: tenantBId,
+        isClinicAdmin: true, // DEC-018 — see doctorA1 note.
       },
     });
     doctorBId = doctorB.id;

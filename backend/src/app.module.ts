@@ -7,6 +7,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './auth/roles.guard';
+import { MustChangePasswordGuard } from './auth/must-change-password.guard';
 import { HealthModule } from './health/health.module';
 import { FoundationModule } from './foundation/foundation.module';
 import { AuditModule } from './audit/audit.module';
@@ -20,6 +21,7 @@ import { FollowUpTasksModule } from './follow-up-tasks/follow-up-tasks.module';
 import { CliniciansModule } from './clinicians/clinicians.module';
 import { FacilitiesModule } from './facilities/facilities.module';
 import { RoomsModule } from './rooms/rooms.module';
+import { ClinicAdminModule } from './clinic-admin/clinic-admin.module';
 
 @Module({
   imports: [
@@ -41,6 +43,7 @@ import { RoomsModule } from './rooms/rooms.module';
     RoomsModule,
     TreatmentPathwaysModule,
     InvestigationsModule,
+    ClinicAdminModule,
   ],
   providers: [
     {
@@ -50,6 +53,10 @@ import { RoomsModule } from './rooms/rooms.module';
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: MustChangePasswordGuard,
     },
   ],
 })
