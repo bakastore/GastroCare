@@ -730,9 +730,14 @@ Không sửa hay rút gọn phần DEC-020 OWNER LOCKED phía trên; đây là m
 nhận việc Owner đóng Package A. DEC-020 v0.2 clinical/domain semantics và Package A
 Contract v0.2 implementation semantics **không đổi** — vẫn OWNER LOCKED.
 
-**Execution baseline:** `a03b1878dd42ca80956418c67da6f79d0b560572` — đây là
-execution-START baseline. **KHÔNG phải `A_CLOSED_SHA`.** `A_CLOSED_SHA` chỉ được
-tạo bởi một checkpoint commit do Owner authorize sau này.
+**Execution-START baseline:** `a03b1878dd42ca80956418c67da6f79d0b560572` — nơi
+Package A execution bắt đầu. Giữ **distinct** với `A_CLOSED_SHA`; không relabel.
+
+**`A_CLOSED_SHA` = `0c865a26c4425a1c3fe429bb8e42238562025801`** — commit `0c865a2`
+`feat: checkpoint DEC-020 Package A owner-closed`. Đây là Package A OWNER-CLOSED
+implementation checkpoint (immutable). Package A implementation + T10/T11
+corrections + closure governance được included trong checkpoint này và đã
+**COMMITTED**. Không amend `0c865a2`.
 
 **Execution / review history (ghi đúng trình tự thực tế, không viết lại như thể
 initial T11 đã pass):**
@@ -750,7 +755,9 @@ initial T11 đã pass):**
 
 **Owner quyết định (2026-08-31):**
 
-1. Owner **CLOSE** Package A của DEC-020 tại execution baseline `a03b1878...`.
+1. Owner **CLOSE** Package A của DEC-020. Execution-START baseline `a03b1878...`;
+   Package A OWNER-CLOSED implementation checkpoint `A_CLOSED_SHA` =
+   `0c865a26c4425a1c3fe429bb8e42238562025801`.
 2. Owner chấp nhận: `T10` PASS; `T11` focused re-audit PASS — NO P0/P1.
 3. Residual **P2 — Unicode reason-length parity** = **NON-BLOCKING, DEFERRED** —
    không chặn Package A closure. Technical note: standalone `POST
@@ -766,20 +773,31 @@ initial T11 đã pass):**
 
 **Owner explicitly KHÔNG authorize:**
 
-- Package B implementation — `NOT STARTED, NOT IMPLEMENTATION-AUTHORIZED`. Package
-  B chỉ được bắt đầu khi (1) Package A clean checkpoint tồn tại dưới dạng
-  `A_CLOSED_SHA`, và (2) Package B authority được rebind/lock/authorize riêng.
-  Không activate bất kỳ Package B draft nào.
+- Package B implementation — `NOT STARTED, NOT IMPLEMENTATION-AUTHORIZED`.
+  Prerequisite "Package A clean checkpoint" **đã SATISFIED** (`A_CLOSED_SHA` =
+  `0c865a26c4425a1c3fe429bb8e42238562025801` tồn tại), nhưng Package B vẫn cần một
+  chuỗi riêng: authority rebind về `A_CLOSED_SHA` → Package B review / Owner lock
+  decision → explicit Owner implementation authorization nếu approve. Không
+  activate bất kỳ Package B draft nào; không đổi Package B DRAFT thành OWNER
+  LOCKED; không implement gì cho Package B.
 - Package C — DISCOVERY-DEPENDENT; implementation NOT AUTHORIZED.
-- production deployment — `NOT AUTHORIZED`.
+- production deployment — `NOT AUTHORIZED` (Package A closure/checkpoint/push
+  không phải production acceptance).
 - real-patient runtime / real-patient data — `NOT AUTHORIZED`.
+- merge, tag — `NOT AUTHORIZED`.
 
-**Repository state:** Toàn bộ Package A implementation + T10/T11 corrections hiện
-**UNCOMMITTED** trong working tree tại `a03b1878...`. Không commit/push/merge/tag
-khi chưa có Owner authorization riêng cho đúng checkpoint đó.
+**Repository state:** Package A implementation + T10/T11 corrections + closure
+governance đã **COMMITTED** tại `A_CLOSED_SHA`
+`0c865a26c4425a1c3fe429bb8e42238562025801` (commit `0c865a2`). Owner đã authorize
+một governance-reconciliation commit (`docs: reconcile DEC-020 Package A closed
+checkpoint`) và một fast-forward push của branch
+`correction/owner-acceptance-slice1-3` lên `origin` (closure checkpoint +
+governance reconciliation commit). Không merge, không tag, không force push.
 
-**Next gate:** Owner final checkpoint review → Owner authorization to commit the
-Package A closure checkpoint → create `A_CLOSED_SHA`.
+**Next gate:** Package B authority rebind về `A_CLOSED_SHA`
+`0c865a26c4425a1c3fe429bb8e42238562025801` → Package B review / Owner lock
+decision → separate Owner implementation authorization nếu approve. Không có audit
+loop tiếp theo cho Package A.
 
 **Căn cứ:** Explicit Owner closure decision 2026-08-31; `T10` PASS; `T11` initial
 FAIL → correction batch COMPLETED → focused recheck PASS → `T11` focused

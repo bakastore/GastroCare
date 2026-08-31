@@ -19,33 +19,40 @@ the Package A Contract v0.2 (`docs/DEC-020_PACKAGE_A_WORKFLOW_SEMANTIC_RECONCILI
 remain OWNER LOCKED.
 
 **DEC-020 Package A — Workflow Semantic Reconciliation: OWNER CLOSED —
-2026-08-31.** Execution baseline `a03b1878dd42ca80956418c67da6f79d0b560572` (the
-execution-START baseline — **NOT** `A_CLOSED_SHA`; `A_CLOSED_SHA` will only exist
-once a later Owner-authorized checkpoint commit is created). Execution/review
-history: `T0 → T9` COMPLETED; `T10` ChatGPT direct source review = **PASS**;
-`T11` initial fresh Codex independent audit = **FAIL — CORRECTION REQUIRED**
-(initial severity P0=0 / P1=1 / P2=2 / P3=0); correction batch COMPLETED; focused
-source recheck = PASS; `T11` focused independent re-audit = **PASS — NO P0/P1**
-(final severity P0=0 / P1=0 / P2=1 / P3=0). Residual **P2 — Unicode reason-length
-parity** = NON-BLOCKING, DEFERRED (recorded in the DECISION_LOG `DEC-020 PACKAGE A
-CLOSURE` record). Owner closure of Package A is NOT Technical Acceptance beyond
-the audit gates and is NOT Product/production acceptance.
+2026-08-31.** Execution-START baseline `a03b1878dd42ca80956418c67da6f79d0b560572`
+(where Package A execution began — **NOT** `A_CLOSED_SHA`). Package A OWNER-CLOSED
+implementation checkpoint: **`A_CLOSED_SHA` =
+`0c865a26c4425a1c3fe429bb8e42238562025801`** (commit `0c865a2` — `feat:
+checkpoint DEC-020 Package A owner-closed`). The Package A implementation +
+T10/T11 corrections + closure governance are **COMMITTED** at `A_CLOSED_SHA`.
+Execution/review history: `T0 → T9` COMPLETED; `T10` ChatGPT direct source
+review = **PASS**; `T11` initial fresh Codex independent audit = **FAIL —
+CORRECTION REQUIRED** (initial severity P0=0 / P1=1 / P2=2 / P3=0); correction
+batch COMPLETED; focused source recheck = PASS; `T11` focused independent
+re-audit = **PASS — NO P0/P1** (final severity P0=0 / P1=0 / P2=1 / P3=0).
+Residual **P2 — Unicode reason-length parity** = NON-BLOCKING, DEFERRED (recorded
+in the DECISION_LOG `DEC-020 PACKAGE A CLOSURE` record). Owner closure of Package
+A is NOT Technical Acceptance beyond the audit gates and is NOT Product/production
+acceptance.
 
 Package B (Hemorrhoid Clinical Fidelity + Functional UX) = **NOT STARTED, NOT
-IMPLEMENTATION-AUTHORIZED** — cannot begin until (1) a Package A clean checkpoint
-exists as `A_CLOSED_SHA` and (2) Package B authority is separately
-rebound/locked/authorized. Package C = DISCOVERY-DEPENDENT, implementation NOT
-AUTHORIZED.
+IMPLEMENTATION-AUTHORIZED**. The Package A clean-checkpoint prerequisite is now
+SATISFIED (`A_CLOSED_SHA` = `0c865a2` exists), but Package B still requires a
+separate authority rebind to `A_CLOSED_SHA` → Package B review / Owner lock
+decision → separate explicit Owner implementation authorization if approved. No
+Package B draft is activated; no Package B DRAFT is promoted to OWNER LOCKED.
+Package C = DISCOVERY-DEPENDENT, implementation NOT AUTHORIZED.
 
 Baseline = DEC-018 CLOSED — OWNER ACCEPTED — remote
 checkpoint `7d33e02c36f5e862c50717c340deea86ad046e47`; durable pre-Package-A
 baseline `a2059ff6ea2796eee0a798d754b95e70221d2504`; Package A implementation +
-T10/T11 corrections exist UNCOMMITTED in the working tree at execution baseline
-`a03b1878dd42ca80956418c67da6f79d0b560572`. SYNTHETIC DATA ONLY; real-patient
-runtime, production deployment and AI clinical reasoning remain NOT AUTHORIZED;
-no commit/push/merge/tag without separate Owner authorization. Next gate = Owner
-final checkpoint review → Owner authorization to commit the Package A closure
-checkpoint → create `A_CLOSED_SHA`.
+T10/T11 corrections COMMITTED at `A_CLOSED_SHA`
+`0c865a26c4425a1c3fe429bb8e42238562025801`. SYNTHETIC DATA ONLY; real-patient
+runtime/data, production deployment and AI clinical reasoning remain NOT
+AUTHORIZED (Package A closure/checkpoint/push is not production acceptance); no
+merge/tag without separate Owner authorization. Next gate = Package B authority
+rebind to `A_CLOSED_SHA` → Package B review / Owner lock decision → separate Owner
+implementation authorization if approved.
 
 Prior context: **DEC-018 — Admin Boundary / User Management v1: T0 → T8 CLOSED —
 OWNER ACCEPTED** (2026-08-30), committed at remote checkpoint `7d33e02`. T7 Fresh
@@ -308,23 +315,24 @@ Chỉ được dùng synthetic data (dữ liệu giả lập) cho triển khai, 
 | Repository state reconciliation | Mô tả trước đây "chưa commit theo lệnh Owner" / baseline `c0dfe1a4` đã lỗi thời kể từ checkpoint `6dd8d52`; local worktree state được kiểm tra riêng tại mỗi execution gate |
 | Pre-DEC-016 T0 baseline (history) | `c0dfe1a4f774bef334dd2c2e0eac45f89a2e106b` — CLEAN; C1–C5 + DEC-015 CLOSED / PASS theo Owner authority |
 | Current phase | `GASTROCARE CORE — IN PROGRESS` |
-| Last closed work package | `DEC-020 Package A — Workflow Semantic Reconciliation` — **OWNER CLOSED (2026-08-31)** at execution baseline `a03b1878…` (T10 PASS; T11 initial FAIL → corrected → focused re-audit PASS — NO P0/P1; residual P2 deferred; implementation uncommitted; no `A_CLOSED_SHA` yet). Prior: `DEC-019 — STAFF PROFILE & CREDENTIAL MANAGEMENT v1` — **OWNER CLOSED (2026-08-31)** via Owner-directed governance closure; T0→T6 implementation preserved in working tree; `T7`/`T8` = WAIVED BY OWNER — NOT EXECUTED; no PASS / acceptance claim; Owner Synthetic Acceptance NOT CLAIMED |
+| Last closed work package | `DEC-020 Package A — Workflow Semantic Reconciliation` — **OWNER CLOSED (2026-08-31)**; `A_CLOSED_SHA` = `0c865a26c4425a1c3fe429bb8e42238562025801` (execution-START baseline `a03b1878…`, kept distinct); T10 PASS; T11 initial FAIL → corrected → focused re-audit PASS — NO P0/P1; residual P2 deferred; implementation COMMITTED at `A_CLOSED_SHA`. Prior: `DEC-019 — STAFF PROFILE & CREDENTIAL MANAGEMENT v1` — **OWNER CLOSED (2026-08-31)** via Owner-directed governance closure; T0→T6 implementation preserved in working tree; `T7`/`T8` = WAIVED BY OWNER — NOT EXECUTED; no PASS / acceptance claim; Owner Synthetic Acceptance NOT CLAIMED |
 | Current work package | `DEC-020 Package A — Workflow Semantic Reconciliation` — **OWNER CLOSED (2026-08-31)** |
 | Current Contract | `docs/DEC-020_PACKAGE_A_WORKFLOW_SEMANTIC_RECONCILIATION_IMPLEMENTATION_CONTRACT.md` (v0.2 — OWNER LOCKED; clinical/domain + implementation semantics unchanged by closure) |
 | Contract status | `v0.2 — OWNER LOCKED` (2026-08-31) |
-| Package A execution baseline | `a03b1878dd42ca80956418c67da6f79d0b560572` — the execution-START baseline. **NOT `A_CLOSED_SHA`.** `A_CLOSED_SHA` is created only by a later Owner-authorized checkpoint commit |
+| Package A execution-START baseline | `a03b1878dd42ca80956418c67da6f79d0b560572` — where Package A execution began. Kept **distinct** from `A_CLOSED_SHA`; not relabelled |
+| Package A closed checkpoint (`A_CLOSED_SHA`) | `0c865a26c4425a1c3fe429bb8e42238562025801` — commit `0c865a2` `feat: checkpoint DEC-020 Package A owner-closed`. The immutable Package A OWNER-CLOSED implementation checkpoint (implementation + T10/T11 corrections + closure governance). Do not amend |
 | Package A execution / review history | `T0 → T9` COMPLETED. `T10` ChatGPT direct source review = **PASS**. `T11` initial fresh Codex independent audit = **FAIL — CORRECTION REQUIRED** (initial severity P0=0 / P1=1 / P2=2 / P3=0). Correction batch COMPLETED → focused source recheck = PASS → `T11` focused independent re-audit = **PASS — NO P0/P1** (final severity P0=0 / P1=0 / P2=1 / P3=0). History is not rewritten as though the initial `T11` passed |
 | Package A residual finding | **P2 — Unicode reason-length parity** — NON-BLOCKING, DEFERRED. Standalone `POST /care-episodes/:id/reopen` and atomic Return `REOPEN_EXISTING` diverge near the 500-character Unicode boundary because the transaction lifecycle helper counts JavaScript `String.length` / UTF-16 code units (e.g. `'r'.repeat(499) + '🙂'` → standalone accepted, atomic recurrence rejected). Does not affect transaction atomicity, single-active invariant, tenant isolation, audit integrity, or data correctness/loss. Not fixed in the closure task; recorded in the DECISION_LOG `DEC-020 PACKAGE A CLOSURE` record |
-| Package A implementation state | Complete implementation + T10/T11 corrections exist **UNCOMMITTED** in the working tree at execution baseline `a03b1878…` |
-| Current authorized execution | NONE new. Package A is OWNER CLOSED. Next action is Owner final checkpoint review → Owner authorization to commit the Package A closure checkpoint → create `A_CLOSED_SHA` |
-| Package B / Package C | Package B (Hemorrhoid Clinical Fidelity + Functional UX) = **NOT STARTED, NOT IMPLEMENTATION-AUTHORIZED** — cannot begin until (1) `A_CLOSED_SHA` exists and (2) Package B authority is separately rebound/locked/authorized; no Package B draft is activated. Package C (Procedure / Investigation evolution) = DISCOVERY-DEPENDENT, implementation NOT AUTHORIZED |
+| Package A implementation state | Complete implementation + T10/T11 corrections + closure governance are **COMMITTED** at `A_CLOSED_SHA` `0c865a26c4425a1c3fe429bb8e42238562025801` |
+| Current authorized execution | NONE new. Package A is OWNER CLOSED and committed at `A_CLOSED_SHA`. No implementation is authorized |
+| Package B / Package C | Package B (Hemorrhoid Clinical Fidelity + Functional UX) = **NOT STARTED, NOT IMPLEMENTATION-AUTHORIZED**. The Package A clean-checkpoint prerequisite is now SATISFIED (`A_CLOSED_SHA` = `0c865a2` exists); Package B still requires a separate authority rebind to `A_CLOSED_SHA` → Package B review / Owner lock decision → separate explicit Owner implementation authorization. No Package B draft is activated; no Package B DRAFT is promoted to OWNER LOCKED. Package C (Procedure / Investigation evolution) = DISCOVERY-DEPENDENT, implementation NOT AUTHORIZED |
 | Current authority | DEC-020 v0.2 — OWNER LOCKED (2026-08-31), locked reference baseline `a2059ff6ea2796eee0a798d754b95e70221d2504`; external pre-lock review COMPLETED; documented baseline-review limitation EXPLICITLY ACCEPTED BY OWNER; D20-01…D20-13 + selective supersession map AUTHORITATIVE. DEC-020 uses selective supersession — prior OWNER LOCKED Decisions (DEC-010→019) remain effective except where the DEC-020 §18 map supersedes; DEC-019 remains OWNER CLOSED. Historical authority: DEC-019 OWNER LOCKED + `docs/15_STAFF_PROFILE_CREDENTIAL_MANAGEMENT_IMPLEMENTATION_CONTRACT.md` v0.1; DEC-018 OWNER LOCKED + `docs/14_ADMIN_BOUNDARY_USER_MANAGEMENT_IMPLEMENTATION_CONTRACT.md` v0.2 — CLOSED — OWNER ACCEPTED |
 | DEC-018 execution sequence (closed) | `T0 → T6` Claude Code implementation (complete); `T7` Fresh Codex independent focused read-only audit — COMPLETED, 1 MEDIUM finding remediated + Owner-accepted closure; `T8` Owner Synthetic Acceptance — **PASS** (incl. T8.9 Last Clinic Admin protection PASS) |
 | Governing local authority | `docs/DEC016_OWNER_AUTHORITY.md` — bản lưu prompt; không tự nhận là bản Contract đầy đủ |
 | Task-specific implementation notes/evidence | `docs/13_DEC016_CASE_PATHWAY_IMPLEMENTATION.md`, `docs/DEC016_SESSION_A_REPORT.md`, `docs/evidence/DEC016_SESSION_A/` |
 | Startup domain/schema/privacy SSOT | docs/04, 05, 06 và DEC-016 overlays; Longo 08/09; Hemorrhoid 10/12 chỉ giữ phần không bị DEC-016 supersede |
-| Implementation status | DEC-016: T0 → M7 PASS (self-attested) + independent audit CLOSED — PASS; committed as `6dd8d52` per DEC-017. **DEC-018: T0 → T8 CLOSED — OWNER ACCEPTED (2026-08-30)** — committed at remote checkpoint `7d33e02`. **DEC-019: OWNER CLOSED (2026-08-31)** — T0→T6 implementation exists in working tree and is preserved; T7/T8 WAIVED BY OWNER — NOT EXECUTED; no PASS / acceptance claim. **DEC-020 Package A: OWNER CLOSED (2026-08-31)** — `T0 → T9` COMPLETED; `T10` PASS; `T11` initial FAIL — CORRECTION REQUIRED → correction batch COMPLETED → focused source recheck PASS → `T11` focused independent re-audit PASS — NO P0/P1 (final P0=0/P1=0/P2=1/P3=0); residual P2 (Unicode reason-length parity) NON-BLOCKING/DEFERRED; complete implementation + T10/T11 corrections UNCOMMITTED in the working tree at execution baseline `a03b1878…`; no `A_CLOSED_SHA`; no schema/migration change; SYNTHETIC DATA ONLY. Owner closure ≠ Product/production acceptance |
-| Current authorized task | NONE (implementation). DEC-020 Package A = OWNER CLOSED (2026-08-31); T10 PASS; T11 initial FAIL → corrected → focused re-audit PASS — NO P0/P1; residual P2 deferred. The only authorized next step is Owner final checkpoint review + Owner authorization to commit the Package A closure checkpoint. DEC-019 = OWNER CLOSED (2026-08-31); T7/T8 WAIVED BY OWNER — NOT EXECUTED |
+| Implementation status | DEC-016: T0 → M7 PASS (self-attested) + independent audit CLOSED — PASS; committed as `6dd8d52` per DEC-017. **DEC-018: T0 → T8 CLOSED — OWNER ACCEPTED (2026-08-30)** — committed at remote checkpoint `7d33e02`. **DEC-019: OWNER CLOSED (2026-08-31)** — T0→T6 implementation exists in working tree and is preserved; T7/T8 WAIVED BY OWNER — NOT EXECUTED; no PASS / acceptance claim. **DEC-020 Package A: OWNER CLOSED (2026-08-31)** — `T0 → T9` COMPLETED; `T10` PASS; `T11` initial FAIL — CORRECTION REQUIRED → correction batch COMPLETED → focused source recheck PASS → `T11` focused independent re-audit PASS — NO P0/P1 (final P0=0/P1=0/P2=1/P3=0); residual P2 (Unicode reason-length parity) NON-BLOCKING/DEFERRED; complete implementation + T10/T11 corrections + closure governance **COMMITTED at `A_CLOSED_SHA` `0c865a26c4425a1c3fe429bb8e42238562025801`** (execution-START baseline `a03b1878…` kept distinct); no schema/migration change; SYNTHETIC DATA ONLY. Owner closure ≠ Product/production acceptance |
+| Current authorized task | NONE (implementation). DEC-020 Package A = OWNER CLOSED (2026-08-31) and committed at `A_CLOSED_SHA` `0c865a2`; T10 PASS; T11 initial FAIL → corrected → focused re-audit PASS — NO P0/P1; residual P2 deferred. No implementation task is authorized. DEC-019 = OWNER CLOSED (2026-08-31); T7/T8 WAIVED BY OWNER — NOT EXECUTED |
 | DEC-018 T7 independent audit | Fresh Codex focused read-only audit — COMPLETED. 1 MEDIUM finding: disabled DOCTOR/NURSE could still be selected via `GET /investigations/assignees` and accepted via `POST /investigations/:id/orders` as a NEW assignee. Remediation: `status = ACTIVE` filter added to both paths in `investigations.service.ts`; targeted E2E added (`dec016-case-workspace.e2e-spec.ts`, CASE 1–4 + historical-assignment survives). Full backend e2e 378/378. Owner accepted the remediation as closing T7 |
 | DEC-018 T8 Owner Synthetic Acceptance | **PASS** (2026-08-30). Accepted T8 corrections: reset-password one-time temporary-password handoff modal; unified mutation notification (toast) system; simplified UsersPage (search + list + "+" add); create-user modal; edit-user modal; **T8.9 Last Clinic Admin protection verified PASS** (SERIALIZABLE, no auto-retry, 409, mandatory concurrent test) |
 | DEC-018 non-blocking UX note | Facility/Room card interaction can be made clearer in a later pass — recorded, not blocking acceptance |
@@ -335,7 +343,7 @@ Chỉ được dùng synthetic data (dữ liệu giả lập) cho triển khai, 
 | Demo Admin UI (`frontend/src/pages/admin/*`) | DEMO-oriented/view-only ở frontend. `UsersPage` chưa có user-lifecycle write API. Backend Facility/Room có write API hiện hữu; DEC-017 không thay đổi authorization semantics của các API đó |
 | AppSidebar.tsx nav v1 | OWNER LOCKED (DEC-017) |
 | DEC-018 status | **CLOSED — OWNER ACCEPTED (2026-08-30)**. OWNER LOCKED 2026-08-29; external review CLOSED — PASS; Contract v0.2; T0→T8 complete |
-| Next gate | **Owner final checkpoint review → Owner authorization to commit the Package A closure checkpoint → create `A_CLOSED_SHA`.** Package A implementation is OWNER CLOSED and NOT active; `T10`/`T11` are complete (PASS); Package B is NOT authorized. DEC-019 has no pending gate (T7/T8 WAIVED BY OWNER — NOT EXECUTED) |
+| Next gate | **Package B authority rebind to `A_CLOSED_SHA` `0c865a26c4425a1c3fe429bb8e42238562025801` → Package B review / Owner lock decision → separate Owner implementation authorization if approved.** Package A is OWNER CLOSED and committed at `A_CLOSED_SHA`; `T10`/`T11` complete (PASS); no further audit/review loop. Package B is NOT implementation-authorized and must not be started. DEC-019 has no pending gate (T7/T8 WAIVED BY OWNER — NOT EXECUTED) |
 | Session A role | Implementation executor; không phải independent auditor |
 | M0 | Disposable synthetic PRE backup/hash → migrate → explicit reconciliation → actual destroy/restore PRE → deterministic reapply PASS; repeatable from immutable baseline Git |
 | Migration | Additive `20260828000000_dec016_case_pathway_investigation`; 11 migrations, none pending; DEC-015 immutable |
