@@ -118,10 +118,21 @@ describe('DEC-016 Case/Pathway/Investigation synthetic acceptance', () => {
       reasonForVisit: 'synthetic',
       workflowKind: 'HEMORRHOID_INITIAL',
     }).expect(201);
+    // DEC-020 D20-02: the Initial Hemorrhoid Encounter is ungrouped
+    // (episodeId null). The HEMORRHOID_TREATMENT Case used by the preserved
+    // DEC-016 Pathway/Investigation capabilities below is established
+    // explicitly by a DOCTOR here (the START_NEW path), not implicitly by
+    // the Initial Encounter.
+    expect(e.body.episodeId).toBeNull();
+    const caseRes = await post('/care-episodes', {
+      patientId: patient.id,
+      episodeType: 'HEMORRHOID_TREATMENT',
+      startedAt: at,
+    }).expect(201);
     return {
       patientId: patient.id,
       encounterId: e.body.id as string,
-      caseId: e.body.episodeId as string,
+      caseId: caseRes.body.id as string,
     };
   }
   async function form(
@@ -183,26 +194,54 @@ describe('DEC-016 Case/Pathway/Investigation synthetic acceptance', () => {
     });
     return plan(c.encounterId);
   }
-  it('Initial immediately creates/reuses Case; text containing trĩ does not group generic Encounter', async () => {
-    const c = await initial();
-    expect(c.caseId).toBeTruthy();
+  it('DEC-020: Initial Hemorrhoid Encounter stays ungrouped; explicit episodeId is rejected; text containing trĩ does not group a generic Encounter', async () => {
+    const patient = await prisma.patient.create({
+      data: {
+        tenantId,
+        fullName: 'SYNTHETIC DEC020 INITIAL',
+        normalizedFullName: 'synthetic dec020 initial',
+        dateOfBirth: new Date('1990-01-01'),
+        gender: 'OTHER',
+        phone: '0000000000',
+        normalizedPhone: '0000000000',
+      },
+    });
+    // Initial Hemorrhoid Encounter: episodeId null, no CareEpisode created.
     const e = await post('/encounters', {
-      patientId: c.patientId,
+      patientId: patient.id,
       occurredAt: at,
       reasonForVisit: 'trĩ synthetic',
       workflowKind: 'HEMORRHOID_INITIAL',
-      episodeId: c.caseId,
     }).expect(201);
-    expect(e.body.episodeId).toBe(c.caseId);
+    expect(e.body.episodeId).toBeNull();
+    expect(
+      await prisma.careEpisode.count({ where: { patientId: patient.id } }),
+    ).toBe(0);
+    // A contradictory HEMORRHOID_INITIAL + explicit episodeId request: an
+    // explicit Case is needed first.
+    const caseRes = await post('/care-episodes', {
+      patientId: patient.id,
+      episodeType: 'HEMORRHOID_TREATMENT',
+      startedAt: at,
+    }).expect(201);
+    await post('/encounters', {
+      patientId: patient.id,
+      occurredAt: at,
+      reasonForVisit: 'trĩ synthetic',
+      workflowKind: 'HEMORRHOID_INITIAL',
+      episodeId: caseRes.body.id,
+    }).expect(400);
+    // A generic Encounter whose text contains "trĩ" is never grouped or
+    // relabelled from free text.
     const generic = await post('/encounters', {
-      patientId: c.patientId,
+      patientId: patient.id,
       occurredAt: at,
       reasonForVisit: 'trĩ synthetic',
     }).expect(201);
     expect(generic.body.episodeId).toBeNull();
     expect(generic.body.workflowKind).toBeNull();
     expect(
-      await prisma.careEpisode.count({ where: { patientId: c.patientId } }),
+      await prisma.careEpisode.count({ where: { patientId: patient.id } }),
     ).toBe(1);
   });
   it('retires direct Longo start; supports multiple explicit surgery methods with no default', async () => {
@@ -803,7 +842,7 @@ describe('DEC-016 Case/Pathway/Investigation synthetic acceptance', () => {
       await prisma.careEpisode.findUnique({ where: { id: legacy.id } }),
     ).not.toBeNull();
   });
-  it('concurrent Initial requests never create two ACTIVE Cases', async () => {
+  it('DEC-020: concurrent Initial requests create zero Cases; concurrent explicit Case creation never creates two ACTIVE Cases', async () => {
     const p = await prisma.patient.create({
       data: {
         tenantId,
@@ -815,25 +854,50 @@ describe('DEC-016 Case/Pathway/Investigation synthetic acceptance', () => {
         normalizedPhone: '0000000000',
       },
     });
-    const payload = {
+    // Two concurrent Initial Encounters: both succeed, both ungrouped, no
+    // CareEpisode is created by either (DEC-020 D20-02).
+    const initPayload = {
       patientId: p.id,
       occurredAt: at,
       reasonForVisit: 'synthetic',
       workflowKind: 'HEMORRHOID_INITIAL',
     };
-    const rs = await Promise.all([
-      post('/encounters', payload),
-      post('/encounters', payload),
+    const initRs = await Promise.all([
+      post('/encounters', initPayload),
+      post('/encounters', initPayload),
     ]);
-    expect(rs.every((r) => [201, 409].includes(r.status))).toBe(true);
-    expect(rs.some((r) => r.status === 201)).toBe(true);
+    // At least one commits; a Serializable serialization conflict on shared
+    // infrastructure (e.g. the audit-event sequence) may surface the other
+    // as 409 — never as a second Case. DEC-020's guarantee here is that
+    // neither Initial creates a CareEpisode.
+    expect(initRs.every((r) => [201, 409].includes(r.status))).toBe(true);
+    expect(initRs.some((r) => r.status === 201)).toBe(true);
+    expect(
+      initRs.filter((r) => r.status === 201).every((r) => r.body.episodeId === null),
+    ).toBe(true);
+    expect(
+      await prisma.careEpisode.count({ where: { tenantId, patientId: p.id } }),
+    ).toBe(0);
+    // The single-ACTIVE invariant now lives on the explicit Case-creation
+    // path: two concurrent START_NEW requests cannot both win.
+    const casePayload = {
+      patientId: p.id,
+      episodeType: 'HEMORRHOID_TREATMENT',
+      startedAt: at,
+    };
+    const caseRs = await Promise.all([
+      post('/care-episodes', casePayload),
+      post('/care-episodes', casePayload),
+    ]);
+    expect(caseRs.every((r) => [201, 409].includes(r.status))).toBe(true);
+    expect(caseRs.some((r) => r.status === 201)).toBe(true);
     expect(
       await prisma.careEpisode.count({
         where: { tenantId, patientId: p.id, status: 'ACTIVE' },
       }),
     ).toBe(1);
   });
-  it('Initial audit failure rolls back the new Case, Encounter and assignment', async () => {
+  it('DEC-020: Initial Encounter audit failure rolls back the Encounter and assignment (no Case is involved)', async () => {
     const p = await prisma.patient.create({
       data: {
         tenantId,

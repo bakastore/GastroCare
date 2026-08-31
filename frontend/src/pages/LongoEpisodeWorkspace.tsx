@@ -2,7 +2,14 @@ import { CaseTreatmentPanel } from './CaseTreatmentPanel';
 import { InvestigationPanel } from './InvestigationPanel';
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { careEpisodesApi, encountersApi, followUpTasksApi, patientsApi } from '../api/resources';
+import {
+  HEMORRHOID_RECURRENCE_CHOICE_REQUIRED,
+  careEpisodesApi,
+  encountersApi,
+  followUpTasksApi,
+  patientsApi,
+  treatmentPathwaysApi,
+} from '../api/resources';
 import { useApiQuery } from '../api/useApiQuery';
 import { ApiError } from '../api/client';
 import { EmptyState, ErrorState, LoadingState } from '../components/AsyncStates';
@@ -48,6 +55,12 @@ export function LongoEpisodeWorkspace({ patientId }: { patientId: string }) {
   const [pendingEpisodeId, setPendingEpisodeId] = useState<string | null>(null);
   const [reopeningEpisodeId, setReopeningEpisodeId] = useState<string | null>(null);
   const [reopenReason, setReopenReason] = useState('');
+  // T11 P1-01 — bumped by every reloadAll() so per-episode queries that are
+  // NOT one of the three top-level queries above (e.g. EpisodeCard's
+  // close-warning TreatmentPathway query) refresh together with the rest of
+  // the workspace after any workflow mutation (pathway create in
+  // CaseTreatmentPanel -> onChanged -> reloadAll, close, reopen, Return…).
+  const [reloadNonce, setReloadNonce] = useState(0);
 
   // Correction batch C5-A — patient-wide Encounter lookup across every
   // Timeline bucket (episode groups + ungrouped). A generic follow-up
@@ -76,6 +89,7 @@ export function LongoEpisodeWorkspace({ patientId }: { patientId: string }) {
     episodesQuery.reload();
     followUpQuery.reload();
     timelineQuery.reload();
+    setReloadNonce((n) => n + 1);
   }
 
   async function closeEpisode(episodeId: string) {
@@ -145,6 +159,7 @@ export function LongoEpisodeWorkspace({ patientId }: { patientId: string }) {
               .find((g) => g.episode.id === episode.id)
               ?.events.some((e) => e.type === 'ENCOUNTER' && e.data.id === task.sourceEncounterId),
           )}
+          reloadNonce={reloadNonce}
           onReloadAll={reloadAll}
         />
       ))}
@@ -180,6 +195,7 @@ function EpisodeCard({
   onConfirmReopen,
   events,
   followUpTasks,
+  reloadNonce,
   encountersById,
   onReloadAll,
 }: {
@@ -196,9 +212,37 @@ function EpisodeCard({
   onConfirmReopen: () => void;
   events: TimelineEvent[];
   followUpTasks: import('../types/domain').CareTask[];
+  reloadNonce: number;
   onReloadAll: () => void;
 }) {
   const isHemorrhoidContinuousCare = episode.episodeType === HEMORRHOID_TREATMENT_EPISODE_TYPE;
+  // DEC-020 T10 P1-02 / T11 P1-01 — factual open work-item state surfaced
+  // (non-blocking) before an explicit episode close:
+  //  - OPEN CareTasks from this episode's authoritative Timeline bucket;
+  //  - not-yet-ended TreatmentPathways from the existing per-Case pathway
+  //    list endpoint. This query is re-run on `reloadNonce` so a pathway
+  //    created via CaseTreatmentPanel (onChanged -> reloadAll) can never
+  //    leave a stale "nothing open" close warning; while it is loading or
+  //    errored the close is gated rather than shown a false-empty state.
+  const pathwaysQuery = useApiQuery(
+    () => treatmentPathwaysApi.list(episode.id),
+    [episode.id, reloadNonce],
+  );
+  const closeWorkItems = {
+    status: pathwaysQuery.isLoading
+      ? ('loading' as const)
+      : pathwaysQuery.error
+        ? ('error' as const)
+        : ('ready' as const),
+    error: pathwaysQuery.error,
+    onRetryPathways: pathwaysQuery.reload,
+    tasks: events.filter(
+      (e) =>
+        (e.type === 'CARE_TASK' || e.type === 'FOLLOW_UP_TASK') &&
+        (e.data as { status?: unknown }).status === 'OPEN',
+    ).length,
+    pathways: (pathwaysQuery.data ?? []).filter((p) => p.endedAt == null).length,
+  };
   // The active Case tab lives in the URL (?tab=) so leaving for a clinical
   // form / pathway page and coming back restores the same tab (context
   // preservation). Falls back to "Tổng quan".
@@ -342,6 +386,7 @@ function EpisodeCard({
             episodeStatus={episode.status}
             encountersById={encountersById}
             onTerminateEpisode={onClose}
+            closeWorkItems={closeWorkItems}
             onReloadAll={onReloadAll}
           />
         </>
@@ -455,6 +500,7 @@ function TimelineEventList({
   episodeStatus,
   encountersById,
   onTerminateEpisode,
+  closeWorkItems,
   onReloadAll,
 }: {
   visibleTypes?: TimelineEvent['type'][];
@@ -464,11 +510,31 @@ function TimelineEventList({
   episodeStatus?: CareEpisode['status'] | null;
   encountersById?: Map<string, { reasonForVisit: string; occurredAt: string }>;
   onTerminateEpisode?: () => void;
+  /** Factual open work-item state surfaced at explicit episode close
+   * (DEC-020 T10 P1-02 / T11 P1-01). Closing does NOT auto-resolve these;
+   * while `status` is not 'ready' the close is gated, not shown as empty. */
+  closeWorkItems?: {
+    status: 'loading' | 'error' | 'ready';
+    error: string | null;
+    onRetryPathways: () => void;
+    tasks: number;
+    pathways: number;
+  };
   onReloadAll: () => void;
 }) {
   if (events.length === 0) {
     return <EmptyState message="Chưa có sự kiện." />;
   }
+  // T11 P2-02 — episode-level Follow-up Assessment presence: at least one
+  // COMPLETED HEMORRHOID_FOLLOW_UP_ASSESSMENT anywhere in this CareEpisode
+  // (the Timeline projection only carries COMPLETED clinical forms). This
+  // matches the backend close rule (followUpAssessmentPresent) — it is NOT
+  // scoped to the latest Return Encounter's own assessment.
+  const episodeAssessmentDone = events.some(
+    (e) =>
+      e.type === 'CLINICAL_FORM_SUBMITTED' &&
+      String(e.data.templateKey) === 'HEMORRHOID_FOLLOW_UP_ASSESSMENT',
+  );
   // Per-Encounter set of COMPLETED templateKeys, derived from this same
   // events list — used only to guide (disable/hide) the next hemorrhoid
   // workflow step; the backend remains the sole authority on sequence.
@@ -534,6 +600,8 @@ function TimelineEventList({
                 event.type === 'ENCOUNTER' && String(event.data.id) === latestReturnEncounterId
               }
               onTerminateEpisode={onTerminateEpisode}
+              closeWorkItems={closeWorkItems}
+              episodeAssessmentDone={episodeAssessmentDone}
               onReloadAll={onReloadAll}
             />
           </li>
@@ -541,6 +609,14 @@ function TimelineEventList({
     </ul>
   );
 }
+
+type CloseWorkItems = {
+  status: 'loading' | 'error' | 'ready';
+  error: string | null;
+  onRetryPathways: () => void;
+  tasks: number;
+  pathways: number;
+};
 
 function EpisodeTimelineEventBody({
   event,
@@ -551,6 +627,8 @@ function EpisodeTimelineEventBody({
   episodeStatus,
   isLatestReturnEncounter,
   onTerminateEpisode,
+  closeWorkItems,
+  episodeAssessmentDone,
   onReloadAll,
 }: {
   event: TimelineEvent;
@@ -561,6 +639,8 @@ function EpisodeTimelineEventBody({
   episodeStatus: CareEpisode['status'] | null;
   isLatestReturnEncounter: boolean;
   onTerminateEpisode?: () => void;
+  closeWorkItems?: CloseWorkItems;
+  episodeAssessmentDone?: boolean;
   onReloadAll: () => void;
 }) {
   if (event.type === 'ENCOUNTER') {
@@ -656,28 +736,19 @@ function EpisodeTimelineEventBody({
               </span>
             )}
           </div>
-          {/* R2 — the explicit termination action lives ONLY on the current
-              Return Encounter, and only once its own Follow-up Assessment is
-              COMPLETED and the episode is still ACTIVE. Historical Return
-              Encounters never render it. Terminating needs neither a Next
-              Clinical Decision nor a CarePlan. */}
-          {isLatestReturnEncounter && assessmentDone && episodeActive && onTerminateEpisode && (
-            <div className="inline-form">
-              <p className="form-hint">
-                Đánh giá tái khám đã hoàn tất. Bác sĩ chọn tường minh: tiếp tục bằng "Quyết định
-                điều trị tiếp theo" ở trên, hoặc kết thúc đợt theo dõi. Không bắt buộc phải có Quyết
-                định điều trị tiếp theo hay Kế hoạch chăm sóc để kết thúc.
-              </p>
-              <div className="row-actions">
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-small"
-                  onClick={onTerminateEpisode}
-                >
-                  Kết thúc đợt theo dõi
-                </button>
-              </div>
-            </div>
+          {/* R2 / DEC-020 T5 — the explicit termination action lives ONLY on
+              the current Return Encounter while the episode is still ACTIVE.
+              Historical Return Encounters never render it. A completed
+              Follow-up Assessment is DESIRABLE but NOT required: when one is
+              missing the doctor gets a non-blocking warning and must confirm
+              explicitly. Terminating needs neither a Next Clinical Decision
+              nor a CarePlan. */}
+          {isLatestReturnEncounter && episodeActive && onTerminateEpisode && (
+            <TerminateEpisodeControl
+              assessmentDone={episodeAssessmentDone ?? assessmentDone}
+              closeWorkItems={closeWorkItems}
+              onTerminate={onTerminateEpisode}
+            />
           )}
         </div>
       );
@@ -929,7 +1000,11 @@ function EpisodeTimelineEventBody({
             plain "mark completed" action, and never a client-supplied
             patientId/episodeId. */}
         {isOpenGenericFollowUp && isHemorrhoidReturnEligible && (
-          <HemorrhoidReturnEncounterTrigger careTaskId={taskId} onCreated={onReloadAll} />
+          <HemorrhoidReturnEncounterTrigger
+            careTaskId={taskId}
+            patientId={patientId}
+            onCreated={onReloadAll}
+          />
         )}
       </div>
     );
@@ -938,17 +1013,158 @@ function EpisodeTimelineEventBody({
 }
 
 /**
+ * DEC-020 T5 + T10 P1-02 + T11 P1-01/P2-02 — explicit CareEpisode
+ * termination from the current Return Encounter.
+ *  - Follow-up Assessment presence is EPISODE-LEVEL (any COMPLETED
+ *    HEMORRHOID_FOLLOW_UP_ASSESSMENT anywhere in the episode), matching the
+ *    backend rule; missing -> non-blocking warning + explicit acknowledgement.
+ *  - OPEN CareTask / not-yet-ended TreatmentPathway are surfaced as a
+ *    factual, non-blocking note. Closing does NOT complete/cancel/close them.
+ *  - While the authoritative pathway state is still loading or has errored,
+ *    the close is GATED (no false "nothing open") — never automatic.
+ */
+function OpenWorkItemsNote({ tasks, pathways }: { tasks: number; pathways: number }) {
+  if (tasks === 0 && pathways === 0) {
+    return null;
+  }
+  const parts: string[] = [];
+  if (tasks > 0) parts.push(`${tasks} nhiệm vụ theo dõi đang mở`);
+  if (pathways > 0) parts.push(`${pathways} nhánh điều trị chưa kết thúc`);
+  return (
+    <p className="form-hint" role="status">
+      ℹ️ Còn {parts.join(' và ')}. Kết thúc đợt điều trị không tự đóng, hoàn tất hoặc hủy các mục
+      này.
+    </p>
+  );
+}
+
+function TerminateEpisodeControl({
+  assessmentDone,
+  closeWorkItems,
+  onTerminate,
+}: {
+  assessmentDone: boolean;
+  closeWorkItems?: CloseWorkItems;
+  onTerminate: () => void;
+}) {
+  const [acknowledged, setAcknowledged] = useState(false);
+
+  // T11 P1-01 — factual open-work-item state must be resolved before the
+  // Doctor is allowed to close; a loading/errored pathway query is NEVER
+  // presented as "nothing open".
+  if (closeWorkItems && closeWorkItems.status === 'loading') {
+    return (
+      <div className="inline-form">
+        <p className="form-hint" role="status">
+          Đang kiểm tra các nhánh điều trị đang mở...
+        </p>
+        <div className="row-actions">
+          <button type="button" className="btn btn-ghost btn-small" disabled>
+            Kết thúc đợt theo dõi
+          </button>
+        </div>
+      </div>
+    );
+  }
+  if (closeWorkItems && closeWorkItems.status === 'error') {
+    return (
+      <div className="inline-form">
+        <p className="form-error" role="alert">
+          Không tải được trạng thái nhánh điều trị đang mở
+          {closeWorkItems.error ? ` (${closeWorkItems.error})` : ''}. Không thể kết thúc đợt điều
+          trị cho đến khi tải lại được.
+        </p>
+        <div className="row-actions">
+          <button
+            type="button"
+            className="btn btn-ghost btn-small"
+            onClick={closeWorkItems.onRetryPathways}
+          >
+            Thử lại
+          </button>
+          <button type="button" className="btn btn-ghost btn-small" disabled>
+            Kết thúc đợt theo dõi
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const note = (
+    <OpenWorkItemsNote
+      tasks={closeWorkItems?.tasks ?? 0}
+      pathways={closeWorkItems?.pathways ?? 0}
+    />
+  );
+
+  if (assessmentDone) {
+    return (
+      <div className="inline-form">
+        <p className="form-hint">
+          Đánh giá tái khám đã hoàn tất trong đợt điều trị này. Bác sĩ chọn tường minh: tiếp tục
+          bằng "Quyết định điều trị tiếp theo" ở trên, hoặc kết thúc đợt theo dõi. Không bắt buộc
+          phải có Quyết định điều trị tiếp theo hay Kế hoạch chăm sóc để kết thúc.
+        </p>
+        {note}
+        <div className="row-actions">
+          <button type="button" className="btn btn-ghost btn-small" onClick={onTerminate}>
+            Kết thúc đợt theo dõi
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="inline-form">
+      <p className="form-hint" role="status">
+        ⚠️ Chưa có Đánh giá tái khám hoàn tất trong đợt điều trị này. Nên hoàn tất đánh giá trước
+        khi kết thúc, nhưng đây không phải điều kiện bắt buộc — bác sĩ có thể kết thúc đợt theo dõi
+        nếu xác nhận tường minh.
+      </p>
+      {note}
+      <label className="checkbox-row" htmlFor="terminate-ack-no-assessment">
+        <input
+          id="terminate-ack-no-assessment"
+          type="checkbox"
+          checked={acknowledged}
+          onChange={(e) => setAcknowledged(e.target.checked)}
+        />
+        Tôi xác nhận kết thúc đợt theo dõi dù chưa có Đánh giá tái khám hoàn tất.
+      </label>
+      <div className="row-actions">
+        <button
+          type="button"
+          className="btn btn-ghost btn-small"
+          disabled={!acknowledged}
+          onClick={onTerminate}
+        >
+          Kết thúc đợt theo dõi
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Inline trigger for `POST /encounters/hemorrhoid-return` (DEC-013 §H;
  * docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md §H). Only
  * occurredAt/reasonForVisit are collected here — patientId is derived
  * server-side from the CareTask and episodeId is resolved server-side; this
  * component never sends either.
+ *
+ * DEC-020 D20-03 (T4): if the patient has CLOSED Hemorrhoid treatment
+ * history and no ACTIVE episode, the backend rejects the Return (409) and
+ * the doctor must explicitly choose REOPEN_EXISTING or START_NEW here. The
+ * choice is never inferred — no "reopen latest", no chronology heuristic.
  */
 function HemorrhoidReturnEncounterTrigger({
   careTaskId,
+  patientId,
   onCreated,
 }: {
   careTaskId: string;
+  patientId: string;
   onCreated: () => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -956,22 +1172,82 @@ function HemorrhoidReturnEncounterTrigger({
   const [reasonForVisit, setReasonForVisit] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Recurrence-choice mode, entered only when the backend asks for it.
+  const [needsRecurrenceChoice, setNeedsRecurrenceChoice] = useState(false);
+  const [recurrenceMode, setRecurrenceMode] = useState<'REOPEN_EXISTING' | 'START_NEW' | ''>('');
+  const [closedEpisodeId, setClosedEpisodeId] = useState('');
+  const [reopenReason, setReopenReason] = useState('');
+  const closedEpisodesQuery = useApiQuery(
+    () => careEpisodesApi.listByPatient(patientId),
+    [patientId],
+  );
+  const closedHemorrhoidEpisodes = (closedEpisodesQuery.data ?? []).filter(
+    (e) => e.episodeType === HEMORRHOID_TREATMENT_EPISODE_TYPE && e.status === 'CLOSED',
+  );
+
+  async function postReturn(recurrence?: {
+    recurrenceAction: 'REOPEN_EXISTING' | 'START_NEW';
+    recurrenceClosedEpisodeId?: string;
+    recurrenceReason?: string;
+  }) {
+    // The recurrence choice (if any) is carried on THIS single request —
+    // the standalone careEpisodesApi.reopen / .create are never called as a
+    // pre-step (T10 P1-01: reopen/start-new + Return commit atomically).
+    await encountersApi.createHemorrhoidReturn({
+      careTaskId,
+      occurredAt: occurredAt ? new Date(occurredAt).toISOString() : new Date().toISOString(),
+      reasonForVisit: reasonForVisit.trim() || 'Tái khám',
+      ...recurrence,
+    });
+    setIsOpen(false);
+    setOccurredAt('');
+    setReasonForVisit('');
+    setNeedsRecurrenceChoice(false);
+    setRecurrenceMode('');
+    setClosedEpisodeId('');
+    setReopenReason('');
+    onCreated();
+  }
 
   async function submit() {
     setError(null);
     setIsSubmitting(true);
     try {
-      await encountersApi.createHemorrhoidReturn({
-        careTaskId,
-        occurredAt: occurredAt ? new Date(occurredAt).toISOString() : new Date().toISOString(),
-        reasonForVisit: reasonForVisit.trim() || 'Tái khám',
-      });
-      setIsOpen(false);
-      setOccurredAt('');
-      setReasonForVisit('');
-      onCreated();
+      await postReturn();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Không tạo được lượt tái khám.');
+      // Branch on HTTP status + the stable machine-readable code only — a
+      // wording change to the message must never affect this (T10 P2-01).
+      if (
+        err instanceof ApiError &&
+        err.status === 409 &&
+        err.code === HEMORRHOID_RECURRENCE_CHOICE_REQUIRED
+      ) {
+        setNeedsRecurrenceChoice(true);
+        closedEpisodesQuery.reload();
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Không tạo được lượt tái khám.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function confirmRecurrenceChoice() {
+    if (recurrenceMode === '') return;
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      await postReturn(
+        recurrenceMode === 'REOPEN_EXISTING'
+          ? {
+              recurrenceAction: 'REOPEN_EXISTING',
+              recurrenceClosedEpisodeId: closedEpisodeId,
+              recurrenceReason: reopenReason.trim(),
+            }
+          : { recurrenceAction: 'START_NEW' },
+      );
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Không xử lý được lựa chọn tái phát.');
     } finally {
       setIsSubmitting(false);
     }
@@ -983,6 +1259,85 @@ function HemorrhoidReturnEncounterTrigger({
         <button type="button" className="btn btn-primary btn-small" onClick={() => setIsOpen(true)}>
           Bắt đầu tái khám
         </button>
+      </div>
+    );
+  }
+
+  if (needsRecurrenceChoice) {
+    const canConfirm =
+      !isSubmitting &&
+      ((recurrenceMode === 'REOPEN_EXISTING' && closedEpisodeId && reopenReason.trim()) ||
+        recurrenceMode === 'START_NEW');
+    return (
+      <div className="inline-form">
+        {error && <ErrorState message={error} />}
+        <p className="form-hint">
+          Bệnh nhân có đợt điều trị trĩ đã đóng và hiện không có đợt nào đang mở. Bác sĩ chọn tường
+          minh — hệ thống không tự suy đoán tái phát.
+        </p>
+        <label className="checkbox-row">
+          <input
+            type="radio"
+            name={`recurrence-${careTaskId}`}
+            checked={recurrenceMode === 'REOPEN_EXISTING'}
+            onChange={() => setRecurrenceMode('REOPEN_EXISTING')}
+          />
+          Mở lại một đợt điều trị đã đóng
+        </label>
+        {recurrenceMode === 'REOPEN_EXISTING' && (
+          <>
+            <label htmlFor={`reopenEpisode-${careTaskId}`}>Đợt điều trị</label>
+            <select
+              id={`reopenEpisode-${careTaskId}`}
+              value={closedEpisodeId}
+              onChange={(e) => setClosedEpisodeId(e.target.value)}
+            >
+              <option value="">Chọn đợt điều trị đã đóng</option>
+              {closedHemorrhoidEpisodes.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {formatDate(e.startedAt)}
+                  {e.endedAt ? ` → ${formatDate(e.endedAt)}` : ''}
+                </option>
+              ))}
+            </select>
+            <label htmlFor={`reopenReason-${careTaskId}`}>Lý do mở lại</label>
+            <input
+              id={`reopenReason-${careTaskId}`}
+              value={reopenReason}
+              onChange={(e) => setReopenReason(e.target.value)}
+            />
+          </>
+        )}
+        <label className="checkbox-row">
+          <input
+            type="radio"
+            name={`recurrence-${careTaskId}`}
+            checked={recurrenceMode === 'START_NEW'}
+            onChange={() => setRecurrenceMode('START_NEW')}
+          />
+          Bắt đầu một đợt điều trị mới
+        </label>
+        <div className="form-actions">
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => {
+              setNeedsRecurrenceChoice(false);
+              setRecurrenceMode('');
+            }}
+            disabled={isSubmitting}
+          >
+            Hủy
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={confirmRecurrenceChoice}
+            disabled={!canConfirm}
+          >
+            Xác nhận lựa chọn & tái khám
+          </button>
+        </div>
       </div>
     );
   }

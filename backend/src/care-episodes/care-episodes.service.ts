@@ -14,6 +14,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateCareEpisodeDto } from './dto/create-care-episode.dto';
 import { ReopenCareEpisodeDto } from './dto/reopen-care-episode.dto';
 import { HEMORRHOID_TREATMENT_EPISODE_TYPE } from '../clinical-forms/templates/hemorrhoid-continuous-care';
+import { startHemorrhoidTreatmentEpisodeInTx } from './care-episode-lifecycle';
 
 @Injectable()
 export class CareEpisodesService {
@@ -48,50 +49,17 @@ export class CareEpisodesService {
 
     try {
       return await this.prisma.$transaction(
-        async (tx) => {
-          if (dto.episodeType === HEMORRHOID_TREATMENT_EPISODE_TYPE) {
-            const activeCount = await tx.careEpisode.count({
-              where: {
-                tenantId,
-                patientId: dto.patientId,
-                episodeType: HEMORRHOID_TREATMENT_EPISODE_TYPE,
-                status: CareEpisodeStatus.ACTIVE,
-              },
-            });
-            if (activeCount > 0) {
-              throw new ConflictException(
-                `An ACTIVE ${HEMORRHOID_TREATMENT_EPISODE_TYPE} episode already exists for this patient`,
-              );
-            }
-          }
-
-          const episode = await tx.careEpisode.create({
-            data: {
-              tenantId,
-              patientId: dto.patientId,
-              episodeType: dto.episodeType,
-              status: CareEpisodeStatus.ACTIVE,
-              startedAt: new Date(dto.startedAt),
-            },
-          });
-
-          await tx.auditEvent.create({
-            data: {
-              tenantId,
-              actorId,
-              action: 'CARE_EPISODE_STARTED',
-              entityType: 'CareEpisode',
-              entityId: episode.id,
-              metadata: {
-                patientId: episode.patientId,
-                episodeType: episode.episodeType,
-                status: episode.status,
-              },
-            },
-          });
-
-          return episode;
-        },
+        // Only HEMORRHOID_TREATMENT reaches here (guarded above). The
+        // single-active rule + audit shape live in the shared
+        // transaction-aware helper, which is also used by the Return
+        // Encounter orchestration's atomic START_NEW path (T10 P1-01).
+        (tx) =>
+          startHemorrhoidTreatmentEpisodeInTx(tx, {
+            tenantId,
+            actorId,
+            patientId: dto.patientId,
+            startedAt: new Date(dto.startedAt),
+          }),
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       );
     } catch (err) {
@@ -129,13 +97,16 @@ export class CareEpisodesService {
   }
 
   /**
-   * DEC-013 §Q: a HEMORRHOID_TREATMENT episode may only close once at least
-   * one COMPLETED HEMORRHOID_FOLLOW_UP_ASSESSMENT exists on an Encounter
-   * belonging to it. No auto-close; no rewriting of unrelated historical
-   * state. LONGO_TREATMENT close is unaffected (no such prerequisite is
-   * Owner Locked for it).
+   * DEC-020 D20-03 (Package A T4): CareEpisode close is a DOCTOR explicit
+   * action only and is NEVER automatic. A completed
+   * HEMORRHOID_FOLLOW_UP_ASSESSMENT is DESIRABLE but is NOT a hard
+   * prerequisite — the earlier DEC-013 §Q hard requirement is superseded.
+   * The frontend surfaces a non-blocking warning when none exists and the
+   * Doctor confirms explicitly; the backend records, as factual audit
+   * metadata only, whether one was present. Closing an episode does not
+   * cancel or touch any open CareTask or TreatmentPathway.
    *
-   * DEC-013 §R (close-vs-Return race): wrapped in a Serializable
+   * DEC-013 §R (close-vs-Return race), still in force: wrapped in a Serializable
    * transaction so a concurrent Return Encounter transaction that also
    * writes this same episode row (see HemorrhoidReturnEncounterService's
    * episodeGuard touch-update) cannot both commit — the loser gets 409, and
@@ -160,6 +131,9 @@ export class CareEpisodesService {
             throw new ConflictException('Care episode is already closed');
           }
 
+          // DEC-020 D20-03: DESIRABLE, not required. Recorded as factual
+          // audit metadata; never blocks the close.
+          let followUpAssessmentPresent = false;
           if (existing.episodeType === HEMORRHOID_TREATMENT_EPISODE_TYPE) {
             const completedAssessment =
               await tx.clinicalFormSubmission.findFirst({
@@ -171,11 +145,7 @@ export class CareEpisodesService {
                 },
                 select: { id: true },
               });
-            if (!completedAssessment) {
-              throw new ConflictException(
-                'A COMPLETED HEMORRHOID_FOLLOW_UP_ASSESSMENT on an Encounter in this episode is required before it can be closed',
-              );
-            }
+            followUpAssessmentPresent = completedAssessment !== null;
           }
 
           const endedAt = new Date();
@@ -202,6 +172,7 @@ export class CareEpisodesService {
                 previousStatus: CareEpisodeStatus.ACTIVE,
                 status: episode.status,
                 endedAt: endedAt.toISOString(),
+                followUpAssessmentPresent,
               },
             },
           });

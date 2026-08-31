@@ -86,6 +86,17 @@ export class EncountersService {
       throw new BadRequestException(
         'TreatmentPathway requires explicit Case ancestry',
       );
+    // DEC-020 D20-02 (Package A): the Initial Hemorrhoid Encounter stays
+    // ungrouped — episodeId must be null. The HEMORRHOID_TREATMENT
+    // CareEpisode begins at the first Return Encounter, never here. This
+    // supersedes the DEC-016-era rule where the Initial Encounter
+    // created/reused the Case. An explicit episodeId with
+    // workflowKind=HEMORRHOID_INITIAL is a contradictory request.
+    if (dto.workflowKind === 'HEMORRHOID_INITIAL' && dto.episodeId)
+      throw new BadRequestException(
+        'Initial Hemorrhoid Encounter cannot attach a CareEpisode; the ' +
+          'treatment episode begins at the first Return Encounter (DEC-020)',
+      );
 
     const patient = await this.prisma.patient.findFirst({
       where: { id: dto.patientId, tenantId },
@@ -110,50 +121,12 @@ export class EncountersService {
     try {
       return await this.prisma.$transaction(
         async (tx) => {
-          let episodeId = dto.episodeId;
-          if (dto.workflowKind === 'HEMORRHOID_INITIAL') {
-            const candidates = await tx.careEpisode.findMany({
-              where: {
-                tenantId,
-                patientId: dto.patientId,
-                episodeType: 'HEMORRHOID_TREATMENT',
-                status: 'ACTIVE',
-              },
-            });
-            if (candidates.length > 1)
-              throw new ConflictException(
-                'More than one ACTIVE Hemorrhoid Case',
-              );
-            if (episodeId && candidates[0]?.id !== episodeId)
-              throw new ConflictException(
-                'Selected Case is not the ACTIVE patient Case',
-              );
-            if (!candidates.length) {
-              const careCase = await tx.careEpisode.create({
-                data: {
-                  tenantId,
-                  patientId: dto.patientId,
-                  episodeType: 'HEMORRHOID_TREATMENT',
-                  startedAt: new Date(dto.occurredAt),
-                },
-              });
-              episodeId = careCase.id;
-              await this.audit.record(
-                {
-                  tenantId,
-                  actorId,
-                  action: 'CARE_EPISODE_STARTED',
-                  entityType: 'CareEpisode',
-                  entityId: episodeId,
-                  metadata: {
-                    patientId: dto.patientId,
-                    episodeType: 'HEMORRHOID_TREATMENT',
-                  },
-                },
-                tx,
-              );
-            } else episodeId = candidates[0].id;
-          }
+          // DEC-020 D20-02: no CareEpisode is ever created or resolved here.
+          // A HEMORRHOID_INITIAL Encounter is ungrouped (episodeId null,
+          // guarded above). An explicitly supplied episodeId (Longo pathway
+          // Encounters, generic episode-bound Encounters) is still validated
+          // below exactly as before.
+          const episodeId = dto.episodeId;
           if (episodeId) {
             const careCase = await tx.careEpisode.findFirst({
               where: { id: episodeId, tenantId },

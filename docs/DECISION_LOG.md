@@ -701,9 +701,12 @@ Owner quyết định (2026-08-31):
 - **Package C — Procedure / Investigation evolution** — DISCOVERY-DEPENDENT;
   implementation **NOT AUTHORIZED** trong DEC-020.
 
-**Không được claim:** Package A completed / Package A PASS / Technical Acceptance /
-Product Acceptance / `T10` completed / `T11` completed. Không có gate nào của
-Package A được PASS tại thời điểm ghi nhận DEC-020 vào SSOT.
+**Không được claim (tại thời điểm ghi nhận DEC-020 vào SSOT, 2026-08-31):**
+Package A completed / Package A PASS / Technical Acceptance / Product Acceptance /
+`T10` completed / `T11` completed. Không có gate nào của Package A được PASS tại
+thời điểm đó. *(Trạng thái hiện tại: xem `DEC-020 PACKAGE A CLOSURE` phía dưới —
+`T10` PASS, `T11` focused re-audit PASS — NO P0/P1, Package A OWNER CLOSED;
+Product/production acceptance vẫn KHÔNG được claim.)*
 
 **Ranh giới không đổi:** `SYNTHETIC DATA ONLY`; real-patient runtime `NOT
 AUTHORIZED`; production `NOT AUTHORIZED`; AI clinical reasoning `NOT AUTHORIZED`.
@@ -713,6 +716,74 @@ Owner authorization riêng theo repository governance.
 **Căn cứ:** Explicit Owner Lock 2026-08-31 (DEC-020 v0.2 §24; Package A Contract
 v0.2 §21); external pre-lock review COMPLETED; documented baseline-review
 limitation EXPLICITLY ACCEPTED BY OWNER.
+
+---
+
+### DEC-020 PACKAGE A CLOSURE — Owner closure of Workflow Semantic Reconciliation
+
+**Ngày:** 2026-08-31
+
+**Trạng thái:** `DEC-020 Package A — Workflow Semantic Reconciliation` = **OWNER
+CLOSED**.
+
+Không sửa hay rút gọn phần DEC-020 OWNER LOCKED phía trên; đây là mục bổ sung ghi
+nhận việc Owner đóng Package A. DEC-020 v0.2 clinical/domain semantics và Package A
+Contract v0.2 implementation semantics **không đổi** — vẫn OWNER LOCKED.
+
+**Execution baseline:** `a03b1878dd42ca80956418c67da6f79d0b560572` — đây là
+execution-START baseline. **KHÔNG phải `A_CLOSED_SHA`.** `A_CLOSED_SHA` chỉ được
+tạo bởi một checkpoint commit do Owner authorize sau này.
+
+**Execution / review history (ghi đúng trình tự thực tế, không viết lại như thể
+initial T11 đã pass):**
+
+1. `T0 → T9` — COMPLETED (Claude Code implementation session; no Contract STOP
+   condition; no Prisma schema change; no migration; SYNTHETIC DATA ONLY).
+2. `T10` — ChatGPT direct source review — **PASS**.
+3. `T11` initial — fresh Codex independent focused audit — **FAIL — CORRECTION
+   REQUIRED**. Initial severity: `P0=0 / P1=1 / P2=2 / P3=0`.
+4. Correction batch — **COMPLETED** (addressed the initial `P1` + the two initial
+   `P2` items).
+5. Focused source recheck — **PASS**.
+6. `T11` focused independent re-audit — **PASS — NO P0/P1**. Final severity:
+   `P0=0 / P1=0 / P2=1 / P3=0`.
+
+**Owner quyết định (2026-08-31):**
+
+1. Owner **CLOSE** Package A của DEC-020 tại execution baseline `a03b1878...`.
+2. Owner chấp nhận: `T10` PASS; `T11` focused re-audit PASS — NO P0/P1.
+3. Residual **P2 — Unicode reason-length parity** = **NON-BLOCKING, DEFERRED** —
+   không chặn Package A closure. Technical note: standalone `POST
+   /care-episodes/:id/reopen` và atomic Return `REOPEN_EXISTING` khác nhau gần
+   biên 500 ký tự Unicode vì transaction lifecycle helper đếm JavaScript
+   `String.length` / UTF-16 code units. Ví dụ independent re-audit đưa ra:
+   `'r'.repeat(499) + '🙂'` → standalone reopen: accepted; atomic recurrence
+   reopen: rejected. **Không** ảnh hưởng transaction atomicity, single-active
+   invariant, tenant isolation, audit integrity, hay data corruption/loss.
+   Không fix trong task closure; giữ ở trạng thái deferred/known-issue.
+4. Owner closure của Package A **KHÔNG** phải Product Acceptance và **KHÔNG** phải
+   production acceptance.
+
+**Owner explicitly KHÔNG authorize:**
+
+- Package B implementation — `NOT STARTED, NOT IMPLEMENTATION-AUTHORIZED`. Package
+  B chỉ được bắt đầu khi (1) Package A clean checkpoint tồn tại dưới dạng
+  `A_CLOSED_SHA`, và (2) Package B authority được rebind/lock/authorize riêng.
+  Không activate bất kỳ Package B draft nào.
+- Package C — DISCOVERY-DEPENDENT; implementation NOT AUTHORIZED.
+- production deployment — `NOT AUTHORIZED`.
+- real-patient runtime / real-patient data — `NOT AUTHORIZED`.
+
+**Repository state:** Toàn bộ Package A implementation + T10/T11 corrections hiện
+**UNCOMMITTED** trong working tree tại `a03b1878...`. Không commit/push/merge/tag
+khi chưa có Owner authorization riêng cho đúng checkpoint đó.
+
+**Next gate:** Owner final checkpoint review → Owner authorization to commit the
+Package A closure checkpoint → create `A_CLOSED_SHA`.
+
+**Căn cứ:** Explicit Owner closure decision 2026-08-31; `T10` PASS; `T11` initial
+FAIL → correction batch COMPLETED → focused recheck PASS → `T11` focused
+independent re-audit PASS — NO P0/P1.
 
 ---
 

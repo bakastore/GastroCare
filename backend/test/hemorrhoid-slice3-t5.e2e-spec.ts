@@ -248,9 +248,15 @@ describe('Hemorrhoid Vertical Slice 3 — T5 Timeline/backend integration (e2e)'
       type: string;
       data: Record<string, unknown>;
     }[];
-    const initialEvent = events.find(
+    const initialEvent = ungrouped.find(
       (e) => e.type === 'ENCOUNTER' && e.data.id === initialEncounterId,
     );
     expect(initialEvent).toBeTruthy();
+    // DEC-020 D20-02: it is never grouped into the treatment episode.
+    expect(
+      events.find(
+        (e) => e.type === 'ENCOUNTER' && e.data.id === initialEncounterId,
+      ),
+    ).toBeUndefined();
   });
 });

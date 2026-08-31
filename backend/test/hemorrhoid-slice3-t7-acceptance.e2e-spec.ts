@@ -173,7 +173,8 @@ describe('Hemorrhoid Vertical Slice 3 — T7 targeted synthetic acceptance (e2e)
     const initialEncounterBefore = await prisma.encounter.findUniqueOrThrow({
       where: { id: initialEncounterId },
     });
-    expect(initialEncounterBefore.episodeId).toBeTruthy();
+    // DEC-020 D20-02: the Initial Hemorrhoid Encounter is ungrouped.
+    expect(initialEncounterBefore.episodeId).toBeNull();
 
     // 2. Examination -> Diagnosis -> initial Treatment Decision.
     const exam = await createSubmission(
@@ -241,7 +242,8 @@ describe('Hemorrhoid Vertical Slice 3 — T7 targeted synthetic acceptance (e2e)
     const initialEncounterAfter = await prisma.encounter.findUniqueOrThrow({
       where: { id: initialEncounterId },
     });
-    expect(initialEncounterAfter.episodeId).toBe(episodeId);
+    // DEC-020 D20-02: never retrospectively re-parented into the episode.
+    expect(initialEncounterAfter.episodeId).toBeNull();
 
     const task1After = await prisma.careTask.findUniqueOrThrow({
       where: { id: task1Id },
@@ -338,9 +340,10 @@ describe('Hemorrhoid Vertical Slice 3 — T7 targeted synthetic acceptance (e2e)
       type: string;
       data: Record<string, unknown>;
     }[];
+    // DEC-020 D20-02: the Initial Encounter stays in ungroupedEncounters.
     expect(
       ungrouped.some((e) => e.type === 'ENCOUNTER' && e.data.id === initialEncounterId),
-    ).toBe(false);
+    ).toBe(true);
 
     const episodeGroup = timelineRes.body.episodes.find(
       (g: { episode: { id: string } }) => g.episode.id === episodeId,

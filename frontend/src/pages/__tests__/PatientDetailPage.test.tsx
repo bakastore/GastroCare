@@ -8,6 +8,7 @@ import {
   careEpisodesApi,
   followUpTasksApi,
   patientsApi,
+  treatmentPathwaysApi,
 } from '../../api/resources';
 
 vi.mock('../../api/resources', () => ({
@@ -55,6 +56,7 @@ beforeEach(() => {
     ungroupedEncounters: [],
   } as never);
   vi.mocked(followUpTasksApi.listByPatient).mockResolvedValue([] as never);
+  vi.mocked(treatmentPathwaysApi.list).mockResolvedValue([] as never);
 });
 
 function renderPage() {

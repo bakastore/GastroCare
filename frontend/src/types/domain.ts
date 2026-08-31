@@ -261,6 +261,8 @@ export interface TreatmentPathway {
   modality: 'MEDICAL' | 'PROCEDURE' | 'SURGERY';
   methodCode: string | null;
   startedAt: string;
+  /** null / absent = still open (not ended). */
+  endedAt?: string | null;
   legacyEpisodeId: string | null;
 }
 export interface InvestigationOrder {

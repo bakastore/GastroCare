@@ -3,27 +3,39 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { LongoEpisodeWorkspace } from '../LongoEpisodeWorkspace';
-import { careEpisodesApi, encountersApi, followUpTasksApi, patientsApi } from '../../api/resources';
+import {
+  HEMORRHOID_RECURRENCE_CHOICE_REQUIRED,
+  careEpisodesApi,
+  encountersApi,
+  followUpTasksApi,
+  patientsApi,
+  treatmentPathwaysApi,
+} from '../../api/resources';
+import { ApiError } from '../../api/client';
 
 // Hemorrhoid Vertical Slice 3 continuous-care loop (DEC-013;
 // docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md §D-§H) — T6 frontend
 // coverage. Distinct from LongoEpisodeWorkspace.hemorrhoid.test.tsx, which
 // covers only the Slice 2 initial-branch ungrouped-Encounter rendering.
 vi.mock('../../api/resources', () => ({
+  HEMORRHOID_RECURRENCE_CHOICE_REQUIRED: 'HEMORRHOID_RECURRENCE_CHOICE_REQUIRED',
   careEpisodesApi: {
     listByPatient: vi.fn(),
     close: vi.fn(),
     reopen: vi.fn(),
+    create: vi.fn(),
   },
   followUpTasksApi: { listByPatient: vi.fn() },
   patientsApi: { getTimeline: vi.fn() },
   encountersApi: { createHemorrhoidReturn: vi.fn() },
+  treatmentPathwaysApi: { list: vi.fn(), create: vi.fn() },
 }));
 
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(careEpisodesApi.listByPatient).mockResolvedValue([]);
   vi.mocked(followUpTasksApi.listByPatient).mockResolvedValue([]);
+  vi.mocked(treatmentPathwaysApi.list).mockResolvedValue([]);
 });
 
 const hemorrhoidEpisode = {
@@ -87,11 +99,20 @@ function openGenericCareTaskEvent(overrides: Partial<Record<string, unknown>> = 
   };
 }
 
-function renderWorkspace() {
+function renderWorkspace(entry = '/patients/patient-1') {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[entry]}>
       <LongoEpisodeWorkspace patientId="patient-1" />
     </MemoryRouter>,
+  );
+}
+
+// The close-warning pathway query (T11 P1-01) gates the Terminate button
+// while it loads; re-query fresh so a re-rendered element is not missed.
+async function waitForTerminateEnabled() {
+  await waitFor(
+    () => expect(screen.getByRole('button', { name: 'Kết thúc đợt theo dõi' })).toBeEnabled(),
+    { timeout: 4000 },
   );
 }
 
@@ -194,11 +215,312 @@ describe('LongoEpisodeWorkspace — Hemorrhoid Vertical Slice 3 continuous-care 
     expect(encountersApi.createHemorrhoidReturn).not.toHaveBeenCalled();
   });
 
+  // ── DEC-020 Package A T10 — recurrence choice carried on the Return ──────
+
+  function initialBranchOpenTaskTimeline() {
+    vi.mocked(patientsApi.getTimeline).mockResolvedValue({
+      episodes: [],
+      ungroupedEncounters: [
+        {
+          type: 'ENCOUNTER' as const,
+          timestamp: '2026-09-01T09:00:00.000Z',
+          data: {
+            id: 'enc-1',
+            reasonForVisit: 'Khám trĩ (synthetic)',
+            occurredAt: '2026-09-01T09:00:00.000Z',
+            carePlanId: 'plan-0',
+            carePlanStatus: 'SIGNED',
+            workflowKind: 'HEMORRHOID_INITIAL',
+          },
+        },
+        openGenericCareTaskEvent(),
+      ],
+    } as never);
+  }
+
+  async function openReturnForm(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(await screen.findByRole('button', { name: 'Bắt đầu tái khám' }));
+    await user.click(screen.getByRole('button', { name: 'Xác nhận tái khám' }));
+  }
+
+  it('T10-I: HTTP 409 + stable code HEMORRHOID_RECURRENCE_CHOICE_REQUIRED enters the recurrence-choice UI', async () => {
+    initialBranchOpenTaskTimeline();
+    vi.mocked(encountersApi.createHemorrhoidReturn).mockRejectedValueOnce(
+      new ApiError(409, 'wording that could change at any time', HEMORRHOID_RECURRENCE_CHOICE_REQUIRED),
+    );
+    renderWorkspace();
+    const user = userEvent.setup();
+    await openReturnForm(user);
+
+    expect(
+      await screen.findByText(/Bác sĩ chọn tường minh/),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Mở lại một đợt điều trị đã đóng')).toBeInTheDocument();
+    expect(screen.getByLabelText('Bắt đầu một đợt điều trị mới')).toBeInTheDocument();
+  });
+
+  it('T10-J: a different HTTP 409 (no recurrence code) does NOT enter the recurrence-choice UI', async () => {
+    initialBranchOpenTaskTimeline();
+    vi.mocked(encountersApi.createHemorrhoidReturn).mockRejectedValueOnce(
+      new ApiError(409, 'CareTask was already completed concurrently', 'SOME_OTHER_CODE'),
+    );
+    renderWorkspace();
+    const user = userEvent.setup();
+    await openReturnForm(user);
+
+    expect(await screen.findByText('CareTask was already completed concurrently')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Mở lại một đợt điều trị đã đóng')).not.toBeInTheDocument();
+  });
+
+  it('T10-K: REOPEN_EXISTING is submitted as part of createHemorrhoidReturn — the standalone reopen endpoint is never called', async () => {
+    const closed = {
+      ...hemorrhoidEpisode,
+      id: 'closed-ep-1',
+      status: 'CLOSED' as const,
+      endedAt: '2026-09-20T00:00:00.000Z',
+    };
+    vi.mocked(careEpisodesApi.listByPatient).mockResolvedValue([closed] as never);
+    initialBranchOpenTaskTimeline();
+    vi.mocked(encountersApi.createHemorrhoidReturn)
+      .mockRejectedValueOnce(
+        new ApiError(409, 'x', HEMORRHOID_RECURRENCE_CHOICE_REQUIRED),
+      )
+      .mockResolvedValueOnce({ id: 'ret-new', episodeId: 'closed-ep-1' } as never);
+    renderWorkspace();
+    const user = userEvent.setup();
+    await openReturnForm(user);
+
+    await user.click(await screen.findByLabelText('Mở lại một đợt điều trị đã đóng'));
+    await user.selectOptions(screen.getByLabelText('Đợt điều trị'), 'closed-ep-1');
+    await user.type(screen.getByLabelText('Lý do mở lại'), 'Tái phát (synthetic)');
+    await user.click(screen.getByRole('button', { name: 'Xác nhận lựa chọn & tái khám' }));
+
+    await waitFor(() => {
+      expect(encountersApi.createHemorrhoidReturn).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          recurrenceAction: 'REOPEN_EXISTING',
+          recurrenceClosedEpisodeId: 'closed-ep-1',
+          recurrenceReason: 'Tái phát (synthetic)',
+        }),
+      );
+    });
+    expect(careEpisodesApi.reopen).not.toHaveBeenCalled();
+    expect(careEpisodesApi.create).not.toHaveBeenCalled();
+  });
+
+  it('T10-L: START_NEW is submitted as part of createHemorrhoidReturn — the standalone create endpoint is never called', async () => {
+    initialBranchOpenTaskTimeline();
+    vi.mocked(encountersApi.createHemorrhoidReturn)
+      .mockRejectedValueOnce(
+        new ApiError(409, 'x', HEMORRHOID_RECURRENCE_CHOICE_REQUIRED),
+      )
+      .mockResolvedValueOnce({ id: 'ret-new', episodeId: 'ep-new' } as never);
+    renderWorkspace();
+    const user = userEvent.setup();
+    await openReturnForm(user);
+
+    await user.click(await screen.findByLabelText('Bắt đầu một đợt điều trị mới'));
+    await user.click(screen.getByRole('button', { name: 'Xác nhận lựa chọn & tái khám' }));
+
+    await waitFor(() => {
+      expect(encountersApi.createHemorrhoidReturn).toHaveBeenLastCalledWith(
+        expect.objectContaining({ recurrenceAction: 'START_NEW' }),
+      );
+    });
+    expect(careEpisodesApi.create).not.toHaveBeenCalled();
+    expect(careEpisodesApi.reopen).not.toHaveBeenCalled();
+  });
+
+  it('T10-M/N: open CareTask / TreatmentPathway are surfaced factually before close and do not block the explicit Doctor close', async () => {
+    vi.mocked(careEpisodesApi.listByPatient).mockResolvedValue([hemorrhoidEpisode] as never);
+    vi.mocked(careEpisodesApi.close).mockResolvedValue({} as never);
+    vi.mocked(treatmentPathwaysApi.list).mockResolvedValue([
+      { id: 'p1', caseId: 'episode-1', patientId: 'patient-1', modality: 'MEDICAL', methodCode: null, startedAt: '2026-09-10T09:00:00.000Z', endedAt: null, legacyEpisodeId: null },
+    ] as never);
+    vi.mocked(patientsApi.getTimeline).mockResolvedValue({
+      episodes: [
+        {
+          episode: hemorrhoidEpisode,
+          events: [
+            returnEncounterEvent(),
+            assessmentDoneEvent(),
+            {
+              type: 'CARE_TASK' as const,
+              timestamp: '2026-09-11T09:00:00.000Z',
+              data: { id: 'open-task-1', status: 'OPEN', timepointCode: null },
+            },
+          ],
+        },
+      ],
+      ungroupedEncounters: [],
+    } as never);
+
+    renderWorkspace();
+    const user = userEvent.setup();
+
+    expect(await screen.findByText(/Còn 1 nhiệm vụ theo dõi đang mở và 1 nhánh điều trị chưa kết thúc/)).toBeInTheDocument();
+    // Factual + non-blocking: the explicit close still goes through.
+    await user.click(screen.getByRole('button', { name: 'Kết thúc đợt theo dõi' }));
+    await waitFor(() => {
+      expect(careEpisodesApi.close).toHaveBeenCalledWith('episode-1');
+    });
+  });
+
+  // ── T11 P1-01 — close-warning pathway state: fresh, gated while loading,
+  //    surfaced on error ─────────────────────────────────────────────────
+
+  function assessmentDoneEpisodeTimeline(extraEvents: unknown[] = []) {
+    vi.mocked(careEpisodesApi.listByPatient).mockResolvedValue([hemorrhoidEpisode] as never);
+    vi.mocked(careEpisodesApi.close).mockResolvedValue({} as never);
+    vi.mocked(patientsApi.getTimeline).mockResolvedValue({
+      episodes: [
+        {
+          episode: hemorrhoidEpisode,
+          events: [returnEncounterEvent(), assessmentDoneEvent(), ...extraEvents],
+        },
+      ],
+      ungroupedEncounters: [],
+    } as never);
+  }
+
+  it('T11 P1-01 (7): close-warning pathway query resolves with 0 pathways → close works normally', async () => {
+    assessmentDoneEpisodeTimeline();
+    vi.mocked(treatmentPathwaysApi.list).mockResolvedValue([] as never);
+    renderWorkspace();
+    const user = userEvent.setup();
+    await screen.findByText('Lượt tái khám');
+    await waitForTerminateEnabled();
+    expect(screen.queryByText(/nhánh điều trị chưa kết thúc/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Kết thúc đợt theo dõi' }));
+    await waitFor(() => expect(careEpisodesApi.close).toHaveBeenCalledWith('episode-1'));
+  });
+
+  it('T11 P1-01 (8): close-warning pathway query resolves with open pathways → factual, non-blocking, close still possible', async () => {
+    assessmentDoneEpisodeTimeline();
+    vi.mocked(treatmentPathwaysApi.list).mockResolvedValue([
+      { id: 'p1', caseId: 'episode-1', patientId: 'patient-1', modality: 'MEDICAL', methodCode: null, startedAt: '2026-09-10T09:00:00.000Z', endedAt: null, legacyEpisodeId: null },
+      { id: 'p2', caseId: 'episode-1', patientId: 'patient-1', modality: 'SURGERY', methodCode: 'LONGO', startedAt: '2026-09-11T09:00:00.000Z', endedAt: '2026-09-20T00:00:00.000Z', legacyEpisodeId: null },
+    ] as never);
+    renderWorkspace();
+    const user = userEvent.setup();
+    expect(await screen.findByText(/Còn 1 nhánh điều trị chưa kết thúc/)).toBeInTheDocument();
+    const terminate = screen.getByRole('button', { name: 'Kết thúc đợt theo dõi' });
+    await user.click(terminate);
+    await waitFor(() => expect(careEpisodesApi.close).toHaveBeenCalledWith('episode-1'));
+  });
+
+  it('T11 P1-01 (5): while the pathway query is loading, the close is gated (no false "nothing open")', async () => {
+    assessmentDoneEpisodeTimeline();
+    vi.mocked(treatmentPathwaysApi.list).mockReturnValue(new Promise(() => {}) as never);
+    renderWorkspace();
+    expect(
+      await screen.findByText('Đang kiểm tra các nhánh điều trị đang mở...'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Kết thúc đợt theo dõi' })).toBeDisabled();
+    expect(careEpisodesApi.close).not.toHaveBeenCalled();
+  });
+
+  it('T11 P1-01 (6): if the pathway query errors, the error is surfaced and close is unavailable until reload', async () => {
+    assessmentDoneEpisodeTimeline();
+    vi.mocked(treatmentPathwaysApi.list)
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValueOnce([] as never);
+    renderWorkspace();
+    const user = userEvent.setup();
+    expect(
+      await screen.findByText(/Không tải được trạng thái nhánh điều trị đang mở/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Kết thúc đợt theo dõi' })).toBeDisabled();
+    expect(careEpisodesApi.close).not.toHaveBeenCalled();
+    // Retry resolves the state and re-enables close.
+    await user.click(screen.getByRole('button', { name: 'Thử lại' }));
+    await waitForTerminateEnabled();
+  });
+
+  it('T11 P1-01 (1-4): a pathway created via CaseTreatmentPanel refreshes the close-warning state', async () => {
+    vi.mocked(careEpisodesApi.listByPatient).mockResolvedValue([hemorrhoidEpisode] as never);
+    vi.mocked(careEpisodesApi.close).mockResolvedValue({} as never);
+    vi.mocked(patientsApi.getTimeline).mockResolvedValue({
+      episodes: [
+        { episode: hemorrhoidEpisode, events: [returnEncounterEvent(), assessmentDoneEvent()] },
+      ],
+      ungroupedEncounters: [],
+    } as never);
+    // Zero pathways until one is created, then one open MEDICAL pathway.
+    vi.mocked(treatmentPathwaysApi.list).mockResolvedValue([] as never);
+    vi.mocked(treatmentPathwaysApi.create).mockResolvedValue({ id: 'p-new' } as never);
+
+    renderWorkspace('/patients/patient-1?tab=%C4%90i%E1%BB%81u%20tr%E1%BB%8B');
+    const user = userEvent.setup();
+
+    await screen.findByText('Phương thức điều trị trong Case');
+    await user.selectOptions(screen.getByLabelText('Phương thức điều trị'), 'MEDICAL');
+    await user.type(screen.getByLabelText('Thời điểm bắt đầu phương thức'), '2026-09-12T09:00');
+    // After create, the list reloads with the new open pathway.
+    vi.mocked(treatmentPathwaysApi.list).mockResolvedValue([
+      { id: 'p-new', caseId: 'episode-1', patientId: 'patient-1', modality: 'MEDICAL', methodCode: null, startedAt: '2026-09-12T09:00:00.000Z', endedAt: null, legacyEpisodeId: null },
+    ] as never);
+    await user.click(screen.getByRole('button', { name: 'Thêm phương thức điều trị' }));
+
+    // Switch to the overview tab where the close warning lives — its pathway
+    // state was refreshed through reloadAll (reloadNonce), not left stale.
+    await user.click(screen.getByRole('tab', { name: 'Tổng quan' }));
+    expect(
+      await screen.findByText(/Còn 1 nhánh điều trị chưa kết thúc/),
+    ).toBeInTheDocument();
+  });
+
+  // ── T11 P2-02 — Follow-up Assessment presence is episode-level ──────────
+
+  it('T11 P2-02 (12): an earlier Return has a COMPLETED assessment, the latest does not → NO "no assessment" warning', async () => {
+    vi.mocked(careEpisodesApi.listByPatient).mockResolvedValue([hemorrhoidEpisode] as never);
+    vi.mocked(treatmentPathwaysApi.list).mockResolvedValue([] as never);
+    const earlierAssessment = {
+      ...assessmentDoneEvent(),
+      data: { ...assessmentDoneEvent().data, id: 'asmt-early', encounterId: 'return-enc-1' },
+    };
+    vi.mocked(patientsApi.getTimeline).mockResolvedValue({
+      episodes: [
+        {
+          episode: hemorrhoidEpisode,
+          events: [
+            returnEncounterEvent({ id: 'return-enc-1', occurredAt: '2026-09-10T09:00:00.000Z' }),
+            earlierAssessment,
+            returnEncounterEvent({ id: 'return-enc-2', occurredAt: '2026-10-01T09:00:00.000Z' }),
+          ],
+        },
+      ],
+      ungroupedEncounters: [],
+    } as never);
+    renderWorkspace();
+    await screen.findAllByText('Lượt tái khám');
+    expect(
+      screen.queryByText(/Chưa có Đánh giá tái khám hoàn tất/),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText(/Tôi xác nhận kết thúc/),
+    ).not.toBeInTheDocument();
+    await waitForTerminateEnabled();
+  });
+
+  it('T11 P2-02 (13): no COMPLETED assessment anywhere in the episode → warning + acknowledgement remain', async () => {
+    vi.mocked(careEpisodesApi.listByPatient).mockResolvedValue([hemorrhoidEpisode] as never);
+    vi.mocked(treatmentPathwaysApi.list).mockResolvedValue([] as never);
+    vi.mocked(patientsApi.getTimeline).mockResolvedValue({
+      episodes: [{ episode: hemorrhoidEpisode, events: [returnEncounterEvent()] }],
+      ungroupedEncounters: [],
+    } as never);
+    renderWorkspace();
+    expect(await screen.findByText(/Chưa có Đánh giá tái khám hoàn tất/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Tôi xác nhận kết thúc/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Kết thúc đợt theo dõi' })).toBeDisabled();
+  });
+
   // Correction batch C2 + R2 — the ACTIVE Hemorrhoid episode header must NOT
   // carry a generic Close button; termination is decided on the current
   // Return Encounter after its Assessment is completed (see the C3/R2 tests
   // below). Reopen stays on the CLOSED header.
-  it('R2: ACTIVE Hemorrhoid episode header renders NO Close button', async () => {
+  it('R2/DEC-020: ACTIVE Hemorrhoid episode header renders NO generic Close button; Terminate lives on the current Return', async () => {
     vi.mocked(careEpisodesApi.listByPatient).mockResolvedValue([hemorrhoidEpisode] as never);
     vi.mocked(patientsApi.getTimeline).mockResolvedValue({
       episodes: [{ episode: hemorrhoidEpisode, events: [returnEncounterEvent()] }],
@@ -208,8 +530,11 @@ describe('LongoEpisodeWorkspace — Hemorrhoid Vertical Slice 3 continuous-care 
     renderWorkspace();
 
     await screen.findByText('Lượt tái khám');
-    expect(screen.queryByRole('button', { name: 'Kết thúc đợt theo dõi' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Đóng đợt điều trị' })).not.toBeInTheDocument();
+    // DEC-020 T5: with no completed Follow-up Assessment, Terminate is
+    // offered but disabled behind a non-blocking warning + acknowledgement.
+    await screen.findByText(/Chưa có Đánh giá tái khám hoàn tất/);
+    expect(screen.getByRole('button', { name: 'Kết thúc đợt theo dõi' })).toBeDisabled();
   });
 
   it('DEC016: equal clinical times use createdAt then id, independent of event ordering', async () => {
@@ -232,7 +557,10 @@ describe('LongoEpisodeWorkspace — Hemorrhoid Vertical Slice 3 continuous-care 
     } as never);
     renderWorkspace();
     await screen.findAllByText('Lượt tái khám');
-    expect(screen.queryByRole('button', { name: 'Kết thúc đợt theo dõi' })).not.toBeInTheDocument();
+    // Terminate renders once, on the newest Return; ordering is the point of
+    // this test. T11 P2-02: a COMPLETED assessment exists elsewhere in the
+    // episode, so it is enabled (episode-level, not latest-Return-scoped).
+    await waitForTerminateEnabled();
   });
 
   it('C2: CLOSED Hemorrhoid episode reopens with a required reason via careEpisodesApi.reopen', async () => {
@@ -289,10 +617,8 @@ describe('LongoEpisodeWorkspace — Hemorrhoid Vertical Slice 3 continuous-care 
       }),
     ).toBeInTheDocument();
 
-    const terminate = screen.getByRole('button', {
-      name: 'Kết thúc đợt theo dõi',
-    });
-    await user.click(terminate);
+    await waitForTerminateEnabled();
+    await user.click(screen.getByRole('button', { name: 'Kết thúc đợt theo dõi' }));
 
     await waitFor(() => {
       expect(careEpisodesApi.close).toHaveBeenCalledWith('episode-1');
@@ -301,17 +627,28 @@ describe('LongoEpisodeWorkspace — Hemorrhoid Vertical Slice 3 continuous-care 
     expect(encountersApi.createHemorrhoidReturn).not.toHaveBeenCalled();
   });
 
-  it('R2: before the current Return Encounter Assessment is completed, NO Terminate action exists', async () => {
+  it('R2/DEC-020: before the current Return Assessment is completed, Terminate is offered behind a non-blocking warning + explicit acknowledgement', async () => {
     vi.mocked(careEpisodesApi.listByPatient).mockResolvedValue([hemorrhoidEpisode] as never);
     vi.mocked(patientsApi.getTimeline).mockResolvedValue({
       episodes: [{ episode: hemorrhoidEpisode, events: [returnEncounterEvent()] }],
       ungroupedEncounters: [],
     } as never);
+    vi.mocked(careEpisodesApi.close).mockResolvedValue({} as never);
 
     renderWorkspace();
+    const user = userEvent.setup();
 
     await screen.findByText('Lượt tái khám');
-    expect(screen.queryByRole('button', { name: 'Kết thúc đợt theo dõi' })).not.toBeInTheDocument();
+    await screen.findByText(/Chưa có Đánh giá tái khám hoàn tất/);
+    const terminate = screen.getByRole('button', { name: 'Kết thúc đợt theo dõi' });
+    expect(terminate).toBeDisabled();
+
+    await user.click(screen.getByLabelText(/Tôi xác nhận kết thúc đợt theo dõi/));
+    expect(terminate).toBeEnabled();
+    await user.click(terminate);
+    await waitFor(() => {
+      expect(careEpisodesApi.close).toHaveBeenCalledWith('episode-1');
+    });
   });
 
   it('R2: Terminate renders only on the LATEST Return Encounter, never on a historical one', async () => {
@@ -345,10 +682,12 @@ describe('LongoEpisodeWorkspace — Hemorrhoid Vertical Slice 3 continuous-care 
     renderWorkspace();
 
     await screen.findAllByText('Lượt tái khám');
-    // Historical encounter has a completed Assessment, but it is not the
-    // latest → no Terminate. Latest encounter has no Assessment yet → no
-    // Terminate. Net: zero Terminate actions.
-    expect(screen.queryByRole('button', { name: 'Kết thúc đợt theo dõi' })).not.toBeInTheDocument();
+    // Historical encounter is not the latest → no Terminate there. Exactly
+    // one Terminate action, on the latest Return. T11 P2-02: the episode has
+    // a COMPLETED Follow-up Assessment (on the historical Return), so the
+    // single Terminate is enabled — assessment presence is episode-level.
+    expect(screen.getAllByRole('button', { name: 'Kết thúc đợt theo dõi' })).toHaveLength(1);
+    await waitForTerminateEnabled();
   });
 
   it('C3: after the episode is CLOSED, active-workflow controls cannot create a new Next Decision / CarePlan', async () => {

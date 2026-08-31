@@ -317,8 +317,20 @@ export const encountersApi = {
     reasonForVisit: string;
     responsibleClinicianId?: string;
     roomId?: string;
+    // DEC-020 Package A T10 P1-01 — explicit recurrence choice carried on
+    // the Return request so the reopen/start-new lifecycle work and the
+    // Return commit atomically. Never call the standalone
+    // careEpisodesApi.reopen / .create as a pre-step for a recurrence.
+    recurrenceAction?: 'REOPEN_EXISTING' | 'START_NEW';
+    recurrenceClosedEpisodeId?: string;
+    recurrenceReason?: string;
   }) => api.post<Encounter>('/encounters/hemorrhoid-return', dto),
 };
+
+/** Stable backend error code (see ApiError.code) — the Return resolver
+ * needs an explicit recurrence choice (0 ACTIVE episode + CLOSED history). */
+export const HEMORRHOID_RECURRENCE_CHOICE_REQUIRED =
+  'HEMORRHOID_RECURRENCE_CHOICE_REQUIRED';
 
 /** Facility lookup/management (DEC-010 §C). */
 export const facilitiesApi = {

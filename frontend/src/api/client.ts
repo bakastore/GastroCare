@@ -21,10 +21,15 @@ export function clearStoredToken(): void {
 
 export class ApiError extends Error {
   status: number;
+  /** Stable machine-readable error code from the response body, when the
+   * backend provides one (e.g. HEMORRHOID_RECURRENCE_CHOICE_REQUIRED).
+   * Callers branch on this + `status`, never on `message` wording. */
+  code?: string;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, code?: string) {
     super(message);
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -80,11 +85,24 @@ async function request<T>(
   const payload = isJson ? await response.json().catch(() => undefined) : undefined;
 
   if (!response.ok) {
+    const rawMessage =
+      payload && typeof payload === 'object' && 'message' in payload
+        ? (payload as { message: unknown }).message
+        : undefined;
     const message =
-      (payload && typeof payload === 'object' && 'message' in payload
-        ? String((payload as { message: unknown }).message)
-        : undefined) ?? 'Có lỗi xảy ra. Vui lòng thử lại.';
-    throw new ApiError(response.status, Array.isArray(message) ? message.join(', ') : message);
+      (Array.isArray(rawMessage)
+        ? rawMessage.join(', ')
+        : rawMessage !== undefined
+          ? String(rawMessage)
+          : undefined) ?? 'Có lỗi xảy ra. Vui lòng thử lại.';
+    const code =
+      payload &&
+      typeof payload === 'object' &&
+      'code' in payload &&
+      typeof (payload as { code: unknown }).code === 'string'
+        ? (payload as { code: string }).code
+        : undefined;
+    throw new ApiError(response.status, message, code);
   }
 
   return payload as T;

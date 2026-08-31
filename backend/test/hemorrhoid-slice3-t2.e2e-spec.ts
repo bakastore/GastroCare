@@ -204,7 +204,7 @@ describe('Hemorrhoid Vertical Slice 3 — T2 atomic Return Encounter orchestrati
     await app.close();
   });
 
-  it('creates the first Return Encounter, reuses the Initial HEMORRHOID_TREATMENT Case, completes the CareTask, and records audit events', async () => {
+  it('DEC-020: the first Return Encounter creates exactly one ACTIVE HEMORRHOID_TREATMENT episode (Initial stays ungrouped), completes the CareTask, and records audit events', async () => {
     const careTaskId = await readyOpenFollowUpTask(patientId);
 
     const res = await createReturn(doctorToken, careTaskId);
@@ -218,9 +218,21 @@ describe('Hemorrhoid Vertical Slice 3 — T2 atomic Return Encounter orchestrati
     });
     expect(episode.episodeType).toBe('HEMORRHOID_TREATMENT');
     expect(episode.status).toBe(CareEpisodeStatus.ACTIVE);
+    // DEC-020 D20-02: the episode begins at this Return; its startedAt is the
+    // Return's occurredAt, and the Initial Encounter is never in it.
     expect(episode.startedAt.toISOString()).toBe(
-      (await prisma.encounter.findFirstOrThrow({where:{episodeId:episode.id,workflowKind:'HEMORRHOID_INITIAL'}})).occurredAt.toISOString(),
+      new Date(encounter.occurredAt).toISOString(),
     );
+    expect(
+      await prisma.encounter.count({
+        where: { episodeId: episode.id, workflowKind: 'HEMORRHOID_INITIAL' },
+      }),
+    ).toBe(0);
+    expect(
+      await prisma.careEpisode.count({
+        where: { patientId, episodeType: 'HEMORRHOID_TREATMENT' },
+      }),
+    ).toBe(1);
 
     const task = await prisma.careTask.findUniqueOrThrow({
       where: { id: careTaskId },
