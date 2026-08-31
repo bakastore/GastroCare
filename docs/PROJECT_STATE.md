@@ -1,5 +1,11 @@
 # GastroCare — Trạng thái dự án
 
+**Current gate — 2026-08-31:** DEC-020 Package B **B-GOV — GOVERNANCE LANDING ONLY**.
+Contract v0.2 **OWNER LOCKED**; external pre-lock review **COMPLETED — PASS**;
+material blockers **NONE**; Package A prerequisite **SATISFIED**; T0→T12
+**OWNER AUTHORIZED**, implementation **NOT YET STARTED**. Governance diff chờ
+ChatGPT / Owner review và checkpoint riêng; không thực hiện Package B T0 ở task này.
+
 **Cập nhật:** 31/08/2026 — **DEC-019 — Staff Profile & Credential Management v1:
 OWNER CLOSED** (Owner-directed governance closure 2026-08-31). DEC-019 +
 Implementation Contract v0.1 (`docs/15_STAFF_PROFILE_CREDENTIAL_MANAGEMENT_IMPLEMENTATION_CONTRACT.md`)
@@ -35,13 +41,43 @@ in the DECISION_LOG `DEC-020 PACKAGE A CLOSURE` record). Owner closure of Packag
 A is NOT Technical Acceptance beyond the audit gates and is NOT Product/production
 acceptance.
 
-Package B (Hemorrhoid Clinical Fidelity + Functional UX) = **NOT STARTED, NOT
-IMPLEMENTATION-AUTHORIZED**. The Package A clean-checkpoint prerequisite is now
-SATISFIED (`A_CLOSED_SHA` = `0c865a2` exists), but Package B still requires a
-separate authority rebind to `A_CLOSED_SHA` → Package B review / Owner lock
-decision → separate explicit Owner implementation authorization if approved. No
-Package B draft is activated; no Package B DRAFT is promoted to OWNER LOCKED.
-Package C = DISCOVERY-DEPENDENT, implementation NOT AUTHORIZED.
+Package B (Clinical Form Fidelity + Functional UX) / Contract v0.2 = **OWNER
+LOCKED — 2026-08-31**. External pre-lock review **COMPLETED — PASS**; material
+blockers **NONE**. No clinical/product or T0→T12 substantive implementation
+requirement changed at Owner Lock; execution-baseline governance was subsequently
+changed by explicit Owner overlay (2026-08-31). Original external review remains
+historically valid; no second review required for this governance-only overlay.
+Package A prerequisite **SATISFIED** tại
+immutable `A_CLOSED_SHA` `0c865a26c4425a1c3fe429bb8e42238562025801`.
+T0→T12 **OWNER AUTHORIZED**, subject to Contract T0 blocking verification and
+STOP conditions; implementation **NOT YET STARTED**. Authority mới được append
+trong DECISION_LOG `DEC-020 PACKAGE B — OWNER LOCK AND IMPLEMENTATION AUTHORITY`;
+không viết lại historical DEC-020 / Package A wording.
+
+Canonical Contract:
+[`DEC-020_PACKAGE_B_CLINICAL_FORM_FIDELITY_FUNCTIONAL_UX_IMPLEMENTATION_CONTRACT.md`](DEC-020_PACKAGE_B_CLINICAL_FORM_FIDELITY_FUNCTIONAL_UX_IMPLEMENTATION_CONTRACT.md).
+Canonical coordination map:
+[`DEC-020_MASTER_EXECUTION_MAP.md`](DEC-020_MASTER_EXECUTION_MAP.md).
+Pre-B-GOV branch `correction/owner-acceptance-slice1-3`; verified HEAD
+`cdc4f2321f7176fd3c50023d7dd17676c0cd92f6`; working tree CLEAN; `A_CLOSED_SHA`
+ancestor; post-A delta governance/docs only. Đây là trạng thái CLEAN trước lần
+B-GOV landing ban đầu; **current dirty B-GOV = governance preparation only**, đúng
+5 docs, không phải clean execution baseline.
+
+**Historical reviewed v0.2 rule:** Contract rebind về clean Package A
+closure/checkpoint SHA; Master Execution Map rebind về literal `A_CLOSED_SHA`.
+**NEWER Owner execution-governance overlay — 2026-08-31** supersedes only that
+literal checkpoint mechanic và cho phép clean governance-only descendant.
+Operative future Package B execution baseline = **`B_GOV_SHA`**, chỉ sau direct
+review corrected governance diff → Owner authorization riêng → governance-only
+commit/push → clean state trên đúng branch. `B_GOV_SHA` **NOT YET ASSIGNED**;
+không phải rule có sẵn trong original reviewed v0.2 và không relabel
+`A_CLOSED_SHA` hoặc pre-B-GOV HEAD. T0 phải verify `A_CLOSED_SHA` ancestor, toàn bộ
+`A_CLOSED_SHA..HEAD` governance/docs only, không unexplained application/backend/
+frontend/schema/migration/test/tooling delta, CLEAN working tree, Owner-authorized
+branch và ghi actual HEAD thành `PACKAGE_B_BASE_SHA`. Các điều kiện này chưa được
+thực hiện ở Package B T0; B-GOV correction không bắt đầu implementation. Package C = **NOT ACTIVE / DRAFT / DISCOVERY-DEPENDENT / NOT
+IMPLEMENTATION-AUTHORIZED**; C0 không mở.
 
 Baseline = DEC-018 CLOSED — OWNER ACCEPTED — remote
 checkpoint `7d33e02c36f5e862c50717c340deea86ad046e47`; durable pre-Package-A
@@ -50,9 +86,8 @@ T10/T11 corrections COMMITTED at `A_CLOSED_SHA`
 `0c865a26c4425a1c3fe429bb8e42238562025801`. SYNTHETIC DATA ONLY; real-patient
 runtime/data, production deployment and AI clinical reasoning remain NOT
 AUTHORIZED (Package A closure/checkpoint/push is not production acceptance); no
-merge/tag without separate Owner authorization. Next gate = Package B authority
-rebind to `A_CLOSED_SHA` → Package B review / Owner lock decision → separate Owner
-implementation authorization if approved.
+commit/push/merge/tag without separate Owner authorization. Next gate =
+ChatGPT direct review of corrected B-GOV diff → Owner decision → Owner separately authorizes one governance-only commit/push → actual resulting commit SHA becomes `B_GOV_SHA` → working tree/branch verified clean → Package B T0.
 
 Prior context: **DEC-018 — Admin Boundary / User Management v1: T0 → T8 CLOSED —
 OWNER ACCEPTED** (2026-08-30), committed at remote checkpoint `7d33e02`. T7 Fresh
@@ -248,9 +283,13 @@ CORE-05: NOT OPENED
 
 **Last completed checkpoint trước DEC-016 (history):** `HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 3` — T0→T7 TECHNICAL EXECUTION COMPLETE, MERGED to `main` (PR #5) at baseline `4a73a0c8764558d2776adffcf1d26092f6456634`.
 
-**Current work package:** `DEC-016 FULL IMPLEMENTATION — CODEX SESSION A`; T0 → M7 technical execution PASS (self-attested). Committed as implementation checkpoint `6dd8d52` per DEC-017 (Owner xác nhận, commit tạm thời do gấp demo); `6dd8d52` cũng gộp Demo UI/UX (`frontend/src/pages/admin/*`, `AppSidebar.tsx`, route `/admin/*`). Local working-tree state được kiểm tra riêng tại mỗi execution gate.
+**Current work package:** DEC-020 Package B — B-GOV governance landing only;
+Contract v0.2 OWNER LOCKED, T0→T12 OWNER AUTHORIZED, implementation NOT YET STARTED.
+Current gate / checkpoint requirements: see §7.
 
-**Authority:** `DEC-016 / IMPLEMENTATION CONTRACT v0.3 — OWNER LOCKED`, theo fallback requirements Owner cung cấp tại `docs/DEC016_OWNER_AUTHORITY.md`. Cho phép schema, migration, reconciliation và local synthetic implementation/testing; không mở real data/production/CORE-05.
+**Historical work package:** `DEC-016 FULL IMPLEMENTATION — CODEX SESSION A`; T0 → M7 technical execution PASS (self-attested). Committed as implementation checkpoint `6dd8d52` per DEC-017 (Owner xác nhận, commit tạm thời do gấp demo); `6dd8d52` cũng gộp Demo UI/UX (`frontend/src/pages/admin/*`, `AppSidebar.tsx`, route `/admin/*`). Local working-tree state được kiểm tra riêng tại mỗi execution gate.
+
+**Historical DEC-016 authority:** `DEC-016 / IMPLEMENTATION CONTRACT v0.3 — OWNER LOCKED`, theo fallback requirements Owner cung cấp tại `docs/DEC016_OWNER_AUTHORITY.md`. Cho phép schema, migration, reconciliation và local synthetic implementation/testing; không mở real data/production/CORE-05.
 
 **DEC-015 M0 migration checkpoint:** `CLOSED — PASS`.
 
@@ -316,23 +355,27 @@ Chỉ được dùng synthetic data (dữ liệu giả lập) cho triển khai, 
 | Pre-DEC-016 T0 baseline (history) | `c0dfe1a4f774bef334dd2c2e0eac45f89a2e106b` — CLEAN; C1–C5 + DEC-015 CLOSED / PASS theo Owner authority |
 | Current phase | `GASTROCARE CORE — IN PROGRESS` |
 | Last closed work package | `DEC-020 Package A — Workflow Semantic Reconciliation` — **OWNER CLOSED (2026-08-31)**; `A_CLOSED_SHA` = `0c865a26c4425a1c3fe429bb8e42238562025801` (execution-START baseline `a03b1878…`, kept distinct); T10 PASS; T11 initial FAIL → corrected → focused re-audit PASS — NO P0/P1; residual P2 deferred; implementation COMMITTED at `A_CLOSED_SHA`. Prior: `DEC-019 — STAFF PROFILE & CREDENTIAL MANAGEMENT v1` — **OWNER CLOSED (2026-08-31)** via Owner-directed governance closure; T0→T6 implementation preserved in working tree; `T7`/`T8` = WAIVED BY OWNER — NOT EXECUTED; no PASS / acceptance claim; Owner Synthetic Acceptance NOT CLAIMED |
-| Current work package | `DEC-020 Package A — Workflow Semantic Reconciliation` — **OWNER CLOSED (2026-08-31)** |
-| Current Contract | `docs/DEC-020_PACKAGE_A_WORKFLOW_SEMANTIC_RECONCILIATION_IMPLEMENTATION_CONTRACT.md` (v0.2 — OWNER LOCKED; clinical/domain + implementation semantics unchanged by closure) |
-| Contract status | `v0.2 — OWNER LOCKED` (2026-08-31) |
+| Current work package | `DEC-020 Package B — Clinical Form Fidelity + Functional UX`; current gate **B-GOV — GOVERNANCE LANDING ONLY** |
+| Current Contract | `docs/DEC-020_PACKAGE_B_CLINICAL_FORM_FIDELITY_FUNCTIONAL_UX_IMPLEMENTATION_CONTRACT.md` (v0.2 OWNER LOCKED); coordination: `docs/DEC-020_MASTER_EXECUTION_MAP.md` |
+| Contract status | `v0.2 — OWNER LOCKED` (2026-08-31); external pre-lock review **COMPLETED — PASS**; material blockers **NONE**; no clinical/product or T0→T12 substantive implementation requirement changed at lock; execution-baseline governance subsequently changed by newer Owner overlay; original external review historically valid, no second review required |
 | Package A execution-START baseline | `a03b1878dd42ca80956418c67da6f79d0b560572` — where Package A execution began. Kept **distinct** from `A_CLOSED_SHA`; not relabelled |
 | Package A closed checkpoint (`A_CLOSED_SHA`) | `0c865a26c4425a1c3fe429bb8e42238562025801` — commit `0c865a2` `feat: checkpoint DEC-020 Package A owner-closed`. The immutable Package A OWNER-CLOSED implementation checkpoint (implementation + T10/T11 corrections + closure governance). Do not amend |
 | Package A execution / review history | `T0 → T9` COMPLETED. `T10` ChatGPT direct source review = **PASS**. `T11` initial fresh Codex independent audit = **FAIL — CORRECTION REQUIRED** (initial severity P0=0 / P1=1 / P2=2 / P3=0). Correction batch COMPLETED → focused source recheck = PASS → `T11` focused independent re-audit = **PASS — NO P0/P1** (final severity P0=0 / P1=0 / P2=1 / P3=0). History is not rewritten as though the initial `T11` passed |
 | Package A residual finding | **P2 — Unicode reason-length parity** — NON-BLOCKING, DEFERRED. Standalone `POST /care-episodes/:id/reopen` and atomic Return `REOPEN_EXISTING` diverge near the 500-character Unicode boundary because the transaction lifecycle helper counts JavaScript `String.length` / UTF-16 code units (e.g. `'r'.repeat(499) + '🙂'` → standalone accepted, atomic recurrence rejected). Does not affect transaction atomicity, single-active invariant, tenant isolation, audit integrity, or data correctness/loss. Not fixed in the closure task; recorded in the DECISION_LOG `DEC-020 PACKAGE A CLOSURE` record |
 | Package A implementation state | Complete implementation + T10/T11 corrections + closure governance are **COMMITTED** at `A_CLOSED_SHA` `0c865a26c4425a1c3fe429bb8e42238562025801` |
-| Current authorized execution | NONE new. Package A is OWNER CLOSED and committed at `A_CLOSED_SHA`. No implementation is authorized |
-| Package B / Package C | Package B (Hemorrhoid Clinical Fidelity + Functional UX) = **NOT STARTED, NOT IMPLEMENTATION-AUTHORIZED**. The Package A clean-checkpoint prerequisite is now SATISFIED (`A_CLOSED_SHA` = `0c865a2` exists); Package B still requires a separate authority rebind to `A_CLOSED_SHA` → Package B review / Owner lock decision → separate explicit Owner implementation authorization. No Package B draft is activated; no Package B DRAFT is promoted to OWNER LOCKED. Package C (Procedure / Investigation evolution) = DISCOVERY-DEPENDENT, implementation NOT AUTHORIZED |
-| Current authority | DEC-020 v0.2 — OWNER LOCKED (2026-08-31), locked reference baseline `a2059ff6ea2796eee0a798d754b95e70221d2504`; external pre-lock review COMPLETED; documented baseline-review limitation EXPLICITLY ACCEPTED BY OWNER; D20-01…D20-13 + selective supersession map AUTHORITATIVE. DEC-020 uses selective supersession — prior OWNER LOCKED Decisions (DEC-010→019) remain effective except where the DEC-020 §18 map supersedes; DEC-019 remains OWNER CLOSED. Historical authority: DEC-019 OWNER LOCKED + `docs/15_STAFF_PROFILE_CREDENTIAL_MANAGEMENT_IMPLEMENTATION_CONTRACT.md` v0.1; DEC-018 OWNER LOCKED + `docs/14_ADMIN_BOUNDARY_USER_MANAGEMENT_IMPLEMENTATION_CONTRACT.md` v0.2 — CLOSED — OWNER ACCEPTED |
+| Verified pre-B-GOV baseline | Branch `correction/owner-acceptance-slice1-3`; HEAD `cdc4f2321f7176fd3c50023d7dd17676c0cd92f6`; pre-write CLEAN; `A_CLOSED_SHA` ancestor; post-A delta governance/docs only |
+| Current dirty B-GOV | Governance preparation/correction only; exact five approved docs; no Package B T0→T12 execution |
+| Package B execution baseline | Historical reviewed v0.2: rebind to `A_CLOSED_SHA`. Newer Owner overlay permits clean governance-only descendant `B_GOV_SHA` after corrected governance review / separately authorized commit/push / clean branch and tree; **NOT YET ASSIGNED**. T0 must verify A ancestry, entire `A_CLOSED_SHA..HEAD` docs-only, no unexplained application/backend/frontend/schema/migration/test/tooling delta, CLEAN tree, authorized branch, and actual HEAD recorded as `PACKAGE_B_BASE_SHA` |
+| Package B implementation state | **NOT YET STARTED**; no T0 source-verification or implementation/test/acceptance claim in B-GOV |
+| Current authorized execution | Package B T0→T12 **OWNER AUTHORIZED**, subject to Contract T0 blocking verification and STOP conditions. Implementation **NOT YET STARTED**; this task executes B-GOV only and stops before T0 |
+| Package B / Package C | Package B **OWNER LOCKED / T0→T12 OWNER AUTHORIZED / NOT YET STARTED**; Package A prerequisite **SATISFIED**. Package C **NOT ACTIVE / DRAFT / DISCOVERY-DEPENDENT / NOT IMPLEMENTATION-AUTHORIZED**; C0 NOT OPENED |
+| Current authority | Newest explicit Owner decision 2026-08-31: `DEC-020 PACKAGE B — EXECUTION-BASELINE GOVERNANCE OVERLAY` in DECISION_LOG, subsequent to `DEC-020 PACKAGE B — OWNER LOCK AND IMPLEMENTATION AUTHORITY`; reviewed literal A checkpoint rule retained as provenance; Package B v0.2 OWNER LOCKED, T0→T12 OWNER AUTHORIZED. Historical DEC-020 wording preserved. DEC-020 v0.2 — OWNER LOCKED (2026-08-31), locked reference baseline `a2059ff6ea2796eee0a798d754b95e70221d2504`; external pre-lock review COMPLETED; documented baseline-review limitation EXPLICITLY ACCEPTED BY OWNER; D20-01…D20-13 + selective supersession map AUTHORITATIVE. DEC-020 uses selective supersession — prior OWNER LOCKED Decisions (DEC-010→019) remain effective except where the DEC-020 §18 map supersedes; DEC-019 remains OWNER CLOSED. Historical authority: DEC-019 OWNER LOCKED + `docs/15_STAFF_PROFILE_CREDENTIAL_MANAGEMENT_IMPLEMENTATION_CONTRACT.md` v0.1; DEC-018 OWNER LOCKED + `docs/14_ADMIN_BOUNDARY_USER_MANAGEMENT_IMPLEMENTATION_CONTRACT.md` v0.2 — CLOSED — OWNER ACCEPTED |
 | DEC-018 execution sequence (closed) | `T0 → T6` Claude Code implementation (complete); `T7` Fresh Codex independent focused read-only audit — COMPLETED, 1 MEDIUM finding remediated + Owner-accepted closure; `T8` Owner Synthetic Acceptance — **PASS** (incl. T8.9 Last Clinic Admin protection PASS) |
-| Governing local authority | `docs/DEC016_OWNER_AUTHORITY.md` — bản lưu prompt; không tự nhận là bản Contract đầy đủ |
-| Task-specific implementation notes/evidence | `docs/13_DEC016_CASE_PATHWAY_IMPLEMENTATION.md`, `docs/DEC016_SESSION_A_REPORT.md`, `docs/evidence/DEC016_SESSION_A/` |
-| Startup domain/schema/privacy SSOT | docs/04, 05, 06 và DEC-016 overlays; Longo 08/09; Hemorrhoid 10/12 chỉ giữ phần không bị DEC-016 supersede |
+| Governing local authority (DEC-016 historical) | `docs/DEC016_OWNER_AUTHORITY.md` — bản lưu prompt; không tự nhận là bản Contract đầy đủ |
+| Implementation notes/evidence (DEC-016 historical) | `docs/13_DEC016_CASE_PATHWAY_IMPLEMENTATION.md`, `docs/DEC016_SESSION_A_REPORT.md`, `docs/evidence/DEC016_SESSION_A/` |
+| Startup domain/schema/privacy SSOT | Current B-GOV / Package B: canonical Contract + Master Execution Map + DEC-020 Owner authority; preserve Package A Contract/closure evidence. Domain/schema/privacy where relevant: docs/04, 05, 06 and applicable DEC-020 selective supersession; Longo 08/09, Hemorrhoid 10/12 remain historical SSOT except explicitly superseded scope |
 | Implementation status | DEC-016: T0 → M7 PASS (self-attested) + independent audit CLOSED — PASS; committed as `6dd8d52` per DEC-017. **DEC-018: T0 → T8 CLOSED — OWNER ACCEPTED (2026-08-30)** — committed at remote checkpoint `7d33e02`. **DEC-019: OWNER CLOSED (2026-08-31)** — T0→T6 implementation exists in working tree and is preserved; T7/T8 WAIVED BY OWNER — NOT EXECUTED; no PASS / acceptance claim. **DEC-020 Package A: OWNER CLOSED (2026-08-31)** — `T0 → T9` COMPLETED; `T10` PASS; `T11` initial FAIL — CORRECTION REQUIRED → correction batch COMPLETED → focused source recheck PASS → `T11` focused independent re-audit PASS — NO P0/P1 (final P0=0/P1=0/P2=1/P3=0); residual P2 (Unicode reason-length parity) NON-BLOCKING/DEFERRED; complete implementation + T10/T11 corrections + closure governance **COMMITTED at `A_CLOSED_SHA` `0c865a26c4425a1c3fe429bb8e42238562025801`** (execution-START baseline `a03b1878…` kept distinct); no schema/migration change; SYNTHETIC DATA ONLY. Owner closure ≠ Product/production acceptance |
-| Current authorized task | NONE (implementation). DEC-020 Package A = OWNER CLOSED (2026-08-31) and committed at `A_CLOSED_SHA` `0c865a2`; T10 PASS; T11 initial FAIL → corrected → focused re-audit PASS — NO P0/P1; residual P2 deferred. No implementation task is authorized. DEC-019 = OWNER CLOSED (2026-08-31); T7/T8 WAIVED BY OWNER — NOT EXECUTED |
+| Current authorized task | **B-GOV governance landing only** → STOP for ChatGPT / Owner governance diff review. No application edits, no Package B T0→T12 execution, no C0, no Git mutation in this task |
 | DEC-018 T7 independent audit | Fresh Codex focused read-only audit — COMPLETED. 1 MEDIUM finding: disabled DOCTOR/NURSE could still be selected via `GET /investigations/assignees` and accepted via `POST /investigations/:id/orders` as a NEW assignee. Remediation: `status = ACTIVE` filter added to both paths in `investigations.service.ts`; targeted E2E added (`dec016-case-workspace.e2e-spec.ts`, CASE 1–4 + historical-assignment survives). Full backend e2e 378/378. Owner accepted the remediation as closing T7 |
 | DEC-018 T8 Owner Synthetic Acceptance | **PASS** (2026-08-30). Accepted T8 corrections: reset-password one-time temporary-password handoff modal; unified mutation notification (toast) system; simplified UsersPage (search + list + "+" add); create-user modal; edit-user modal; **T8.9 Last Clinic Admin protection verified PASS** (SERIALIZABLE, no auto-retry, 409, mandatory concurrent test) |
 | DEC-018 non-blocking UX note | Facility/Room card interaction can be made clearer in a later pass — recorded, not blocking acceptance |
@@ -343,7 +386,7 @@ Chỉ được dùng synthetic data (dữ liệu giả lập) cho triển khai, 
 | Demo Admin UI (`frontend/src/pages/admin/*`) | DEMO-oriented/view-only ở frontend. `UsersPage` chưa có user-lifecycle write API. Backend Facility/Room có write API hiện hữu; DEC-017 không thay đổi authorization semantics của các API đó |
 | AppSidebar.tsx nav v1 | OWNER LOCKED (DEC-017) |
 | DEC-018 status | **CLOSED — OWNER ACCEPTED (2026-08-30)**. OWNER LOCKED 2026-08-29; external review CLOSED — PASS; Contract v0.2; T0→T8 complete |
-| Next gate | **Package B authority rebind to `A_CLOSED_SHA` `0c865a26c4425a1c3fe429bb8e42238562025801` → Package B review / Owner lock decision → separate Owner implementation authorization if approved.** Package A is OWNER CLOSED and committed at `A_CLOSED_SHA`; `T10`/`T11` complete (PASS); no further audit/review loop. Package B is NOT implementation-authorized and must not be started. DEC-019 has no pending gate (T7/T8 WAIVED BY OWNER — NOT EXECUTED) |
+| Next gate | **ChatGPT direct review of corrected B-GOV diff → Owner decision → Owner separately authorizes one governance-only commit/push → actual resulting commit SHA becomes `B_GOV_SHA` → working tree/branch verified clean → Package B T0.** Package A remains OWNER CLOSED; no further A audit/review loop; residual P2 NON-BLOCKING / DEFERRED. DEC-019 has no pending gate (T7/T8 WAIVED BY OWNER — NOT EXECUTED) |
 | Session A role | Implementation executor; không phải independent auditor |
 | M0 | Disposable synthetic PRE backup/hash → migrate → explicit reconciliation → actual destroy/restore PRE → deterministic reapply PASS; repeatable from immutable baseline Git |
 | Migration | Additive `20260828000000_dec016_case_pathway_investigation`; 11 migrations, none pending; DEC-015 immutable |

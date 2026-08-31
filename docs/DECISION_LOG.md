@@ -805,6 +805,127 @@ independent re-audit PASS — NO P0/P1.
 
 ---
 
+### DEC-020 PACKAGE B — OWNER LOCK AND IMPLEMENTATION AUTHORITY
+
+**Ngày:** 2026-08-31.
+**Authority:** Owner Lock / implementation decision — Package B
+`Clinical Form Fidelity + Functional UX`; đây là record bổ sung, không sửa historical DEC-020 Owner Lock
+hoặc Package A closure. Package B chưa được tự động authorize ở thời điểm DEC-020
+ban đầu locked; authority dưới đây được Owner cấp sau đó.
+
+1. Package B / Contract v0.2 = **OWNER LOCKED**. Canonical SSOT:
+   [`DEC-020_PACKAGE_B_CLINICAL_FORM_FIDELITY_FUNCTIONAL_UX_IMPLEMENTATION_CONTRACT.md`](DEC-020_PACKAGE_B_CLINICAL_FORM_FIDELITY_FUNCTIONAL_UX_IMPLEMENTATION_CONTRACT.md).
+2. External pre-lock review = **COMPLETED — PASS** (theo Owner-supplied reviewed
+   artifact / explicit authority; không phải review mới do B-GOV thực hiện).
+3. Material blockers = **NONE**.
+4. **No clinical/product or T0→T12 substantive implementation requirement changed
+   at Owner Lock.** Execution-baseline/checkpoint governance được thay đổi sau đó
+   bởi explicit Owner overlay ghi riêng bên dưới; không coi `B_GOV_SHA` là nội
+   dung của original reviewed v0.2. External review gốc vẫn historically valid;
+   không cần review lần hai cho thay đổi execution-governance-only này.
+5. Package A prerequisite = **SATISFIED / OWNER CLOSED**. Package A semantics,
+   execution/review history và residual **P2 — Unicode reason-length parity**
+   (**NON-BLOCKING, DEFERRED**) giữ nguyên; không mở thêm audit loop cho A.
+6. Package B `T0→T12` implementation = **explicitly OWNER AUTHORIZED**, subject to
+   Contract T0 blocking verification và STOP conditions. Implementation **NOT YET
+   STARTED**; task B-GOV chỉ landing governance, không thực hiện T0→T12.
+7. Immutable Package A closure checkpoint **`A_CLOSED_SHA` =
+   `0c865a26c4425a1c3fe429bb8e42238562025801`**; execution-START baseline
+   `a03b1878dd42ca80956418c67da6f79d0b560572` vẫn là checkpoint khác.
+8. **Historical reviewed v0.2 rule:** Contract yêu cầu rebind về clean Package A
+   closure/checkpoint SHA; Map yêu cầu literal `A_CLOSED_SHA`. **Newer Owner
+   overlay** bên dưới cho phép future clean governance-only descendant
+   `B_GOV_SHA` sau corrected B-GOV review và governance commit/push được Owner
+   authorize riêng. Đây là thay đổi execution governance sau review gốc.
+   Pre-B-GOV checkpoint đã verify:
+   `cdc4f2321f7176fd3c50023d7dd17676c0cd92f6`, branch
+   `correction/owner-acceptance-slice1-3`; working tree CLEAN; `A_CLOSED_SHA`
+   ancestor; post-A delta governance/docs only. Pre-B-GOV HEAD cũng không được
+   relabel thành Package B execution baseline.
+9. **`B_GOV_SHA` chưa được gán**; không invent SHA trước commit thật. Khi có
+   checkpoint sạch, Package B T0 phải satisfy toàn bộ sáu điều kiện overlay bên
+   dưới (ancestry, docs-only range, no unexplained application delta, CLEAN,
+   đúng branch, actual HEAD ghi thành `PACKAGE_B_BASE_SHA`).
+10. Package C = **NOT ACTIVE / DRAFT / DISCOVERY-DEPENDENT / NOT
+    IMPLEMENTATION-AUTHORIZED**; không mở C0 trong B-GOV.
+11. Production, real-patient runtime/data và AI clinical reasoning vẫn **NOT
+    AUTHORIZED**; SYNTHETIC DATA ONLY. Không suy ra Product/production acceptance.
+12. Owner authority này **không authorize commit / push / merge / tag**; B-GOV
+    không `git add`, commit, push, merge, tag, rebase, reset, stash hoặc tạo PR.
+
+**Coordination map:**
+[`DEC-020_MASTER_EXECUTION_MAP.md`](DEC-020_MASTER_EXECUTION_MAP.md) — giữ dependency
+A → B → C; được landing từ exact Owner-supplied Master Execution Map v0.2, chỉ
+reconcile governance state/gates theo Owner Lock và execution-baseline mechanics
+theo subsequent Owner overlay; không gán overlay này cho reviewed v0.2 artifact.
+
+**Next gate:** ChatGPT direct review of corrected B-GOV diff → Owner decision → Owner separately authorizes one governance-only commit/push → actual resulting commit SHA becomes `B_GOV_SHA` → working tree/branch verified clean → Package B T0.
+
+Sau T0→T12: ChatGPT direct source review → Owner + BS Thái browser/workflow
+acceptance → Owner Package B closure decision → separately authorized clean
+`B_CLOSED_SHA`. Codex focused independent audit không phải default Package B gate;
+chỉ relevant nếu xuất hiện Prisma/schema migration, transaction/concurrency
+invariant hoặc high-risk authorization/data-integrity delta cần independent
+verification, theo Contract và STOP conditions.
+
+**Căn cứ:** Explicit Owner Package B Lock / implementation authority 2026-08-31
+và hai exact authoritative artifacts do Owner cung cấp:
+`DEC-020_PACKAGE_B_CLINICAL_FORM_FIDELITY_FUNCTIONAL_UX_CONTRACT_DRAFT_v0.2.md`;
+`DEC-020_MASTER_EXECUTION_MAP_v0.2.md`. Canonical documents ghi SHA-256
+của source artifacts để đối chiếu; historical DEC-020 document và Package A
+Contract/closure không bị viết lại.
+
+---
+
+### DEC-020 PACKAGE B — EXECUTION-BASELINE GOVERNANCE OVERLAY
+
+**Newest Owner decision:** 2026-08-31 — **APPROVED**, subsequent to the original
+external pre-lock review and Package B Owner Lock. Đây là authority riêng về
+execution governance, không rewrite historical DEC-020 / Package A decisions.
+
+1. Reviewed Package B Contract v0.2 originally stated:
+   `TO BE REBOUND to the clean Package A closure/checkpoint SHA before implementation`.
+2. Reviewed Master Execution Map v0.2 originally stated:
+   B execution baseline MUST be rebound to `A_CLOSED_SHA`.
+3. Cả hai reviewed rules được giữ như **HISTORICAL REVIEWED AUTHORITY**;
+   reviewed v0.2 không chứa `B_GOV_SHA` làm execution-baseline rule.
+4. Owner now **SUPERSEDES ONLY** literal `A_CLOSED_SHA` execution-checkpoint mechanic.
+5. Package B **MAY** use a clean durable governance-only descendant of
+   `A_CLOSED_SHA` as actual execution baseline; immutable Package A closure SHA
+   `0c865a26c4425a1c3fe429bb8e42238562025801` không bị thay thế/relabel.
+6. Intended future checkpoint: **`B_GOV_SHA`**. Chain: `A_CLOSED_SHA` →
+   `cdc4f2321f7176fd3c50023d7dd17676c0cd92f6` (post-A governance reconciliation)
+   → current dirty B-GOV governance preparation → separately authorized clean
+   `B_GOV_SHA`. `cdc4f232...` không phải Package B execution baseline.
+7. **`B_GOV_SHA` NOT YET ASSIGNED / chưa tồn tại** cho đến khi governance commit
+   thật tồn tại; không invent SHA. Checkpoint chỉ tạo sau corrected governance
+   diff review → Owner authorization riêng → governance-only commit/push.
+8. T0 phải chứng minh đủ sáu điều kiện trước implementation:
+   - `A_CLOSED_SHA` ancestor of actual HEAD / intended `B_GOV_SHA`;
+   - toàn bộ `A_CLOSED_SHA..HEAD` / `A_CLOSED_SHA..B_GOV_SHA` là governance/docs only;
+   - không có unexplained application/backend/frontend/schema/migration/test/tooling
+     delta trong ancestry range; mọi non-governance delta đều không đạt docs-only;
+   - working tree **CLEAN**;
+   - branch đúng Owner authorization: `correction/owner-acceptance-slice1-3`;
+   - actual verified HEAD được ghi thành **`PACKAGE_B_BASE_SHA`**.
+   Không đạt thì STOP theo baseline condition hiện hữu; B-GOV không thực hiện T0.
+9. **No clinical/product or T0→T12 substantive implementation requirement changed.**
+   Chỉ execution-baseline governance thay đổi bởi newer Owner decision này.
+   Package A lifecycle, Package B scope/STOP conditions, privacy/safety,
+   Package C boundaries, testing/review/acceptance requirements giữ nguyên.
+10. External pre-lock review **COMPLETED — PASS** vẫn historically valid; material
+    blockers **NONE**; Package B đã **OWNER LOCKED**. Không cần second pre-lock
+    review vì overlay chỉ đổi execution/checkpoint governance; không claim rằng
+    overlay đã được original external review xem xét.
+11. Package B T0→T12 vẫn **OWNER AUTHORIZED / IMPLEMENTATION NOT YET STARTED**.
+    Package C **NOT ACTIVE / NOT IMPLEMENTATION-AUTHORIZED**; C0 không mở.
+12. Correction task này **không authorize commit / push / merge / tag**; không
+    application/source/test/tooling changes, không reset/revert B-GOV work.
+
+**Next gate:** ChatGPT direct review of corrected B-GOV diff → Owner decision → Owner separately authorizes one governance-only commit/push → actual resulting commit SHA becomes `B_GOV_SHA` → working tree/branch verified clean → Package B T0.
+
+---
+
 ## WORKING ASSUMPTIONS
 
 | ID | Nội dung | Nguồn gốc | Trạng thái |
