@@ -640,6 +640,82 @@ DEC-019 ở mức implementation hiện có mà không chạy T7/T8.
 
 ---
 
+### DEC-020 — Hemorrhoid Clinical Workflow Reconciliation & Functional Clinical UX
+
+**Ngày:** 2026-08-31
+
+**Trạng thái:** OWNER LOCKED
+
+**Locked reference baseline:** `a2059ff6ea2796eee0a798d754b95e70221d2504`
+(branch `correction/owner-acceptance-slice1-3`).
+
+**Nguồn chuẩn:**
+
+- `docs/DEC-020_HEMORRHOID_CLINICAL_WORKFLOW_RECONCILIATION_FUNCTIONAL_UX.md` (DEC-020 v0.2);
+- `docs/DEC-020_PACKAGE_A_WORKFLOW_SEMANTIC_RECONCILIATION_IMPLEMENTATION_CONTRACT.md` (Package A Contract v0.2);
+- baseline DEC-019 — OWNER CLOSED — `a2059ff6ea2796eee0a798d754b95e70221d2504`.
+
+**External pre-lock review:** COMPLETED (one external pass, 2026-08-31).
+
+**Documented baseline-review limitation:** ACCEPTED BY OWNER — reviewer could not
+fetch local baseline `a2059ff6...` from the remote (checkpoint chưa push tại thời
+điểm review); review repo-grounded against nearest accessible state. Package A T0
+local source verification vẫn BẮT BUỘC và BLOCKING trước bất kỳ code change.
+
+Owner quyết định (2026-08-31):
+
+1. `D20-01` … `D20-13` = **AUTHORITATIVE** cho đúng phạm vi nêu trong từng
+   section. Selective supersession map (DEC-020 §18) = **AUTHORITATIVE**.
+2. Trọng tâm: `CareEpisode` hình thành tại first Return Encounter; Initial
+   Hemorrhoid Encounter (`workflowKind = HEMORRHOID_INITIAL`) giữ `episodeId =
+   null`; không heuristic Case inference; Doctor-only explicit close; bỏ hard
+   Follow-up Assessment prerequisite (chỉ bỏ phần "hard prerequisite"); Doctor
+   chọn reopen-cũ vs start-new sau closure; Functional Clinical UX mở trong
+   Clinical Core, Full Product Refinement vẫn DEFERRED.
+3. DEC-020 dùng **selective supersession**, không blanket-supersede DEC-010→019.
+   DEC-019 vẫn **OWNER CLOSED**. Các capability DEC-016 (TreatmentPathway,
+   Investigation, provenance, multi-modality Treatment Decision, Longo-as-Pathway)
+   **PRESERVED** trừ khi một Contract sau này đổi rõ ràng.
+4. Clinical safety boundary (DEC-020 §17) không đổi: automatic diagnosis /
+   classification / abnormal-result interpretation / treatment recommendation /
+   rule-engine advice / AI clinical reasoning / automatic ICD coding / legal
+   e-signature claim đều **OUT OF SCOPE**.
+
+**Implementation decomposition (DEC-020 §19):**
+
+- **Package A — Workflow Semantic Reconciliation — P0** — Contract
+  `docs/DEC-020_PACKAGE_A_WORKFLOW_SEMANTIC_RECONCILIATION_IMPLEMENTATION_CONTRACT.md`
+  v0.2 = **OWNER LOCKED** (2026-08-31).
+  - Execution authority: `T0 → T9 AUTHORIZED` trong một continuous Claude Code
+    implementation session, **subject to mandatory T0 STOP conditions**. T0 là
+    BLOCKING local source verification gate; nếu một Contract STOP condition xuất
+    hiện thì STOP cả session và báo Owner.
+  - Post-implementation: `T10` = ChatGPT direct source review; sau đó `T11` =
+    fresh Codex focused independent audit (session khác implementation session,
+    delta-focused: transaction/concurrency, single-active invariant,
+    initial/return Case ancestry, reopen/new race, close side effects, synthetic
+    reconciliation).
+- **Package B — Hemorrhoid Clinical Fidelity + Functional UX** — Contract
+  chuẩn bị/review riêng; implementation **NOT ACTIVE / NOT AUTHORIZED** trong
+  DEC-020.
+- **Package C — Procedure / Investigation evolution** — DISCOVERY-DEPENDENT;
+  implementation **NOT AUTHORIZED** trong DEC-020.
+
+**Không được claim:** Package A completed / Package A PASS / Technical Acceptance /
+Product Acceptance / `T10` completed / `T11` completed. Không có gate nào của
+Package A được PASS tại thời điểm ghi nhận DEC-020 vào SSOT.
+
+**Ranh giới không đổi:** `SYNTHETIC DATA ONLY`; real-patient runtime `NOT
+AUTHORIZED`; production `NOT AUTHORIZED`; AI clinical reasoning `NOT AUTHORIZED`.
+Git commit / push / merge / tag **KHÔNG** được DEC-020 ngầm cho phép — vẫn cần
+Owner authorization riêng theo repository governance.
+
+**Căn cứ:** Explicit Owner Lock 2026-08-31 (DEC-020 v0.2 §24; Package A Contract
+v0.2 §21); external pre-lock review COMPLETED; documented baseline-review
+limitation EXPLICITLY ACCEPTED BY OWNER.
+
+---
+
 ## WORKING ASSUMPTIONS
 
 | ID | Nội dung | Nguồn gốc | Trạng thái |
