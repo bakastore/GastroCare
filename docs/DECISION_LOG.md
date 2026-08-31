@@ -1,6 +1,6 @@
 # GastroCare — Decision Log
 
-Cập nhật: 2026-08-29
+Cập nhật: 2026-08-31
 
 Đây là Decision Log hiện hành và là nguồn chuẩn cho Owner Decisions
 và Working Assumptions của GastroCare.
@@ -542,8 +542,101 @@ break-glass access, generic permission engine.
 **Next:** chưa mở work package mới. Bước kế tiếp là Owner Decision /
 DEC-019 discovery. DEC-019 CHƯA được tạo.
 
-DEC-018 worktree tại thời điểm acceptance chưa commit; việc commit/merge do
-Owner chỉ đạo riêng.
+DEC-018 T0→T8 sau đó đã được commit tại remote checkpoint
+`7d33e02c36f5e862c50717c340deea86ad046e47` (baseline cho DEC-019).
+
+---
+
+### DEC-019 — Staff Profile & Credential Management v1
+
+**Ngày:** 2026-08-30
+
+**Trạng thái:** OWNER LOCKED
+
+**Thẩm quyền:** Explicit Owner authorization dated 2026-08-30. DEC-019 OWNER LOCKED
+và Implementation Contract v0.1 OWNER LOCKED.
+
+**Nguồn chuẩn:**
+
+- `docs/DEC-019_STAFF_PROFILE_CREDENTIAL_MANAGEMENT.md`;
+- `docs/15_STAFF_PROFILE_CREDENTIAL_MANAGEMENT_IMPLEMENTATION_CONTRACT.md`;
+- baseline DEC-018 CLOSED — OWNER ACCEPTED — remote checkpoint
+  `7d33e02c36f5e862c50717c340deea86ad046e47`.
+
+Owner quyết định:
+
+1. Mở work package `STAFF PROFILE & CREDENTIAL MANAGEMENT v1`.
+2. `AuthUser` vẫn là entity authentication/account/operational role/Clinic Admin
+   capability; roles vẫn chính xác `DOCTOR`, `NURSE`, `RECEPTIONIST`; không thêm
+   `ADMIN` role.
+3. `StaffProfile` là hồ sơ nghề nghiệp 1:1 optional, tách khỏi `AuthUser`; không
+   field nào của StaffProfile trở thành authentication hoặc clinical
+   authorization authority. DEC-019 không đổi Clinical Core authorization
+   semantics DEC-010→018 và không đổi nghĩa `AuthRole`/clinician assignment.
+4. Bốn entity mới: `StaffProfile`, `StaffCredential`, `EmploymentHistory`,
+   `StaffFacilityAssignment`; mỗi bảng mang `tenantId` trực tiếp; `tenantId`
+   không bao giờ nhận từ request DTO; tenant isolation enforce ở backend.
+5. Credential effective `EXPIRED` là derived, không persist; precedence
+   `REVOKED > EXPIRED > ACTIVE`. Employment overlap được phép.
+6. `StaffFacilityAssignment`: nhiều active facility được phép nhưng đúng một
+   active primary khi còn active assignment; đổi primary không kết thúc
+   assignment cũ; history không hard-delete; `facilityId`/`staffProfileId` bất
+   biến sau tạo. Partial unique indexes trên PostgreSQL là concurrency guard
+   cuối cùng — không `SERIALIZABLE`, không automatic retry; unique conflict /
+   `P2002` → `409 Conflict`. Change-primary và end-primary dùng ordered writes
+   trong một transaction (demote/end trước, promote sau).
+7. `StaffCredential` và `EmploymentHistory` được hard-delete với audit atomic;
+   `StaffFacilityAssignment` không hard-delete.
+8. `avatar`/binary file storage, credential scan/PDF, object storage, Staff
+   Directory, `/clinicians` enrichment, roster/scheduling, payroll,
+   attendance/leave, employment contracts, CCCD/passport, home address, bank
+   account, System Admin, generic permission engine, facility-based clinical
+   ACL, CORE-05, AI đều OUT OF SCOPE.
+9. A-001 product-specialty hypothesis độc lập với staff specialty; DEC-019 không
+   resolve/supersede/phụ thuộc A-001.
+10. Execution: Claude Code triển khai liên tục `T0 → T6` theo Contract; `T7` là
+    Fresh Codex independent focused read-only audit tách khỏi implementation
+    session; `T8` là Owner Synthetic Acceptance — AI/agent không tự đóng PASS.
+11. `SYNTHETIC DATA ONLY`; real-patient runtime và production vẫn
+    `NOT AUTHORIZED`. Không commit/push/merge/tag nếu chưa có Owner
+    authorization riêng.
+
+**Căn cứ:** DEC-018 CLOSED — OWNER ACCEPTED; Owner explicit authorization
+2026-08-30; external repo-grounded review CLOSED — PASS (1 MEDIUM execution-order
+ambiguity + 1 LOW wording issue corrected trước Owner Lock).
+
+---
+
+### DEC-019 CLOSURE — Owner-directed governance closure
+
+**Ngày:** 2026-08-31
+
+**Trạng thái:** OWNER CLOSED.
+
+Không sửa hay rút gọn phần OWNER LOCKED phía trên; đây là mục bổ sung ghi nhận
+việc Owner đóng work package theo chỉ đạo trực tiếp.
+
+Owner quyết định (2026-08-31):
+
+1. `DEC-019 — Staff Profile & Credential Management v1` = **OWNER CLOSED** kể từ
+   2026-08-31.
+2. `T7` (Fresh Codex independent focused read-only audit) = **WAIVED BY OWNER —
+   NOT EXECUTED**.
+3. `T8` (Owner Synthetic Acceptance) = **WAIVED BY OWNER — NOT EXECUTED**.
+4. Không có tuyên bố PASS / acceptance nào cho DEC-019: không T7 PASS, không T8
+   PASS, không Owner Synthetic Acceptance PASS, không Technical Acceptance bổ
+   sung, không Product Acceptance.
+5. Phần implementation DEC-019 hiện có (schema + additive migration + backend
+   `backend/src/staff/` + frontend User Detail / self profile + tests) được giữ
+   nguyên trong working tree; không rollback, không xóa.
+6. Không có công việc DEC-019 nào khác được authorize. T0→T6 execution history
+   được giữ làm hồ sơ; T7/T8 không còn là gate đang chờ.
+7. Real-patient runtime và production vẫn `NOT AUTHORIZED`. DEC-019 closure không
+   mở real data, pilot thật, production hoặc CORE-05.
+8. Clinical/domain semantics của DEC-019 và DEC-010→018 không đổi.
+
+**Căn cứ:** Owner-directed governance closure 2026-08-31; Owner chọn dừng
+DEC-019 ở mức implementation hiện có mà không chạy T7/T8.
 
 ---
 

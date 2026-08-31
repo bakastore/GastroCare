@@ -93,7 +93,9 @@ async function request<T>(
 export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) => request<T>(path, { method: 'POST', body }),
+  put: <T>(path: string, body?: unknown) => request<T>(path, { method: 'PUT', body }),
   patch: <T>(path: string, body?: unknown) => request<T>(path, { method: 'PATCH', body }),
+  delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
   // Credential-check POST (login): a 401 here is "wrong email/password", not an
   // expired session — see the 401 branch in request().
   postAuth: <T>(path: string, body?: unknown) =>

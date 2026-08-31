@@ -15,6 +15,11 @@ export const E2E_RECEPTIONIST_PASSWORD = 'CoreReceptionE2E-Pass1!';
 export async function seedE2eDatabase(): Promise<void> {
   const prisma = new PrismaClient();
   try {
+    // DEC-019 — clear staff tables before AuthUser (FK onDelete: Restrict).
+    await prisma.staffFacilityAssignment.deleteMany();
+    await prisma.staffCredential.deleteMany();
+    await prisma.employmentHistory.deleteMany();
+    await prisma.staffProfile.deleteMany();
     await prisma.investigationResult.deleteMany();
     await prisma.investigationOrder.deleteMany();
     await prisma.investigation.deleteMany();

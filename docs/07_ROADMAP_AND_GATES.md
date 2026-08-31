@@ -1,6 +1,6 @@
 # GastroCare — Roadmap và Acceptance Gates
 
-**Cập nhật:** 30/08/2026 — **DEC-018 Admin Boundary / User Management v1 acceptance gate CLOSED — OWNER ACCEPTED** (T0→T8; T7 independent audit completed with 1 MEDIUM finding remediated + Owner-accepted; T8 Owner Synthetic Acceptance PASS incl. T8.9 Last Clinic Admin protection). Next = Owner Decision / DEC-019 discovery. Prior: DEC-017 SSOT reconciliation; DEC-016 independent audit gate CLOSED — PASS.
+**Cập nhật:** 31/08/2026 — **DEC-019 Staff Profile & Credential Management v1: OWNER CLOSED** (Owner-directed governance closure 2026-08-31). Contract v0.1 remains OWNER LOCKED as historical authority; T0→T6 implementation preserved in working tree; T7 (Fresh Codex independent audit) = WAIVED BY OWNER — NOT EXECUTED; T8 (Owner Synthetic Acceptance) = WAIVED BY OWNER — NOT EXECUTED; no PASS / acceptance claim. Last closed work package = DEC-019; current work package = NONE. Baseline = DEC-018 remote checkpoint `7d33e02`. Prior: **DEC-018 Admin Boundary / User Management v1 acceptance gate CLOSED — OWNER ACCEPTED** (T0→T8; T7 independent audit completed with 1 MEDIUM finding remediated + Owner-accepted; T8 Owner Synthetic Acceptance PASS incl. T8.9 Last Clinic Admin protection); DEC-017 SSOT reconciliation; DEC-016 independent audit gate CLOSED — PASS.
 
 Roadmap này được điều khiển bởi năng lực, không có mốc tuần/tháng cố định. Một phase (giai đoạn) chỉ hoàn thành khi acceptance gate (cổng chấp nhận) tương ứng được thỏa.
 
@@ -30,7 +30,7 @@ FOUNDATION
 | Hemorrhoid Vertical Slice 1 | CLOSED — TECHNICAL ACCEPTANCE at `2ea529ee200a0a37a77cebb9a750f70adde57618` (historical) |
 | Hemorrhoid Vertical Slice 2 | TECHNICAL EXECUTION COMPLETE (historical completed work package) — DEC-012 + Contract v0.1 OWNER LOCKED; Owner product acceptance NOT CLAIMED |
 | Hemorrhoid Vertical Slice 3 | TECHNICAL EXECUTION COMPLETE và đã MERGED vào `main` tại `4a73a0c8764558d2776adffcf1d26092f6456634` — DEC-013 + Contract `docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md` OWNER LOCKED; Owner product acceptance NOT CLAIMED |
-| Current checkpoint | DEC-016 T0→M7 technical execution complete; implementation checkpoint `6dd8d52` COMMITTED/PUSHED theo DEC-017; Fresh Codex Session B independent focused audit `CLOSED — PASS` (2026-08-29; findings NONE; blockers NONE); status `TECHNICAL EXECUTION COMPLETE — INDEPENDENT FOCUSED AUDIT CLOSED — PASS`; Owner product acceptance NOT CLAIMED. `DEC-018 — ADMIN BOUNDARY / USER MANAGEMENT v1`: **acceptance gate CLOSED — OWNER ACCEPTED (2026-08-30)**, T0→T8 complete per `docs/14_ADMIN_BOUNDARY_USER_MANAGEMENT_IMPLEMENTATION_CONTRACT.md` v0.2 (SYNTHETIC DATA ONLY). No work package currently open; next = Owner Decision / DEC-019 discovery |
+| Current checkpoint | DEC-016 T0→M7 technical execution complete; implementation checkpoint `6dd8d52` COMMITTED/PUSHED theo DEC-017; Fresh Codex Session B independent focused audit `CLOSED — PASS` (2026-08-29; findings NONE; blockers NONE); status `TECHNICAL EXECUTION COMPLETE — INDEPENDENT FOCUSED AUDIT CLOSED — PASS`; Owner product acceptance NOT CLAIMED. `DEC-018 — ADMIN BOUNDARY / USER MANAGEMENT v1`: **acceptance gate CLOSED — OWNER ACCEPTED (2026-08-30)**, T0→T8 complete per `docs/14_ADMIN_BOUNDARY_USER_MANAGEMENT_IMPLEMENTATION_CONTRACT.md` v0.2 (SYNTHETIC DATA ONLY), committed at remote checkpoint `7d33e02`. `DEC-019 — STAFF PROFILE & CREDENTIAL MANAGEMENT v1`: **OWNER CLOSED (2026-08-31)** — Owner-directed governance closure; T0→T6 implementation preserved; T7/T8 WAIVED BY OWNER — NOT EXECUTED; no PASS / acceptance claim; see §3.2.5. Current work package = NONE |
 | GASTROCARE CORE tổng thể | IN PROGRESS |
 | CONTINUOUS CARE | NOT COMPLETE |
 | PRODUCT REFINEMENT / UI-UX | NOT STARTED — bị chặn đến khi Clinical Core được chấp nhận |
@@ -150,6 +150,49 @@ Trạng thái: **T0 → T8 CLOSED — OWNER ACCEPTED (2026-08-30)**.
 - Next: Owner Decision / DEC-019 discovery. No work package currently open.
 
 [Bằng chứng implementation DEC-016](13_DEC016_CASE_PATHWAY_IMPLEMENTATION.md). Clinical Core chưa Owner product accepted; CORE-05, AI, real-patient runtime, production và PDF/image storage không mở. Giới hạn Procedure/Surgery/Investigation của package cũ không phủ quyết phạm vi DEC-016 đã được Owner khóa mới hơn.
+
+### 3.2.5 DEC-019 Staff Profile & Credential Management v1 — OWNER LOCKED / IMPLEMENTATION AUTHORIZED (2026-08-30)
+
+Authority: DEC-019 OWNER LOCKED (2026-08-30); Contract
+[`docs/15_STAFF_PROFILE_CREDENTIAL_MANAGEMENT_IMPLEMENTATION_CONTRACT.md`](15_STAFF_PROFILE_CREDENTIAL_MANAGEMENT_IMPLEMENTATION_CONTRACT.md)
+v0.1 OWNER LOCKED; external repo-grounded review CLOSED — PASS. Baseline =
+DEC-018 CLOSED — OWNER ACCEPTED — remote checkpoint `7d33e02c36f5e862c50717c340deea86ad046e47`.
+
+Scope: `StaffProfile` (optional 1:1 professional profile), `StaffCredential`
+(license/certificate/training; derived `EXPIRED`), `EmploymentHistory` (overlap
+allowed), `StaffFacilityAssignment` (multi-facility active, exactly one active
+primary, no hard-delete, PostgreSQL partial unique indexes as concurrency
+guard). New `/clinic-admin/users/:id/{profile,credentials,employment-history,facility-assignments,staff-audit}`
+endpoints behind existing `ClinicAdminGuard`; `GET /auth/me/profile` self read;
+frontend User Detail page (`/clinic-admin/users/:id`, tabs Tổng quan / Chuyên môn
+/ Chứng chỉ / Công tác / Nhật ký) + self `/profile`.
+
+Out of scope, unchanged: avatar/file upload, credential scan/PDF, object
+storage, Staff Directory, `/clinicians` enrichment, roster/scheduling, payroll,
+attendance/leave, employment contracts, CCCD/passport, home address, bank
+account, System Admin, generic permission engine, facility-based clinical ACL,
+CORE-05, AI, production, real-patient runtime. No change to clinical semantics
+DEC-010→018. `AuthRole` stays exactly DOCTOR / NURSE / RECEPTIONIST — no ADMIN
+role.
+
+Execution sequence: `T0 → T1 → T2 → T3 → T4 → T5 → T6` (Claude Code, continuous)
+→ `T7` Fresh Codex independent focused read-only audit (R1 migration + manual
+partial indexes; R2 tenant isolation/ancestry; R3 facility lifecycle +
+concurrency; R4 audit atomicity/minimization; R5 regression boundary) → `T8`
+Owner Synthetic Acceptance. SYNTHETIC DATA ONLY; real-patient runtime /
+production NOT AUTHORIZED; no commit/push/merge/tag without separate Owner
+authorization.
+
+Status: **OWNER CLOSED (2026-08-31)** — Owner-directed governance closure. T0→T6
+implementation existed in the working tree and is preserved (schema + additive
+migration + `backend/src/staff/` + frontend User Detail / self profile + tests);
+no rollback. `T7` Fresh Codex independent focused read-only audit = **WAIVED BY
+OWNER — NOT EXECUTED**. `T8` Owner Synthetic Acceptance = **WAIVED BY OWNER — NOT
+EXECUTED**. No PASS / acceptance claim (no T7 PASS, no T8 PASS, no Owner
+Synthetic Acceptance, no additional Technical Acceptance, no Product Acceptance).
+No further DEC-019 work authorized. Real-patient runtime / production remain NOT
+AUTHORIZED. See DECISION_LOG `DEC-019 CLOSURE`. Historical execution-sequence and
+gate text below is retained as the locked Contract's original requirements.
 
 ### 3.3 Preserved Longo Clinical Core baseline
 

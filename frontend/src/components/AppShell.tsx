@@ -39,7 +39,9 @@ export function AppShell() {
             {roleLabel[user.role] ?? user.role}
             {user.isClinicAdmin ? ' · Quản trị viên' : ''}
           </span>
-          <span className="user-email">{user.displayName ?? user.email}</span>
+          <Link className="user-email" to="/profile">
+            {user.displayName ?? user.email}
+          </Link>
           <button type="button" className="btn btn-ghost" onClick={logout}>
             Đăng xuất
           </button>

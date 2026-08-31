@@ -20,6 +20,8 @@ import { LongoClinicalFormPage } from './pages/LongoClinicalFormPage';
 import { NewHemorrhoidEncounterPage } from './pages/NewHemorrhoidEncounterPage';
 import { HemorrhoidExaminationPage } from './pages/HemorrhoidExaminationPage';
 import { UsersPage } from './pages/admin/UsersPage';
+import { UserDetailPage } from './pages/admin/UserDetailPage';
+import { SelfProfilePage } from './pages/SelfProfilePage';
 import { FacilitiesRoomsPage } from './pages/admin/FacilitiesRoomsPage';
 import { FormTemplatesPage } from './pages/admin/FormTemplatesPage';
 import { AuditLogPage } from './pages/admin/AuditLogPage';
@@ -34,9 +36,11 @@ export default function App() {
         <Route element={<RequireAuth />}>
           <Route path="/" element={<HomeRedirect />} />
           <Route path="/change-password" element={<ChangePasswordPage />} />
+          <Route path="/profile" element={<SelfProfilePage />} />
 
           <Route element={<RequireClinicAdmin />}>
             <Route path="/clinic-admin/users" element={<UsersPage />} />
+            <Route path="/clinic-admin/users/:id" element={<UserDetailPage />} />
             <Route path="/clinic-admin/facilities" element={<FacilitiesRoomsPage />} />
           </Route>
 

@@ -22,6 +22,7 @@ import { CliniciansModule } from './clinicians/clinicians.module';
 import { FacilitiesModule } from './facilities/facilities.module';
 import { RoomsModule } from './rooms/rooms.module';
 import { ClinicAdminModule } from './clinic-admin/clinic-admin.module';
+import { StaffModule } from './staff/staff.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { ClinicAdminModule } from './clinic-admin/clinic-admin.module';
     TreatmentPathwaysModule,
     InvestigationsModule,
     ClinicAdminModule,
+    StaffModule,
   ],
   providers: [
     {
