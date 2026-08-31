@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { clinicAdminUsersApi } from '../../api/resources';
 import type {
   ClinicAdminUser,
@@ -391,6 +392,9 @@ function UserRow({
       <td>{user.status === 'ACTIVE' ? 'Hoạt động' : 'Vô hiệu hoá'}</td>
       <td>{user.isClinicAdmin ? 'Có' : '—'}</td>
       <td className="row-actions">
+        <Link className="btn btn-ghost" to={`/clinic-admin/users/${user.id}`}>
+          Xem
+        </Link>
         <button
           type="button"
           className="btn btn-ghost"

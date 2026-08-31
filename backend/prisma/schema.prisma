@@ -58,6 +58,12 @@ model Tenant {
   investigationOrders InvestigationOrder[]
   investigationResults InvestigationResult[]
 
+  // DEC-019 — Staff Profile & Credential Management v1.
+  staffProfiles StaffProfile[]
+  staffCredentials StaffCredential[]
+  employmentHistory EmploymentHistory[]
+  staffFacilityAssignments StaffFacilityAssignment[]
+
   @@map("tenants")
 }
 
@@ -108,6 +114,9 @@ model AuthUser {
   responsibleForEncounters Encounter[]                  @relation("EncounterResponsibleClinician")
   createdEncounters        Encounter[]                  @relation("EncounterCreatedBy")
   clinicianAssignments     ClinicianAssignmentHistory[] @relation("AssignmentClinician")
+
+  // DEC-019 — optional 1:1 professional profile (never auth/clinical authority).
+  staffProfile StaffProfile?
 
   @@index([tenantId])
   @@map("auth_users")
@@ -260,6 +269,9 @@ model Facility {
   createdAt DateTime @default(now())
 
   rooms Room[]
+
+  // DEC-019 — internal Facility assignments for staff.
+  staffAssignments StaffFacilityAssignment[]
 
   @@index([tenantId])
   @@map("facilities")
@@ -644,4 +656,141 @@ model InvestigationResult {
 
   @@index([tenantId, investigationId])
   @@map("investigation_results")
+}
+
+// ============================================================================
+// DEC-019 — Staff Profile & Credential Management v1
+// (docs/DEC-019_STAFF_PROFILE_CREDENTIAL_MANAGEMENT.md,
+//  docs/15_STAFF_PROFILE_CREDENTIAL_MANAGEMENT_IMPLEMENTATION_CONTRACT.md)
+//
+// These entities describe who a person is professionally. They are NEVER
+// authentication or clinical authorization authority; AuthUser stays the
+// account/role/Clinic-Admin-capability entity and AuthRole stays exactly
+// DOCTOR / NURSE / RECEPTIONIST. StaffProfile is optional and 1:1 with
+// AuthUser. Every table carries a direct tenantId (never from a request DTO).
+//
+// The StaffFacilityAssignment invariants "at most one active primary per
+// profile" and "at most one active assignment per (staffProfileId, facilityId)"
+// are enforced by two PostgreSQL PARTIAL UNIQUE INDEXES that Prisma 6.x schema
+// DSL cannot express; they live only in the DEC-019 migration.sql and are the
+// final concurrency guard (no SERIALIZABLE, no retry; violation -> HTTP 409).
+// ============================================================================
+
+enum StaffSpecialty {
+  GASTROENTEROLOGY
+  COLORECTAL_SURGERY
+  GENERAL_SURGERY
+  OTHER
+}
+
+enum StaffCredentialType {
+  LICENSE
+  CERTIFICATE
+  TRAINING
+}
+
+// EXPIRED is never stored — it is a derived effective state computed at read
+// time (REVOKED > EXPIRED > ACTIVE).
+enum StaffCredentialStatus {
+  ACTIVE
+  REVOKED
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  COLLABORATOR
+}
+
+model StaffProfile {
+  id String @id @default(uuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  authUserId String @unique
+  authUser AuthUser @relation(fields: [authUserId], references: [id])
+  fullName String
+  professionalTitle String?
+  workPhone String?
+  primarySpecialty StaffSpecialty?
+  secondarySpecialties StaffSpecialty[]
+  specialtyOtherLabel String?
+  biography String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  credentials StaffCredential[]
+  employmentHistory EmploymentHistory[]
+  facilityAssignments StaffFacilityAssignment[]
+
+  @@index([tenantId])
+  @@map("staff_profiles")
+}
+
+// issueDate/expiryDate are date-only. credentialNumber is NOT globally unique.
+// Hard delete allowed for data-entry correction; mutation + audit atomic.
+model StaffCredential {
+  id String @id @default(uuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  staffProfileId String
+  staffProfile StaffProfile @relation(fields: [staffProfileId], references: [id])
+  credentialType StaffCredentialType
+  name String
+  credentialNumber String?
+  issuingOrganization String?
+  issueDate DateTime? @db.Date
+  expiryDate DateTime? @db.Date
+  status StaffCredentialStatus @default(ACTIVE)
+  note String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, staffProfileId])
+  @@map("staff_credentials")
+}
+
+// Overlapping records are explicitly allowed (no exclusion constraint).
+// Hard delete allowed; mutation + audit atomic.
+model EmploymentHistory {
+  id String @id @default(uuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  staffProfileId String
+  staffProfile StaffProfile @relation(fields: [staffProfileId], references: [id])
+  organizationName String
+  department String?
+  positionTitle String?
+  startDate DateTime @db.Date
+  endDate DateTime? @db.Date
+  employmentType EmploymentType?
+  note String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, staffProfileId])
+  @@map("employment_history")
+}
+
+// Active assignment == endDate IS NULL. NEVER hard-deleted. facilityId and
+// staffProfileId are immutable after creation. Does not grant/revoke clinical
+// access and does not change AuthRole.
+model StaffFacilityAssignment {
+  id String @id @default(uuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  staffProfileId String
+  staffProfile StaffProfile @relation(fields: [staffProfileId], references: [id])
+  facilityId String
+  facility Facility @relation(fields: [facilityId], references: [id])
+  isPrimary Boolean @default(false)
+  startDate DateTime @db.Date
+  endDate DateTime? @db.Date
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, staffProfileId])
+  @@index([tenantId, facilityId])
+  @@map("staff_facility_assignments")
 }

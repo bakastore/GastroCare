@@ -320,21 +320,32 @@ describe('Hemorrhoid Vertical Slice 3 — T4 episode lifecycle/concurrency (e2e)
   });
 
   // ==========================================================================
-  // Explicit close prerequisite (Contract §Q)
+  // DEC-020 D20-03: close is a DOCTOR explicit action; a completed
+  // HEMORRHOID_FOLLOW_UP_ASSESSMENT is DESIRABLE but NOT a hard prerequisite.
   // ==========================================================================
-  describe('close prerequisite', () => {
-    it('rejects closing an ACTIVE HEMORRHOID_TREATMENT episode with no COMPLETED HEMORRHOID_FOLLOW_UP_ASSESSMENT', async () => {
+  describe('close behavior', () => {
+    it('DEC-020: allows an explicit DOCTOR close of an ACTIVE HEMORRHOID_TREATMENT episode with no COMPLETED HEMORRHOID_FOLLOW_UP_ASSESSMENT', async () => {
       const patient = await createPatient('CLOSE1');
       const careTaskId = await readyOpenFollowUpTask(patient);
       const ret = await createReturn(doctorToken, careTaskId);
       expect(ret.status).toBe(201);
       const episodeId = ret.body.episodeId as string;
 
-      // No Assessment submitted at all.
+      // No Assessment submitted at all — close still proceeds.
       const res = await request(app.getHttpServer())
         .post(`/care-episodes/${episodeId}/close`)
         .set('Authorization', `Bearer ${doctorToken}`);
-      expect(res.status).toBe(409);
+      expect(res.status).toBe(201);
+      expect(res.body.status).toBe(CareEpisodeStatus.CLOSED);
+
+      // The close audit records, factually, that no assessment was present.
+      const closeEvent = await prisma.auditEvent.findFirstOrThrow({
+        where: { entityId: episodeId, action: 'CARE_EPISODE_CLOSED' },
+      });
+      expect(
+        (closeEvent.metadata as Record<string, unknown>)
+          .followUpAssessmentPresent,
+      ).toBe(false);
     });
 
     it('allows closing an ACTIVE HEMORRHOID_TREATMENT episode once a COMPLETED HEMORRHOID_FOLLOW_UP_ASSESSMENT exists on an Encounter in it', async () => {
@@ -587,7 +598,9 @@ describe('Hemorrhoid Vertical Slice 3 — T4 episode lifecycle/concurrency (e2e)
       const episodes = await prisma.careEpisode.findMany({
         where: { tenantId, patientId: patient, episodeType: 'HEMORRHOID_TREATMENT' },
       });
-      expect(episodes).toHaveLength(1); // Existing Initial Case survives failed Return.
+      // DEC-020: this is a first-ever Return, so the failed transaction would
+      // have created the episode too — it must roll back with everything else.
+      expect(episodes).toHaveLength(0);
 
       const returnEncounters = await prisma.encounter.count({
         where: { tenantId, patientId: patient, episodeId: { not: null }, workflowKind: null, treatmentPathwayId: null },

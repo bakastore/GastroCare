@@ -621,6 +621,8 @@ export async function seedPilotDataset(): Promise<void> {
         // synthetic patient (mirrors NewHemorrhoidEncounterPage). The later
         // "Tái khám trĩ" Encounter and every generic / Longo-episode-bound
         // Encounter in this seed keep workflowKind = NULL.
+        // DEC-020 D20-02 — the Initial Encounter is ungrouped (episodeId
+        // null); no HEMORRHOID_TREATMENT CareEpisode is created here.
         workflowKind: EncounterWorkflowKind.HEMORRHOID_INITIAL,
       },
     );

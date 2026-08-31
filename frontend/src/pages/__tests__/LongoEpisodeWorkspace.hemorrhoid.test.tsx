@@ -2,7 +2,12 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { LongoEpisodeWorkspace } from '../LongoEpisodeWorkspace';
-import { careEpisodesApi, followUpTasksApi, patientsApi } from '../../api/resources';
+import {
+  careEpisodesApi,
+  followUpTasksApi,
+  patientsApi,
+  treatmentPathwaysApi,
+} from '../../api/resources';
 
 // F2 (ChatGPT T6 review) — an Encounter is 1:1 with CarePlan; once one
 // exists (DRAFT or SIGNED) the sequence must offer to view it via
@@ -10,15 +15,19 @@ import { careEpisodesApi, followUpTasksApi, patientsApi } from '../../api/resour
 // projection's carePlanId/carePlanStatus (patients.service.ts), not a new
 // API call.
 vi.mock('../../api/resources', () => ({
-  careEpisodesApi: { listByPatient: vi.fn() },
+  HEMORRHOID_RECURRENCE_CHOICE_REQUIRED: 'HEMORRHOID_RECURRENCE_CHOICE_REQUIRED',
+  careEpisodesApi: { listByPatient: vi.fn(), close: vi.fn(), reopen: vi.fn(), create: vi.fn() },
   followUpTasksApi: { listByPatient: vi.fn() },
   patientsApi: { getTimeline: vi.fn() },
+  encountersApi: { createHemorrhoidReturn: vi.fn() },
+  treatmentPathwaysApi: { list: vi.fn(), create: vi.fn() },
 }));
 
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(careEpisodesApi.listByPatient).mockResolvedValue([]);
   vi.mocked(followUpTasksApi.listByPatient).mockResolvedValue([]);
+  vi.mocked(treatmentPathwaysApi.list).mockResolvedValue([]);
 });
 
 function encounterEvent(overrides: Partial<Record<string, unknown>> = {}) {

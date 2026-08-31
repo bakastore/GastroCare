@@ -38,6 +38,16 @@ export function NewHemorrhoidEncounterPage() {
   const [facilityId, setFacilityId] = useState('');
   const [roomId, setRoomId] = useState('');
   const [responsibleClinicianId, setResponsibleClinicianId] = useState('');
+  // DEC-020 T6 — the wording must match the actual backend resolution:
+  //   DOCTOR omits responsibleClinicianId -> the authenticated DOCTOR
+  //   RECEPTIONIST omits it -> the configured pilot/default clinician
+  const isDoctor = user?.role === 'DOCTOR';
+  const defaultClinicianOptionLabel = isDoctor
+    ? 'Mặc định: chính bạn (bác sĩ đang đăng nhập)'
+    : 'Mặc định: bác sĩ trực theo cấu hình hệ thống';
+  const defaultClinicianResolvedNote = isDoctor
+    ? ' (mặc định: bác sĩ đang đăng nhập)'
+    : ' (mặc định: bác sĩ trực theo cấu hình hệ thống)';
   const [occurredAt, setOccurredAt] = useState('');
   const [reasonForVisit, setReasonForVisit] = useState('Khám trĩ');
   const [error, setError] = useState<string | null>(null);
@@ -108,7 +118,7 @@ export function NewHemorrhoidEncounterPage() {
           <dt>Bác sĩ phụ trách</dt>
           <dd>
             {clinician?.email ?? created.responsibleClinicianId}
-            {!responsibleClinicianId && ' (mặc định hệ thống)'}
+            {!responsibleClinicianId && defaultClinicianResolvedNote}
           </dd>
         </dl>
         <div className="form-actions">
@@ -202,7 +212,7 @@ export function NewHemorrhoidEncounterPage() {
           value={responsibleClinicianId}
           onChange={(e) => setResponsibleClinicianId(e.target.value)}
         >
-          <option value="">Mặc định (bác sĩ trực — cấu hình hệ thống)</option>
+          <option value="">{defaultClinicianOptionLabel}</option>
           {(cliniciansQuery.data ?? []).map((c) => (
             <option key={c.id} value={c.id}>
               {c.email}

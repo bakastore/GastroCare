@@ -116,11 +116,12 @@ test.describe('Hemorrhoid Vertical Slice 3 — continuous-care browser golden pa
     expect(sign1Res.ok()).toBeTruthy();
 
     // 4. Reload the browser and verify (Contract §S/§I): the OPEN generic
-    // follow-up task shows "Bắt đầu tái khám" inside the Case created at Initial.
+    // follow-up task shows "Bắt đầu tái khám" in the ungrouped section.
     await page.goto(`/patients/${patientId}`);
     await expect(page.getByRole('button', { name: 'Bắt đầu tái khám' })).toBeVisible();
-    // DEC016: the Case already exists before the first Return.
-    await expect(page.getByText('Case trĩ')).toHaveCount(1);
+    // DEC-020 D20-02: no Hemorrhoid Case exists yet — it begins at the first
+    // Return Encounter.
+    await expect(page.getByText('Case trĩ')).toHaveCount(0);
 
     // 5. Submit the Return Encounter form via the browser (Contract §H):
     // succeeds, reloads timeline, task becomes completed/linked, new Return
@@ -195,10 +196,15 @@ test.describe('Hemorrhoid Vertical Slice 3 — continuous-care browser golden pa
 
     await expect(page.getByText('Lượt tái khám', { exact: true })).toHaveCount(2);
 
-    // 8. Correction batch R2 — termination is decided on the CURRENT Return
-    // Encounter, only after ITS OWN Follow-up Assessment is COMPLETED. On
-    // the freshly-created Return #2 there is no Terminate action yet.
-    await expect(page.getByRole('button', { name: 'Kết thúc đợt theo dõi' })).toHaveCount(0);
+    // 8. DEC-020 T5 + T11 P2-02 — termination is decided on the CURRENT
+    // Return Encounter, but Follow-up Assessment presence is EPISODE-LEVEL:
+    // Return #1 already has a COMPLETED assessment in this episode, so the
+    // action on Return #2 is enabled with no "no assessment" warning. Close
+    // is still explicit, never automatic.
+    await expect(
+      page.getByRole('button', { name: 'Kết thúc đợt theo dõi' }),
+    ).toBeEnabled();
+    await expect(page.getByText(/Chưa có Đánh giá tái khám hoàn tất/)).toHaveCount(0);
 
     // Complete Assessment #2 on Return #2 via the browser (Return #1's link
     // now reads "Đánh giá tái khám ✓", so match exactly).
@@ -238,8 +244,9 @@ test.describe('Hemorrhoid Vertical Slice 3 — continuous-care browser golden pa
           e.data.templateKey === 'HEMORRHOID_NEXT_CLINICAL_DECISION',
       ),
     ).toHaveLength(1);
-    // DEC016: Initial and Return #1 plans both belong to this same Case.
-    expect(episodeEvents.filter((e) => e.type === 'CARE_PLAN_SIGNED')).toHaveLength(2);
+    // DEC-020 D20-02: the Initial CarePlan is on the ungrouped Initial
+    // Encounter; only Return #1's CarePlan is inside this Case.
+    expect(episodeEvents.filter((e) => e.type === 'CARE_PLAN_SIGNED')).toHaveLength(1);
 
     // 9. Correction batch C2/§D — explicit reopen with a required reason via
     // the existing (T4-audited) careEpisodesApi.reopen.

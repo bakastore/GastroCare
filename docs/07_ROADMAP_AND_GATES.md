@@ -1,6 +1,6 @@
 # GastroCare — Roadmap và Acceptance Gates
 
-**Cập nhật:** 30/08/2026 — **DEC-018 Admin Boundary / User Management v1 acceptance gate CLOSED — OWNER ACCEPTED** (T0→T8; T7 independent audit completed with 1 MEDIUM finding remediated + Owner-accepted; T8 Owner Synthetic Acceptance PASS incl. T8.9 Last Clinic Admin protection). Next = Owner Decision / DEC-019 discovery. Prior: DEC-017 SSOT reconciliation; DEC-016 independent audit gate CLOSED — PASS.
+**Cập nhật:** 31/08/2026 — **DEC-019 Staff Profile & Credential Management v1: OWNER CLOSED** (Owner-directed governance closure 2026-08-31). Contract v0.1 remains OWNER LOCKED as historical authority; T0→T6 implementation preserved in working tree; T7 (Fresh Codex independent audit) = WAIVED BY OWNER — NOT EXECUTED; T8 (Owner Synthetic Acceptance) = WAIVED BY OWNER — NOT EXECUTED; no PASS / acceptance claim. Last closed work package = DEC-020 Package A. **DEC-020 — Hemorrhoid Clinical Workflow Reconciliation & Functional Clinical UX: OWNER LOCKED (2026-08-31)** at locked reference baseline `a2059ff6ea2796eee0a798d754b95e70221d2504`; external pre-lock review COMPLETED; documented baseline-review limitation EXPLICITLY ACCEPTED BY OWNER. **DEC-020 Package A — Workflow Semantic Reconciliation: OWNER CLOSED (2026-08-31).** Execution-START baseline `a03b1878dd42ca80956418c67da6f79d0b560572` (kept distinct, NOT `A_CLOSED_SHA`). Package A OWNER-CLOSED implementation checkpoint: **`A_CLOSED_SHA` = `0c865a26c4425a1c3fe429bb8e42238562025801`** (commit `0c865a2` `feat: checkpoint DEC-020 Package A owner-closed`) — implementation + T10/T11 corrections + closure governance are **COMMITTED**. `T0 → T9` COMPLETE; `T10` ChatGPT direct source review = PASS; `T11` initial fresh Codex independent audit = FAIL — CORRECTION REQUIRED (P0=0/P1=1/P2=2/P3=0) → correction batch COMPLETED → focused source recheck PASS → `T11` focused independent re-audit = PASS — NO P0/P1 (final P0=0/P1=0/P2=1/P3=0). Residual P2 (Unicode reason-length parity) = NON-BLOCKING, DEFERRED. Owner closure ≠ Product/production acceptance. Package B = NOT STARTED, NOT IMPLEMENTATION-AUTHORIZED (Package A checkpoint prerequisite now satisfied; still needs separate authority rebind/review/lock/authorization); Package C = NOT AUTHORIZED. Next gate = Package B authority rebind to `A_CLOSED_SHA` → Package B review / Owner lock decision → separate Owner implementation authorization if approved. Baseline = DEC-018 remote checkpoint `7d33e02`; durable pre-Package-A baseline `a2059ff6...`. Prior: **DEC-018 Admin Boundary / User Management v1 acceptance gate CLOSED — OWNER ACCEPTED** (T0→T8; T7 independent audit completed with 1 MEDIUM finding remediated + Owner-accepted; T8 Owner Synthetic Acceptance PASS incl. T8.9 Last Clinic Admin protection); DEC-017 SSOT reconciliation; DEC-016 independent audit gate CLOSED — PASS.
 
 Roadmap này được điều khiển bởi năng lực, không có mốc tuần/tháng cố định. Một phase (giai đoạn) chỉ hoàn thành khi acceptance gate (cổng chấp nhận) tương ứng được thỏa.
 
@@ -26,11 +26,15 @@ FOUNDATION
 | Real-world evidence alignment | COMPLETE |
 | Clinical architecture | LOCKED |
 | Longo Clinical Workflow v1.0 | OWNER LOCKED |
-| Real-world Clinical Core implementation | IN PROGRESS — Hemorrhoid Vertical Slice 1 TECHNICALLY ACCEPTED; Vertical Slice 2 technical execution complete (historical); Vertical Slice 3 technical execution complete và đã MERGED vào `main` |
+| Real-world Clinical Core implementation | IN PROGRESS — Hemorrhoid Vertical Slice 1 TECHNICALLY ACCEPTED; Vertical Slice 2 technical execution complete (historical); Vertical Slice 3 technical execution complete và đã MERGED vào `main`; **DEC-020 Package A — Workflow Semantic Reconciliation = OWNER CLOSED (2026-08-31)**, committed at `A_CLOSED_SHA` `0c865a26c4425a1c3fe429bb8e42238562025801` (execution-START baseline `a03b1878…` kept distinct) |
+| DEC-020 v0.2 | OWNER LOCKED (2026-08-31) — Hemorrhoid Clinical Workflow Reconciliation & Functional Clinical UX; D20-01…D20-13 + selective supersession map AUTHORITATIVE (unchanged by Package A closure) |
+| DEC-020 Package A Contract v0.2 | OWNER LOCKED (2026-08-31); clinical/domain + implementation semantics unchanged. **Package A: OWNER CLOSED (2026-08-31), committed at `A_CLOSED_SHA` `0c865a26c4425a1c3fe429bb8e42238562025801`.** `T0 → T9` COMPLETE; `T10` PASS; `T11` initial FAIL — CORRECTION REQUIRED (P0=0/P1=1/P2=2/P3=0) → corrected → focused source recheck PASS → `T11` focused independent re-audit PASS — NO P0/P1 (final P0=0/P1=0/P2=1/P3=0); residual P2 (Unicode reason-length parity) NON-BLOCKING/DEFERRED; implementation COMMITTED; no schema/migration change; SYNTHETIC DATA ONLY. Owner closure ≠ Product/production acceptance |
+| DEC-020 Package B | **NOT STARTED, NOT IMPLEMENTATION-AUTHORIZED** — no draft activated; no DRAFT→OWNER LOCKED. The Package A clean-checkpoint prerequisite is SATISFIED (`A_CLOSED_SHA` = `0c865a2`); Package B still requires a separate authority rebind to `A_CLOSED_SHA` → review / Owner lock decision → separate explicit Owner implementation authorization |
+| DEC-020 Package C | NOT ACTIVE implementation — DISCOVERY-DEPENDENT, NOT AUTHORIZED |
 | Hemorrhoid Vertical Slice 1 | CLOSED — TECHNICAL ACCEPTANCE at `2ea529ee200a0a37a77cebb9a750f70adde57618` (historical) |
 | Hemorrhoid Vertical Slice 2 | TECHNICAL EXECUTION COMPLETE (historical completed work package) — DEC-012 + Contract v0.1 OWNER LOCKED; Owner product acceptance NOT CLAIMED |
 | Hemorrhoid Vertical Slice 3 | TECHNICAL EXECUTION COMPLETE và đã MERGED vào `main` tại `4a73a0c8764558d2776adffcf1d26092f6456634` — DEC-013 + Contract `docs/12_HEMORRHOID_SLICE3_IMPLEMENTATION_CONTRACT.md` OWNER LOCKED; Owner product acceptance NOT CLAIMED |
-| Current checkpoint | DEC-016 T0→M7 technical execution complete; implementation checkpoint `6dd8d52` COMMITTED/PUSHED theo DEC-017; Fresh Codex Session B independent focused audit `CLOSED — PASS` (2026-08-29; findings NONE; blockers NONE); status `TECHNICAL EXECUTION COMPLETE — INDEPENDENT FOCUSED AUDIT CLOSED — PASS`; Owner product acceptance NOT CLAIMED. `DEC-018 — ADMIN BOUNDARY / USER MANAGEMENT v1`: **acceptance gate CLOSED — OWNER ACCEPTED (2026-08-30)**, T0→T8 complete per `docs/14_ADMIN_BOUNDARY_USER_MANAGEMENT_IMPLEMENTATION_CONTRACT.md` v0.2 (SYNTHETIC DATA ONLY). No work package currently open; next = Owner Decision / DEC-019 discovery |
+| Current checkpoint | DEC-016 T0→M7 technical execution complete; implementation checkpoint `6dd8d52` COMMITTED/PUSHED theo DEC-017; Fresh Codex Session B independent focused audit `CLOSED — PASS` (2026-08-29; findings NONE; blockers NONE); status `TECHNICAL EXECUTION COMPLETE — INDEPENDENT FOCUSED AUDIT CLOSED — PASS`; Owner product acceptance NOT CLAIMED. `DEC-018 — ADMIN BOUNDARY / USER MANAGEMENT v1`: **acceptance gate CLOSED — OWNER ACCEPTED (2026-08-30)**, T0→T8 complete per `docs/14_ADMIN_BOUNDARY_USER_MANAGEMENT_IMPLEMENTATION_CONTRACT.md` v0.2 (SYNTHETIC DATA ONLY), committed at remote checkpoint `7d33e02`. `DEC-019 — STAFF PROFILE & CREDENTIAL MANAGEMENT v1`: **OWNER CLOSED (2026-08-31)** — Owner-directed governance closure; T0→T6 implementation preserved; T7/T8 WAIVED BY OWNER — NOT EXECUTED; no PASS / acceptance claim; see §3.2.5. `DEC-020 — HEMORRHOID CLINICAL WORKFLOW RECONCILIATION & FUNCTIONAL CLINICAL UX`: **OWNER LOCKED (2026-08-31)** — locked reference baseline `a2059ff6ea2796eee0a798d754b95e70221d2504`; external pre-lock review COMPLETED; documented baseline-review limitation EXPLICITLY ACCEPTED BY OWNER. **DEC-020 Package A — Workflow Semantic Reconciliation = OWNER CLOSED (2026-08-31)**, committed at `A_CLOSED_SHA` `0c865a26c4425a1c3fe429bb8e42238562025801` (execution-START baseline `a03b1878…` kept distinct; Package A Contract v0.2 OWNER LOCKED, semantics unchanged); `T0 → T9` COMPLETE; `T10` PASS; `T11` initial FAIL → corrected → focused re-audit PASS — NO P0/P1; residual P2 deferred; implementation COMMITTED; see §3.2.6. Next gate = Package B authority rebind to `A_CLOSED_SHA` → Package B review / Owner lock decision → separate Owner implementation authorization if approved |
 | GASTROCARE CORE tổng thể | IN PROGRESS |
 | CONTINUOUS CARE | NOT COMPLETE |
 | PRODUCT REFINEMENT / UI-UX | NOT STARTED — bị chặn đến khi Clinical Core được chấp nhận |
@@ -150,6 +154,136 @@ Trạng thái: **T0 → T8 CLOSED — OWNER ACCEPTED (2026-08-30)**.
 - Next: Owner Decision / DEC-019 discovery. No work package currently open.
 
 [Bằng chứng implementation DEC-016](13_DEC016_CASE_PATHWAY_IMPLEMENTATION.md). Clinical Core chưa Owner product accepted; CORE-05, AI, real-patient runtime, production và PDF/image storage không mở. Giới hạn Procedure/Surgery/Investigation của package cũ không phủ quyết phạm vi DEC-016 đã được Owner khóa mới hơn.
+
+### 3.2.5 DEC-019 Staff Profile & Credential Management v1 — OWNER LOCKED / IMPLEMENTATION AUTHORIZED (2026-08-30)
+
+Authority: DEC-019 OWNER LOCKED (2026-08-30); Contract
+[`docs/15_STAFF_PROFILE_CREDENTIAL_MANAGEMENT_IMPLEMENTATION_CONTRACT.md`](15_STAFF_PROFILE_CREDENTIAL_MANAGEMENT_IMPLEMENTATION_CONTRACT.md)
+v0.1 OWNER LOCKED; external repo-grounded review CLOSED — PASS. Baseline =
+DEC-018 CLOSED — OWNER ACCEPTED — remote checkpoint `7d33e02c36f5e862c50717c340deea86ad046e47`.
+
+Scope: `StaffProfile` (optional 1:1 professional profile), `StaffCredential`
+(license/certificate/training; derived `EXPIRED`), `EmploymentHistory` (overlap
+allowed), `StaffFacilityAssignment` (multi-facility active, exactly one active
+primary, no hard-delete, PostgreSQL partial unique indexes as concurrency
+guard). New `/clinic-admin/users/:id/{profile,credentials,employment-history,facility-assignments,staff-audit}`
+endpoints behind existing `ClinicAdminGuard`; `GET /auth/me/profile` self read;
+frontend User Detail page (`/clinic-admin/users/:id`, tabs Tổng quan / Chuyên môn
+/ Chứng chỉ / Công tác / Nhật ký) + self `/profile`.
+
+Out of scope, unchanged: avatar/file upload, credential scan/PDF, object
+storage, Staff Directory, `/clinicians` enrichment, roster/scheduling, payroll,
+attendance/leave, employment contracts, CCCD/passport, home address, bank
+account, System Admin, generic permission engine, facility-based clinical ACL,
+CORE-05, AI, production, real-patient runtime. No change to clinical semantics
+DEC-010→018. `AuthRole` stays exactly DOCTOR / NURSE / RECEPTIONIST — no ADMIN
+role.
+
+Execution sequence: `T0 → T1 → T2 → T3 → T4 → T5 → T6` (Claude Code, continuous)
+→ `T7` Fresh Codex independent focused read-only audit (R1 migration + manual
+partial indexes; R2 tenant isolation/ancestry; R3 facility lifecycle +
+concurrency; R4 audit atomicity/minimization; R5 regression boundary) → `T8`
+Owner Synthetic Acceptance. SYNTHETIC DATA ONLY; real-patient runtime /
+production NOT AUTHORIZED; no commit/push/merge/tag without separate Owner
+authorization.
+
+Status: **OWNER CLOSED (2026-08-31)** — Owner-directed governance closure. T0→T6
+implementation existed in the working tree and is preserved (schema + additive
+migration + `backend/src/staff/` + frontend User Detail / self profile + tests);
+no rollback. `T7` Fresh Codex independent focused read-only audit = **WAIVED BY
+OWNER — NOT EXECUTED**. `T8` Owner Synthetic Acceptance = **WAIVED BY OWNER — NOT
+EXECUTED**. No PASS / acceptance claim (no T7 PASS, no T8 PASS, no Owner
+Synthetic Acceptance, no additional Technical Acceptance, no Product Acceptance).
+No further DEC-019 work authorized. Real-patient runtime / production remain NOT
+AUTHORIZED. See DECISION_LOG `DEC-019 CLOSURE`. Historical execution-sequence and
+gate text below is retained as the locked Contract's original requirements.
+
+### 3.2.6 DEC-020 Hemorrhoid Clinical Workflow Reconciliation & Functional Clinical UX — OWNER LOCKED (2026-08-31)
+
+Authority: DEC-020 v0.2 OWNER LOCKED (2026-08-31) —
+[`docs/DEC-020_HEMORRHOID_CLINICAL_WORKFLOW_RECONCILIATION_FUNCTIONAL_UX.md`](DEC-020_HEMORRHOID_CLINICAL_WORKFLOW_RECONCILIATION_FUNCTIONAL_UX.md).
+Locked reference baseline `a2059ff6ea2796eee0a798d754b95e70221d2504` on
+`correction/owner-acceptance-slice1-3`. External pre-lock review COMPLETED (one
+external pass); documented baseline-review limitation (reviewer could not fetch
+the unpushed local baseline from the remote) EXPLICITLY ACCEPTED BY OWNER — does
+not waive Package A T0 local source verification.
+
+`D20-01 … D20-13` are authoritative for their stated scope; the DEC-020 §18
+selective supersession map is authoritative. DEC-020 uses selective supersession,
+not blanket supersession of DEC-010→019; DEC-019 remains OWNER CLOSED; DEC-016
+TreatmentPathway / Investigation / provenance / multi-modality Treatment Decision
+capabilities are PRESERVED unless a later Contract changes them. Clinical safety
+boundary (DEC-020 §17) unchanged: no automatic diagnosis / classification /
+abnormal-result interpretation / treatment recommendation / rule-engine advice /
+AI clinical reasoning / automatic ICD coding / legal e-signature claim.
+
+Implementation decomposition:
+
+- **Package A — Workflow Semantic Reconciliation — P0 — OWNER CLOSED
+  (2026-08-31).** Contract
+  [`docs/DEC-020_PACKAGE_A_WORKFLOW_SEMANTIC_RECONCILIATION_IMPLEMENTATION_CONTRACT.md`](DEC-020_PACKAGE_A_WORKFLOW_SEMANTIC_RECONCILIATION_IMPLEMENTATION_CONTRACT.md)
+  v0.2 OWNER LOCKED (2026-08-31); clinical/domain + implementation semantics
+  unchanged by closure. Target (implemented): Initial Hemorrhoid Encounter stays
+  `episodeId = null`; first Return creates/resolves exactly one ACTIVE
+  `HEMORRHOID_TREATMENT` CareEpisode; subsequent Return reuses it; `>1` ACTIVE →
+  deterministic conflict; Return after CLOSED history requires explicit
+  Doctor `REOPEN_EXISTING <closedEpisodeId>` or `START_NEW` choice carried
+  atomically on the Return (no heuristic); close = Doctor explicit only, never
+  automatic, completed `HEMORRHOID_FOLLOW_UP_ASSESSMENT` desirable but not a hard
+  prerequisite (episode-level presence), missing → non-blocking frontend warning
+  + acknowledgement; closing an episode does not silently auto-cancel open
+  CareTask / TreatmentPathway and their factual state is surfaced (gated while
+  loading/errored); responsible-clinician UI wording reconciled to verified
+  backend semantics. A stable `HEMORRHOID_RECURRENCE_CHOICE_REQUIRED` error code
+  drives the recurrence UI.
+  - Execution-START baseline: `a03b1878dd42ca80956418c67da6f79d0b560572` — where
+    Package A execution began, kept **distinct** from `A_CLOSED_SHA` (not
+    relabelled).
+  - Package A OWNER-CLOSED implementation checkpoint: **`A_CLOSED_SHA` =
+    `0c865a26c4425a1c3fe429bb8e42238562025801`** — commit `0c865a2` `feat:
+    checkpoint DEC-020 Package A owner-closed` (immutable; do not amend).
+  - Execution / review history: `T0 → T9` COMPLETED (one Claude Code session; no
+    Contract STOP condition; no schema/migration change; SYNTHETIC DATA ONLY).
+    `T10` ChatGPT direct source review = **PASS**. `T11` initial fresh Codex
+    independent focused audit = **FAIL — CORRECTION REQUIRED** (initial severity
+    P0=0 / P1=1 / P2=2 / P3=0). Correction batch COMPLETED → focused source
+    recheck = PASS → `T11` focused independent re-audit = **PASS — NO P0/P1**
+    (final severity P0=0 / P1=0 / P2=1 / P3=0). History is not rewritten as
+    though the initial `T11` passed.
+  - Residual **P2 — Unicode reason-length parity**: NON-BLOCKING, DEFERRED (see
+    DECISION_LOG `DEC-020 PACKAGE A CLOSURE`). Standalone `POST
+    /care-episodes/:id/reopen` and atomic Return `REOPEN_EXISTING` diverge near
+    the 500-character Unicode boundary (transaction lifecycle helper counts
+    JavaScript `String.length` / UTF-16 code units). Does not affect transaction
+    atomicity, single-active invariant, tenant isolation, audit integrity, or
+    data correctness/loss.
+  - Repository state: complete implementation + T10/T11 corrections + closure
+    governance are **COMMITTED** at `A_CLOSED_SHA`
+    `0c865a26c4425a1c3fe429bb8e42238562025801`. Owner-authorized: one
+    governance-reconciliation commit (`docs: reconcile DEC-020 Package A closed
+    checkpoint`) plus a fast-forward push of branch
+    `correction/owner-acceptance-slice1-3` to `origin` (closure checkpoint +
+    governance-reconciliation commit). No merge, no tag, no force push.
+  - Owner closure of Package A is NOT Product acceptance and NOT production
+    acceptance.
+- **Package B — Hemorrhoid Clinical Fidelity + Functional UX** — **NOT STARTED,
+  NOT IMPLEMENTATION-AUTHORIZED.** No draft activated; no DRAFT → OWNER LOCKED.
+  The Package A clean-checkpoint prerequisite is now SATISFIED (`A_CLOSED_SHA` =
+  `0c865a2` exists); Package B still requires a separate authority rebind to
+  `A_CLOSED_SHA` → Package B review / Owner lock decision → separate explicit
+  Owner implementation authorization if approved.
+- **Package C — Procedure / Investigation evolution** — NOT ACTIVE
+  implementation. DISCOVERY-DEPENDENT; not authorized.
+
+`SYNTHETIC DATA ONLY`; real-patient runtime/data, production deployment and AI
+clinical reasoning remain NOT AUTHORIZED (Package A closure / checkpoint / push is
+not production acceptance). Merge / tag are not authorized — separate Owner
+authorization required per repository governance.
+
+**Current next gate:** Package B authority rebind to `A_CLOSED_SHA`
+`0c865a26c4425a1c3fe429bb8e42238562025801` → Package B review / Owner lock
+decision → separate Owner implementation authorization if approved. No further
+audit/review loop for Package A.
 
 ### 3.3 Preserved Longo Clinical Core baseline
 

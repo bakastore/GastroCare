@@ -17,14 +17,17 @@ import {
 // label or action leaks into it. The full browser CORE-04 T15 pathway in
 // frontend/e2e/gastrocare.spec.ts remains the end-to-end guarantee.
 vi.mock('../../api/resources', () => ({
+  HEMORRHOID_RECURRENCE_CHOICE_REQUIRED: 'HEMORRHOID_RECURRENCE_CHOICE_REQUIRED',
   careEpisodesApi: {
     listByPatient: vi.fn(),
     close: vi.fn(),
     reopen: vi.fn(),
+    create: vi.fn(),
   },
   treatmentPathwaysApi: { list: vi.fn(), create: vi.fn() },
   followUpTasksApi: { listByPatient: vi.fn() },
   patientsApi: { getTimeline: vi.fn() },
+  encountersApi: { createHemorrhoidReturn: vi.fn() },
 }));
 
 const longoEpisode = {
@@ -66,6 +69,7 @@ const HEMORRHOID_LEAK_TEXT = [
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(followUpTasksApi.listByPatient).mockResolvedValue([]);
+  vi.mocked(treatmentPathwaysApi.list).mockResolvedValue([]);
 });
 
 function renderWorkspace(entry = '/patients/patient-1') {

@@ -1,6 +1,6 @@
 # GastroCare — Decision Log
 
-Cập nhật: 2026-08-29
+Cập nhật: 2026-08-31
 
 Đây là Decision Log hiện hành và là nguồn chuẩn cho Owner Decisions
 và Working Assumptions của GastroCare.
@@ -542,8 +542,266 @@ break-glass access, generic permission engine.
 **Next:** chưa mở work package mới. Bước kế tiếp là Owner Decision /
 DEC-019 discovery. DEC-019 CHƯA được tạo.
 
-DEC-018 worktree tại thời điểm acceptance chưa commit; việc commit/merge do
-Owner chỉ đạo riêng.
+DEC-018 T0→T8 sau đó đã được commit tại remote checkpoint
+`7d33e02c36f5e862c50717c340deea86ad046e47` (baseline cho DEC-019).
+
+---
+
+### DEC-019 — Staff Profile & Credential Management v1
+
+**Ngày:** 2026-08-30
+
+**Trạng thái:** OWNER LOCKED
+
+**Thẩm quyền:** Explicit Owner authorization dated 2026-08-30. DEC-019 OWNER LOCKED
+và Implementation Contract v0.1 OWNER LOCKED.
+
+**Nguồn chuẩn:**
+
+- `docs/DEC-019_STAFF_PROFILE_CREDENTIAL_MANAGEMENT.md`;
+- `docs/15_STAFF_PROFILE_CREDENTIAL_MANAGEMENT_IMPLEMENTATION_CONTRACT.md`;
+- baseline DEC-018 CLOSED — OWNER ACCEPTED — remote checkpoint
+  `7d33e02c36f5e862c50717c340deea86ad046e47`.
+
+Owner quyết định:
+
+1. Mở work package `STAFF PROFILE & CREDENTIAL MANAGEMENT v1`.
+2. `AuthUser` vẫn là entity authentication/account/operational role/Clinic Admin
+   capability; roles vẫn chính xác `DOCTOR`, `NURSE`, `RECEPTIONIST`; không thêm
+   `ADMIN` role.
+3. `StaffProfile` là hồ sơ nghề nghiệp 1:1 optional, tách khỏi `AuthUser`; không
+   field nào của StaffProfile trở thành authentication hoặc clinical
+   authorization authority. DEC-019 không đổi Clinical Core authorization
+   semantics DEC-010→018 và không đổi nghĩa `AuthRole`/clinician assignment.
+4. Bốn entity mới: `StaffProfile`, `StaffCredential`, `EmploymentHistory`,
+   `StaffFacilityAssignment`; mỗi bảng mang `tenantId` trực tiếp; `tenantId`
+   không bao giờ nhận từ request DTO; tenant isolation enforce ở backend.
+5. Credential effective `EXPIRED` là derived, không persist; precedence
+   `REVOKED > EXPIRED > ACTIVE`. Employment overlap được phép.
+6. `StaffFacilityAssignment`: nhiều active facility được phép nhưng đúng một
+   active primary khi còn active assignment; đổi primary không kết thúc
+   assignment cũ; history không hard-delete; `facilityId`/`staffProfileId` bất
+   biến sau tạo. Partial unique indexes trên PostgreSQL là concurrency guard
+   cuối cùng — không `SERIALIZABLE`, không automatic retry; unique conflict /
+   `P2002` → `409 Conflict`. Change-primary và end-primary dùng ordered writes
+   trong một transaction (demote/end trước, promote sau).
+7. `StaffCredential` và `EmploymentHistory` được hard-delete với audit atomic;
+   `StaffFacilityAssignment` không hard-delete.
+8. `avatar`/binary file storage, credential scan/PDF, object storage, Staff
+   Directory, `/clinicians` enrichment, roster/scheduling, payroll,
+   attendance/leave, employment contracts, CCCD/passport, home address, bank
+   account, System Admin, generic permission engine, facility-based clinical
+   ACL, CORE-05, AI đều OUT OF SCOPE.
+9. A-001 product-specialty hypothesis độc lập với staff specialty; DEC-019 không
+   resolve/supersede/phụ thuộc A-001.
+10. Execution: Claude Code triển khai liên tục `T0 → T6` theo Contract; `T7` là
+    Fresh Codex independent focused read-only audit tách khỏi implementation
+    session; `T8` là Owner Synthetic Acceptance — AI/agent không tự đóng PASS.
+11. `SYNTHETIC DATA ONLY`; real-patient runtime và production vẫn
+    `NOT AUTHORIZED`. Không commit/push/merge/tag nếu chưa có Owner
+    authorization riêng.
+
+**Căn cứ:** DEC-018 CLOSED — OWNER ACCEPTED; Owner explicit authorization
+2026-08-30; external repo-grounded review CLOSED — PASS (1 MEDIUM execution-order
+ambiguity + 1 LOW wording issue corrected trước Owner Lock).
+
+---
+
+### DEC-019 CLOSURE — Owner-directed governance closure
+
+**Ngày:** 2026-08-31
+
+**Trạng thái:** OWNER CLOSED.
+
+Không sửa hay rút gọn phần OWNER LOCKED phía trên; đây là mục bổ sung ghi nhận
+việc Owner đóng work package theo chỉ đạo trực tiếp.
+
+Owner quyết định (2026-08-31):
+
+1. `DEC-019 — Staff Profile & Credential Management v1` = **OWNER CLOSED** kể từ
+   2026-08-31.
+2. `T7` (Fresh Codex independent focused read-only audit) = **WAIVED BY OWNER —
+   NOT EXECUTED**.
+3. `T8` (Owner Synthetic Acceptance) = **WAIVED BY OWNER — NOT EXECUTED**.
+4. Không có tuyên bố PASS / acceptance nào cho DEC-019: không T7 PASS, không T8
+   PASS, không Owner Synthetic Acceptance PASS, không Technical Acceptance bổ
+   sung, không Product Acceptance.
+5. Phần implementation DEC-019 hiện có (schema + additive migration + backend
+   `backend/src/staff/` + frontend User Detail / self profile + tests) được giữ
+   nguyên trong working tree; không rollback, không xóa.
+6. Không có công việc DEC-019 nào khác được authorize. T0→T6 execution history
+   được giữ làm hồ sơ; T7/T8 không còn là gate đang chờ.
+7. Real-patient runtime và production vẫn `NOT AUTHORIZED`. DEC-019 closure không
+   mở real data, pilot thật, production hoặc CORE-05.
+8. Clinical/domain semantics của DEC-019 và DEC-010→018 không đổi.
+
+**Căn cứ:** Owner-directed governance closure 2026-08-31; Owner chọn dừng
+DEC-019 ở mức implementation hiện có mà không chạy T7/T8.
+
+---
+
+### DEC-020 — Hemorrhoid Clinical Workflow Reconciliation & Functional Clinical UX
+
+**Ngày:** 2026-08-31
+
+**Trạng thái:** OWNER LOCKED
+
+**Locked reference baseline:** `a2059ff6ea2796eee0a798d754b95e70221d2504`
+(branch `correction/owner-acceptance-slice1-3`).
+
+**Nguồn chuẩn:**
+
+- `docs/DEC-020_HEMORRHOID_CLINICAL_WORKFLOW_RECONCILIATION_FUNCTIONAL_UX.md` (DEC-020 v0.2);
+- `docs/DEC-020_PACKAGE_A_WORKFLOW_SEMANTIC_RECONCILIATION_IMPLEMENTATION_CONTRACT.md` (Package A Contract v0.2);
+- baseline DEC-019 — OWNER CLOSED — `a2059ff6ea2796eee0a798d754b95e70221d2504`.
+
+**External pre-lock review:** COMPLETED (one external pass, 2026-08-31).
+
+**Documented baseline-review limitation:** ACCEPTED BY OWNER — reviewer could not
+fetch local baseline `a2059ff6...` from the remote (checkpoint chưa push tại thời
+điểm review); review repo-grounded against nearest accessible state. Package A T0
+local source verification vẫn BẮT BUỘC và BLOCKING trước bất kỳ code change.
+
+Owner quyết định (2026-08-31):
+
+1. `D20-01` … `D20-13` = **AUTHORITATIVE** cho đúng phạm vi nêu trong từng
+   section. Selective supersession map (DEC-020 §18) = **AUTHORITATIVE**.
+2. Trọng tâm: `CareEpisode` hình thành tại first Return Encounter; Initial
+   Hemorrhoid Encounter (`workflowKind = HEMORRHOID_INITIAL`) giữ `episodeId =
+   null`; không heuristic Case inference; Doctor-only explicit close; bỏ hard
+   Follow-up Assessment prerequisite (chỉ bỏ phần "hard prerequisite"); Doctor
+   chọn reopen-cũ vs start-new sau closure; Functional Clinical UX mở trong
+   Clinical Core, Full Product Refinement vẫn DEFERRED.
+3. DEC-020 dùng **selective supersession**, không blanket-supersede DEC-010→019.
+   DEC-019 vẫn **OWNER CLOSED**. Các capability DEC-016 (TreatmentPathway,
+   Investigation, provenance, multi-modality Treatment Decision, Longo-as-Pathway)
+   **PRESERVED** trừ khi một Contract sau này đổi rõ ràng.
+4. Clinical safety boundary (DEC-020 §17) không đổi: automatic diagnosis /
+   classification / abnormal-result interpretation / treatment recommendation /
+   rule-engine advice / AI clinical reasoning / automatic ICD coding / legal
+   e-signature claim đều **OUT OF SCOPE**.
+
+**Implementation decomposition (DEC-020 §19):**
+
+- **Package A — Workflow Semantic Reconciliation — P0** — Contract
+  `docs/DEC-020_PACKAGE_A_WORKFLOW_SEMANTIC_RECONCILIATION_IMPLEMENTATION_CONTRACT.md`
+  v0.2 = **OWNER LOCKED** (2026-08-31).
+  - Execution authority: `T0 → T9 AUTHORIZED` trong một continuous Claude Code
+    implementation session, **subject to mandatory T0 STOP conditions**. T0 là
+    BLOCKING local source verification gate; nếu một Contract STOP condition xuất
+    hiện thì STOP cả session và báo Owner.
+  - Post-implementation: `T10` = ChatGPT direct source review; sau đó `T11` =
+    fresh Codex focused independent audit (session khác implementation session,
+    delta-focused: transaction/concurrency, single-active invariant,
+    initial/return Case ancestry, reopen/new race, close side effects, synthetic
+    reconciliation).
+- **Package B — Hemorrhoid Clinical Fidelity + Functional UX** — Contract
+  chuẩn bị/review riêng; implementation **NOT ACTIVE / NOT AUTHORIZED** trong
+  DEC-020.
+- **Package C — Procedure / Investigation evolution** — DISCOVERY-DEPENDENT;
+  implementation **NOT AUTHORIZED** trong DEC-020.
+
+**Không được claim (tại thời điểm ghi nhận DEC-020 vào SSOT, 2026-08-31):**
+Package A completed / Package A PASS / Technical Acceptance / Product Acceptance /
+`T10` completed / `T11` completed. Không có gate nào của Package A được PASS tại
+thời điểm đó. *(Trạng thái hiện tại: xem `DEC-020 PACKAGE A CLOSURE` phía dưới —
+`T10` PASS, `T11` focused re-audit PASS — NO P0/P1, Package A OWNER CLOSED;
+Product/production acceptance vẫn KHÔNG được claim.)*
+
+**Ranh giới không đổi:** `SYNTHETIC DATA ONLY`; real-patient runtime `NOT
+AUTHORIZED`; production `NOT AUTHORIZED`; AI clinical reasoning `NOT AUTHORIZED`.
+Git commit / push / merge / tag **KHÔNG** được DEC-020 ngầm cho phép — vẫn cần
+Owner authorization riêng theo repository governance.
+
+**Căn cứ:** Explicit Owner Lock 2026-08-31 (DEC-020 v0.2 §24; Package A Contract
+v0.2 §21); external pre-lock review COMPLETED; documented baseline-review
+limitation EXPLICITLY ACCEPTED BY OWNER.
+
+---
+
+### DEC-020 PACKAGE A CLOSURE — Owner closure of Workflow Semantic Reconciliation
+
+**Ngày:** 2026-08-31
+
+**Trạng thái:** `DEC-020 Package A — Workflow Semantic Reconciliation` = **OWNER
+CLOSED**.
+
+Không sửa hay rút gọn phần DEC-020 OWNER LOCKED phía trên; đây là mục bổ sung ghi
+nhận việc Owner đóng Package A. DEC-020 v0.2 clinical/domain semantics và Package A
+Contract v0.2 implementation semantics **không đổi** — vẫn OWNER LOCKED.
+
+**Execution-START baseline:** `a03b1878dd42ca80956418c67da6f79d0b560572` — nơi
+Package A execution bắt đầu. Giữ **distinct** với `A_CLOSED_SHA`; không relabel.
+
+**`A_CLOSED_SHA` = `0c865a26c4425a1c3fe429bb8e42238562025801`** — commit `0c865a2`
+`feat: checkpoint DEC-020 Package A owner-closed`. Đây là Package A OWNER-CLOSED
+implementation checkpoint (immutable). Package A implementation + T10/T11
+corrections + closure governance được included trong checkpoint này và đã
+**COMMITTED**. Không amend `0c865a2`.
+
+**Execution / review history (ghi đúng trình tự thực tế, không viết lại như thể
+initial T11 đã pass):**
+
+1. `T0 → T9` — COMPLETED (Claude Code implementation session; no Contract STOP
+   condition; no Prisma schema change; no migration; SYNTHETIC DATA ONLY).
+2. `T10` — ChatGPT direct source review — **PASS**.
+3. `T11` initial — fresh Codex independent focused audit — **FAIL — CORRECTION
+   REQUIRED**. Initial severity: `P0=0 / P1=1 / P2=2 / P3=0`.
+4. Correction batch — **COMPLETED** (addressed the initial `P1` + the two initial
+   `P2` items).
+5. Focused source recheck — **PASS**.
+6. `T11` focused independent re-audit — **PASS — NO P0/P1**. Final severity:
+   `P0=0 / P1=0 / P2=1 / P3=0`.
+
+**Owner quyết định (2026-08-31):**
+
+1. Owner **CLOSE** Package A của DEC-020. Execution-START baseline `a03b1878...`;
+   Package A OWNER-CLOSED implementation checkpoint `A_CLOSED_SHA` =
+   `0c865a26c4425a1c3fe429bb8e42238562025801`.
+2. Owner chấp nhận: `T10` PASS; `T11` focused re-audit PASS — NO P0/P1.
+3. Residual **P2 — Unicode reason-length parity** = **NON-BLOCKING, DEFERRED** —
+   không chặn Package A closure. Technical note: standalone `POST
+   /care-episodes/:id/reopen` và atomic Return `REOPEN_EXISTING` khác nhau gần
+   biên 500 ký tự Unicode vì transaction lifecycle helper đếm JavaScript
+   `String.length` / UTF-16 code units. Ví dụ independent re-audit đưa ra:
+   `'r'.repeat(499) + '🙂'` → standalone reopen: accepted; atomic recurrence
+   reopen: rejected. **Không** ảnh hưởng transaction atomicity, single-active
+   invariant, tenant isolation, audit integrity, hay data corruption/loss.
+   Không fix trong task closure; giữ ở trạng thái deferred/known-issue.
+4. Owner closure của Package A **KHÔNG** phải Product Acceptance và **KHÔNG** phải
+   production acceptance.
+
+**Owner explicitly KHÔNG authorize:**
+
+- Package B implementation — `NOT STARTED, NOT IMPLEMENTATION-AUTHORIZED`.
+  Prerequisite "Package A clean checkpoint" **đã SATISFIED** (`A_CLOSED_SHA` =
+  `0c865a26c4425a1c3fe429bb8e42238562025801` tồn tại), nhưng Package B vẫn cần một
+  chuỗi riêng: authority rebind về `A_CLOSED_SHA` → Package B review / Owner lock
+  decision → explicit Owner implementation authorization nếu approve. Không
+  activate bất kỳ Package B draft nào; không đổi Package B DRAFT thành OWNER
+  LOCKED; không implement gì cho Package B.
+- Package C — DISCOVERY-DEPENDENT; implementation NOT AUTHORIZED.
+- production deployment — `NOT AUTHORIZED` (Package A closure/checkpoint/push
+  không phải production acceptance).
+- real-patient runtime / real-patient data — `NOT AUTHORIZED`.
+- merge, tag — `NOT AUTHORIZED`.
+
+**Repository state:** Package A implementation + T10/T11 corrections + closure
+governance đã **COMMITTED** tại `A_CLOSED_SHA`
+`0c865a26c4425a1c3fe429bb8e42238562025801` (commit `0c865a2`). Owner đã authorize
+một governance-reconciliation commit (`docs: reconcile DEC-020 Package A closed
+checkpoint`) và một fast-forward push của branch
+`correction/owner-acceptance-slice1-3` lên `origin` (closure checkpoint +
+governance reconciliation commit). Không merge, không tag, không force push.
+
+**Next gate:** Package B authority rebind về `A_CLOSED_SHA`
+`0c865a26c4425a1c3fe429bb8e42238562025801` → Package B review / Owner lock
+decision → separate Owner implementation authorization nếu approve. Không có audit
+loop tiếp theo cho Package A.
+
+**Căn cứ:** Explicit Owner closure decision 2026-08-31; `T10` PASS; `T11` initial
+FAIL → correction batch COMPLETED → focused recheck PASS → `T11` focused
+independent re-audit PASS — NO P0/P1.
 
 ---
 

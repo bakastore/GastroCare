@@ -181,7 +181,9 @@ describe('DEC-015 — Encounter Workflow Discriminator v1 (e2e)', () => {
     }).expect(201);
     const row = await prisma.encounter.findUniqueOrThrow({ where: { id: res.body.id } });
     expect(row.workflowKind).toBe('HEMORRHOID_INITIAL');
-    expect(row.episodeId).toBeTruthy();
+    // DEC-020 D20-02: the Initial Hemorrhoid Encounter is ungrouped; the
+    // treatment episode begins at the first Return Encounter.
+    expect(row.episodeId).toBeNull();
   });
 
   it('B3: an invalid workflowKind string is rejected by DTO validation (400)', async () => {
@@ -193,25 +195,27 @@ describe('DEC-015 — Encounter Workflow Discriminator v1 (e2e)', () => {
     }).expect(400);
   });
 
-  it('B4: legacy Longo episodeId + Initial workflowKind is rejected (409) and no Encounter is created', async () => {
+  it('B4: episodeId + Initial workflowKind is a contradictory request, rejected (400) and no Encounter is created', async () => {
     const episode = await prisma.careEpisode.create({
       data: { tenantId, patientId, episodeType: 'LONGO_TREATMENT', status: 'ACTIVE', startedAt: new Date() },
     });
     const before = await prisma.encounter.count({ where: { tenantId, episodeId: episode.id } });
+    // DEC-020 D20-02: an Initial Hemorrhoid Encounter is always ungrouped, so
+    // supplying an explicit episodeId with it is contradictory (400).
     await postEncounter({
       patientId,
       episodeId: episode.id,
       occurredAt: new Date().toISOString(),
       reasonForVisit: 'Khám (synthetic B4)',
       workflowKind: 'HEMORRHOID_INITIAL',
-    }).expect(409);
+    }).expect(400);
     const after = await prisma.encounter.count({ where: { tenantId, episodeId: episode.id } });
     expect(after).toBe(before);
     await prisma.careEpisode.delete({ where: { id: episode.id } });
   });
 
   it('B5: Longo episode-bound generic Encounter persists workflowKind = NULL; episodeType stays LONGO_TREATMENT', async () => {
-    const episode={body:await prisma.careEpisode.findFirstOrThrow({where:{patientId,episodeType:'HEMORRHOID_TREATMENT'}})};
+    const episode={body:await prisma.careEpisode.create({data:{tenantId,patientId,episodeType:'HEMORRHOID_TREATMENT',status:'ACTIVE',startedAt:new Date()}})};
     const pathwayId=await createLongoPathway(app,doctorToken,episode.body.id);
     const res = await postEncounter({
       patientId,
@@ -266,8 +270,9 @@ describe('DEC-015 — Encounter Workflow Discriminator v1 (e2e)', () => {
       occurredAt: '2026-09-02T09:00:00.000Z',
       reasonForVisit: 'Đau thượng vị (B7 generic)',
     }).expect(201);
-    // (c) Longo episode-bound
-    const longoEp={body:{id:initial.body.episodeId}};
+    // (c) Longo episode-bound — DEC-020: the Initial Encounter is ungrouped,
+    // so the episode for the Longo pathway is created explicitly here.
+    const longoEp={body:await prisma.careEpisode.create({data:{tenantId,patientId:p.id,episodeType:'HEMORRHOID_TREATMENT',status:'ACTIVE',startedAt:new Date('2026-09-01T00:00:00.000Z')}})};
     const longoPathwayId=await createLongoPathway(app,doctorToken,longoEp.body.id);
     const longoEnc = await postEncounter({
       patientId: p.id,

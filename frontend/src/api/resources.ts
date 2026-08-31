@@ -97,6 +97,175 @@ export const clinicAdminUsersApi = {
     api.get<ClinicAdminUserAuditEntry[]>(`/clinic-admin/users/${id}/audit`),
 };
 
+// ---- DEC-019 — Staff Profile & Credential Management v1 ----
+
+export type StaffSpecialty =
+  | 'GASTROENTEROLOGY'
+  | 'COLORECTAL_SURGERY'
+  | 'GENERAL_SURGERY'
+  | 'OTHER';
+export type StaffCredentialType = 'LICENSE' | 'CERTIFICATE' | 'TRAINING';
+export type EmploymentType = 'FULL_TIME' | 'PART_TIME' | 'COLLABORATOR';
+
+export interface StaffProfile {
+  id: string;
+  authUserId: string;
+  fullName: string;
+  professionalTitle: string | null;
+  workPhone: string | null;
+  primarySpecialty: StaffSpecialty | null;
+  secondarySpecialties: StaffSpecialty[];
+  specialtyOtherLabel: string | null;
+  biography: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StaffCredential {
+  id: string;
+  staffProfileId: string;
+  credentialType: StaffCredentialType;
+  name: string;
+  credentialNumber: string | null;
+  issuingOrganization: string | null;
+  issueDate: string | null;
+  expiryDate: string | null;
+  status: 'ACTIVE' | 'REVOKED';
+  effectiveStatus: 'ACTIVE' | 'EXPIRED' | 'REVOKED';
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EmploymentRecord {
+  id: string;
+  staffProfileId: string;
+  organizationName: string;
+  department: string | null;
+  positionTitle: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  employmentType: EmploymentType | null;
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FacilityAssignment {
+  id: string;
+  staffProfileId: string;
+  facilityId: string;
+  isPrimary: boolean;
+  startDate: string | null;
+  endDate: string | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StaffAuditEntry {
+  id: string;
+  seq: number;
+  action: string;
+  actorId: string;
+  entityType: string;
+  entityId: string;
+  createdAt: string;
+  metadata: Record<string, unknown> | null;
+}
+
+export interface SelfStaffProfile {
+  account: {
+    userId: string;
+    email: string;
+    displayName: string | null;
+    role: 'DOCTOR' | 'RECEPTIONIST' | 'NURSE';
+    isClinicAdmin: boolean;
+    status: 'ACTIVE' | 'DISABLED';
+  };
+  profile: StaffProfile | null;
+  credentials: StaffCredential[];
+}
+
+const staffBase = (id: string) => `/clinic-admin/users/${id}`;
+
+export const staffApi = {
+  getProfile: (id: string) =>
+    api.get<{ userId: string; profile: StaffProfile | null }>(
+      `${staffBase(id)}/profile`,
+    ),
+  putProfile: (
+    id: string,
+    dto: Partial<{
+      fullName: string;
+      professionalTitle: string | null;
+      workPhone: string | null;
+      primarySpecialty: StaffSpecialty | null;
+      secondarySpecialties: StaffSpecialty[];
+      specialtyOtherLabel: string | null;
+      biography: string | null;
+    }>,
+  ) => api.put<StaffProfile>(`${staffBase(id)}/profile`, dto),
+
+  listCredentials: (id: string) =>
+    api.get<StaffCredential[]>(`${staffBase(id)}/credentials`),
+  addCredential: (id: string, dto: Record<string, unknown>) =>
+    api.post<StaffCredential>(`${staffBase(id)}/credentials`, dto),
+  updateCredential: (
+    id: string,
+    credentialId: string,
+    dto: Record<string, unknown>,
+  ) =>
+    api.patch<StaffCredential>(
+      `${staffBase(id)}/credentials/${credentialId}`,
+      dto,
+    ),
+  deleteCredential: (id: string, credentialId: string) =>
+    api.delete<{ deleted: boolean }>(
+      `${staffBase(id)}/credentials/${credentialId}`,
+    ),
+
+  listEmployment: (id: string) =>
+    api.get<EmploymentRecord[]>(`${staffBase(id)}/employment-history`),
+  addEmployment: (id: string, dto: Record<string, unknown>) =>
+    api.post<EmploymentRecord>(`${staffBase(id)}/employment-history`, dto),
+  updateEmployment: (id: string, recordId: string, dto: Record<string, unknown>) =>
+    api.patch<EmploymentRecord>(
+      `${staffBase(id)}/employment-history/${recordId}`,
+      dto,
+    ),
+  deleteEmployment: (id: string, recordId: string) =>
+    api.delete<{ deleted: boolean }>(
+      `${staffBase(id)}/employment-history/${recordId}`,
+    ),
+
+  listAssignments: (id: string) =>
+    api.get<FacilityAssignment[]>(`${staffBase(id)}/facility-assignments`),
+  addAssignment: (
+    id: string,
+    dto: { facilityId: string; startDate: string; makePrimary?: boolean },
+  ) => api.post<FacilityAssignment>(`${staffBase(id)}/facility-assignments`, dto),
+  patchAssignment: (
+    id: string,
+    assignmentId: string,
+    dto: {
+      makePrimary?: boolean;
+      end?: boolean;
+      endDate?: string;
+      replacementPrimaryAssignmentId?: string;
+    },
+  ) =>
+    api.patch<FacilityAssignment>(
+      `${staffBase(id)}/facility-assignments/${assignmentId}`,
+      dto,
+    ),
+
+  getStaffAudit: (id: string) =>
+    api.get<StaffAuditEntry[]>(`${staffBase(id)}/staff-audit`),
+
+  getSelfProfile: () => api.get<SelfStaffProfile>('/auth/me/profile'),
+};
+
 export const patientsApi = {
   list: () => api.get<Patient[]>('/patients'),
   getById: (id: string) => api.get<Patient>(`/patients/${id}`),
@@ -148,8 +317,20 @@ export const encountersApi = {
     reasonForVisit: string;
     responsibleClinicianId?: string;
     roomId?: string;
+    // DEC-020 Package A T10 P1-01 — explicit recurrence choice carried on
+    // the Return request so the reopen/start-new lifecycle work and the
+    // Return commit atomically. Never call the standalone
+    // careEpisodesApi.reopen / .create as a pre-step for a recurrence.
+    recurrenceAction?: 'REOPEN_EXISTING' | 'START_NEW';
+    recurrenceClosedEpisodeId?: string;
+    recurrenceReason?: string;
   }) => api.post<Encounter>('/encounters/hemorrhoid-return', dto),
 };
+
+/** Stable backend error code (see ApiError.code) — the Return resolver
+ * needs an explicit recurrence choice (0 ACTIVE episode + CLOSED history). */
+export const HEMORRHOID_RECURRENCE_CHOICE_REQUIRED =
+  'HEMORRHOID_RECURRENCE_CHOICE_REQUIRED';
 
 /** Facility lookup/management (DEC-010 §C). */
 export const facilitiesApi = {
