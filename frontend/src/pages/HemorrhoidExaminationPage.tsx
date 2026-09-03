@@ -402,11 +402,6 @@ export function HemorrhoidExaminationPage() {
     () => patientsApi.getById(patientId as string),
     [patientId],
   );
-  const templateQuery = useApiQuery(
-    () => clinicalFormsApi.getTemplate(TEMPLATE_KEY),
-    [],
-  );
-
   const submissionQuery = useApiQuery(async () => {
     const submissions = await clinicalFormsApi.listByPatient(patientId as string);
     const chain = submissions.filter(
@@ -417,6 +412,16 @@ export function HemorrhoidExaminationPage() {
       s.revisionNumber > latest.revisionNumber ? s : latest,
     );
   }, [patientId, encounterId]);
+
+  // DEC-020 Package B — render/amend an existing submission against the
+  // EXACT template version it was captured under (v1 stays v1); a brand-new
+  // examination uses the latest version (v2). Never render a v1 submission's
+  // stored responses through the v2 field set.
+  const submissionTemplateVersion = submissionQuery.data?.templateVersion;
+  const templateQuery = useApiQuery(
+    () => clinicalFormsApi.getTemplate(TEMPLATE_KEY, submissionTemplateVersion),
+    [submissionTemplateVersion],
+  );
 
   if (templateQuery.isLoading || submissionQuery.isLoading) return <LoadingState />;
   if (templateQuery.error) return <ErrorState message={templateQuery.error} />;
@@ -432,11 +437,11 @@ export function HemorrhoidExaminationPage() {
     <div className="clinical-form-page">
       <PageHeader
         parentLabel="Hồ sơ bệnh nhân"
-        parentHref={`/patients/${patientId}`}
+        parentHref={`/patients/${patientId}?view=clinical`}
         breadcrumb={[
           { label: 'Bệnh nhân', href: '/patients' },
           ...(patientName
-            ? [{ label: patientName, href: `/patients/${patientId}` }]
+            ? [{ label: patientName, href: `/patients/${patientId}?view=clinical` }]
             : []),
           { label: 'Khám trĩ' },
         ]}
@@ -536,7 +541,7 @@ function StartForm({
         <button
           type="button"
           className="btn btn-ghost"
-          onClick={() => navigate(`/patients/${patientId}`)}
+          onClick={() => navigate(`/patients/${patientId}?view=clinical`)}
         >
           Hủy
         </button>
@@ -666,7 +671,7 @@ function FormEditor({
         <button
           type="button"
           className="btn btn-ghost"
-          onClick={() => navigate(`/patients/${patientId}`)}
+          onClick={() => navigate(`/patients/${patientId}?view=clinical`)}
         >
           Về hồ sơ bệnh nhân
         </button>

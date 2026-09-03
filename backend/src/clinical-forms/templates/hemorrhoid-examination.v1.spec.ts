@@ -64,12 +64,15 @@ function fieldByKey(key: string): FieldDef {
 }
 
 describe('HEMORRHOID_EXAMINATION v1 — registry resolution', () => {
-  it('resolves via getTemplate("HEMORRHOID_EXAMINATION", 1) and getLatestTemplate', () => {
+  it('still resolves via getTemplate("HEMORRHOID_EXAMINATION", 1) — historical v1 submissions stay interpretable', () => {
     const template = getTemplate('HEMORRHOID_EXAMINATION', 1);
     expect(template).toBeDefined();
     expect(template?.templateKey).toBe('HEMORRHOID_EXAMINATION');
     expect(template?.version).toBe(1);
-    expect(getLatestTemplate('HEMORRHOID_EXAMINATION')?.version).toBe(1);
+    // DEC-020 Package B: v2 is now the latest version; v1 is no longer the
+    // template a brand-new examination is created against, but it remains
+    // fully resolvable at version 1 (see hemorrhoid-examination.v2.spec.ts).
+    expect(getLatestTemplate('HEMORRHOID_EXAMINATION')?.version).toBe(2);
   });
 });
 

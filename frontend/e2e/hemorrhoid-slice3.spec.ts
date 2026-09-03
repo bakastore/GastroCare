@@ -117,7 +117,7 @@ test.describe('Hemorrhoid Vertical Slice 3 — continuous-care browser golden pa
 
     // 4. Reload the browser and verify (Contract §S/§I): the OPEN generic
     // follow-up task shows "Bắt đầu tái khám" in the ungrouped section.
-    await page.goto(`/patients/${patientId}`);
+    await page.goto(`/patients/${patientId}?view=clinical`);
     await expect(page.getByRole('button', { name: 'Bắt đầu tái khám' })).toBeVisible();
     // DEC-020 D20-02: no Hemorrhoid Case exists yet — it begins at the first
     // Return Encounter.
@@ -186,7 +186,7 @@ test.describe('Hemorrhoid Vertical Slice 3 — continuous-care browser golden pa
 
     // 7. Second Return Encounter reuses the same Hemorrhoid episode — only
     // one Case card exists throughout.
-    await page.goto(`/patients/${patientId}`);
+    await page.goto(`/patients/${patientId}?view=clinical`);
     await expect(page.getByText('Case trĩ')).toHaveCount(1);
     await page.getByRole('button', { name: 'Bắt đầu tái khám' }).click();
     await page.getByLabel('Thời điểm tái khám').fill('2026-11-01T09:00');

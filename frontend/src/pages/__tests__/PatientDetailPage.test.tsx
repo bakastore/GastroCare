@@ -6,7 +6,9 @@ import { PatientDetailPage } from '../PatientDetailPage';
 import * as AuthContextModule from '../../auth/AuthContext';
 import {
   careEpisodesApi,
+  clinicalFormsApi,
   followUpTasksApi,
+  investigationsApi,
   patientsApi,
   treatmentPathwaysApi,
 } from '../../api/resources';
@@ -57,11 +59,14 @@ beforeEach(() => {
   } as never);
   vi.mocked(followUpTasksApi.listByPatient).mockResolvedValue([] as never);
   vi.mocked(treatmentPathwaysApi.list).mockResolvedValue([] as never);
+  vi.mocked(clinicalFormsApi.listByPatient).mockResolvedValue([] as never);
+  vi.mocked(investigationsApi.list).mockResolvedValue([] as never);
+  vi.mocked(careEpisodesApi.listByPatient).mockResolvedValue([] as never);
 });
 
-function renderPage() {
+function renderPage(entry = '/patients/patient-1') {
   return render(
-    <MemoryRouter initialEntries={['/patients/patient-1']}>
+    <MemoryRouter initialEntries={[entry]}>
       <Routes>
         <Route path="/patients/:patientId" element={<PatientDetailPage />} />
       </Routes>
@@ -69,17 +74,56 @@ function renderPage() {
   );
 }
 
-async function openVisitMenu() {
-  const user = userEvent.setup();
+async function openVisitMenu(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole('button', { name: '+ Tạo lượt khám' }));
-  return user;
 }
+
+describe('PatientDetailPage — T9 per-patient navigation (DEC-020 Package B)', () => {
+  it('Patient Dashboard is the default view', async () => {
+    renderPage();
+    expect(await screen.findByRole('heading', { name: 'Bệnh nhân' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Chẩn đoán hiện tại' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Bảng tổng quan' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    // The Case workspace itself is not shown until the Lâm sàng view.
+    expect(screen.queryByRole('heading', { name: 'Case · Điều trị / theo dõi' })).toBeNull();
+  });
+
+  it('factual cards render "Chưa ghi nhận" safely when data is absent', async () => {
+    renderPage();
+    await screen.findByRole('heading', { name: 'Chẩn đoán hiện tại' });
+    expect(screen.getAllByText('Chưa ghi nhận').length).toBeGreaterThan(0);
+    expect(screen.getByText('Chưa có Case')).toBeInTheDocument();
+    // No invented diagnosis / score / abnormal classification.
+    expect(screen.queryByText(/bất thường/i)).toBeNull();
+  });
+
+  it('switching to "Lâm sàng" reveals the Case workspace; "Lịch sử" shows the read-only timeline', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('tab', { name: 'Lâm sàng' }));
+    expect(await screen.findByRole('button', { name: '+ Tạo lượt khám' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Lịch sử' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Dòng thời gian (chỉ đọc)' }),
+    ).toBeInTheDocument();
+  });
+
+  it('deep-links via ?view=clinical straight to the Case workspace', async () => {
+    renderPage('/patients/patient-1?view=clinical');
+    expect(await screen.findByRole('button', { name: '+ Tạo lượt khám' })).toBeInTheDocument();
+  });
+});
 
 describe('PatientDetailPage — unified visit entry (DEMO UI)', () => {
   it('no ACTIVE Hemorrhoid Case → offers "Khám trĩ" and "Khám khác"', async () => {
     vi.mocked(careEpisodesApi.listByPatient).mockResolvedValue([] as never);
-    renderPage();
-    await openVisitMenu();
+    const user = userEvent.setup();
+    renderPage('/patients/patient-1?view=clinical');
+    await openVisitMenu(user);
 
     const menu = screen.getByRole('menu');
     expect(within(menu).getByRole('menuitem', { name: 'Khám trĩ' })).toHaveAttribute(
@@ -105,13 +149,13 @@ describe('PatientDetailPage — unified visit entry (DEMO UI)', () => {
         createdAt: '2026-08-01T00:00:00.000Z',
       },
     ] as never);
-    renderPage();
-    await openVisitMenu();
+    const user = userEvent.setup();
+    renderPage('/patients/patient-1?view=clinical');
+    await openVisitMenu(user);
 
     const menu = screen.getByRole('menu');
     expect(within(menu).queryByRole('menuitem', { name: 'Khám trĩ' })).toBeNull();
     expect(within(menu).getByRole('menuitem', { name: 'Tiếp tục điều trị trĩ' })).toBeInTheDocument();
-    // "Khám khác" still routes to the unchanged generic Encounter flow.
     expect(within(menu).getByRole('menuitem', { name: 'Khám khác' })).toHaveAttribute(
       'href',
       '/patients/patient-1/encounters/new',
@@ -130,15 +174,15 @@ describe('PatientDetailPage — unified visit entry (DEMO UI)', () => {
         createdAt: '2026-06-01T00:00:00.000Z',
       },
     ] as never);
-    renderPage();
-    await openVisitMenu();
+    const user = userEvent.setup();
+    renderPage('/patients/patient-1?view=clinical');
+    await openVisitMenu(user);
     expect(
       within(screen.getByRole('menu')).getByRole('menuitem', { name: 'Khám trĩ' }),
     ).toBeInTheDocument();
   });
 
   it('has a "← Danh sách bệnh nhân" back link to /patients (NAV-03)', async () => {
-    vi.mocked(careEpisodesApi.listByPatient).mockResolvedValue([] as never);
     renderPage();
     expect(
       await screen.findByRole('link', { name: 'Danh sách bệnh nhân' }),
@@ -146,8 +190,7 @@ describe('PatientDetailPage — unified visit entry (DEMO UI)', () => {
   });
 
   it('does not render the old parallel visit buttons', async () => {
-    vi.mocked(careEpisodesApi.listByPatient).mockResolvedValue([] as never);
-    renderPage();
+    renderPage('/patients/patient-1?view=clinical');
     await screen.findByRole('button', { name: '+ Tạo lượt khám' });
     expect(
       screen.queryByRole('link', { name: '+ Lượt khám mới (ngoài đợt điều trị)' }),

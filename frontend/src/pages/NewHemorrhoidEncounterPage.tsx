@@ -106,7 +106,7 @@ export function NewHemorrhoidEncounterPage() {
       <div className="form-page">
         <PageHeader
           parentLabel="Hồ sơ bệnh nhân"
-          parentHref={`/patients/${patientId}`}
+          parentHref={`/patients/${patientId}?view=clinical`}
           title="Đã tạo lượt khám trĩ"
           subtitle={patientName}
         />
@@ -125,7 +125,7 @@ export function NewHemorrhoidEncounterPage() {
           <button
             type="button"
             className="btn btn-ghost"
-            onClick={() => navigate(`/patients/${patientId}`)}
+            onClick={() => navigate(`/patients/${patientId}?view=clinical`)}
           >
             Về hồ sơ bệnh nhân
           </button>
@@ -155,7 +155,7 @@ export function NewHemorrhoidEncounterPage() {
     <div className="form-page">
       <PageHeader
         parentLabel="Hồ sơ bệnh nhân"
-        parentHref={`/patients/${patientId}`}
+        parentHref={`/patients/${patientId}?view=clinical`}
         title="Lượt khám trĩ mới (tiếp đón)"
         subtitle={patientName}
       />
@@ -230,7 +230,7 @@ export function NewHemorrhoidEncounterPage() {
           <button
             type="button"
             className="btn btn-ghost"
-            onClick={() => navigate(`/patients/${patientId}`)}
+            onClick={() => navigate(`/patients/${patientId}?view=clinical`)}
           >
             Hủy
           </button>
