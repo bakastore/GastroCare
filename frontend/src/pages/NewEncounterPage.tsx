@@ -42,7 +42,7 @@ export function NewEncounterPage() {
       // form for this Encounter. A general (non-episode) Encounter keeps
       // the existing CarePlan creation flow.
       if (episodeId) {
-        navigate(`/patients/${patientId}`);
+        navigate(`/patients/${patientId}?view=clinical`);
       } else {
         navigate(`/patients/${patientId}/care-plan/new?encounterId=${encounter.id}`);
       }
@@ -57,7 +57,7 @@ export function NewEncounterPage() {
     <div className="form-page">
       <PageHeader
         parentLabel="Hồ sơ bệnh nhân"
-        parentHref={`/patients/${patientId}`}
+        parentHref={`/patients/${patientId}?view=clinical`}
         title="Lượt khám mới"
         subtitle={patientName}
       />
@@ -107,7 +107,7 @@ export function NewEncounterPage() {
           <button
             type="button"
             className="btn btn-ghost"
-            onClick={() => navigate(`/patients/${patientId}`)}
+            onClick={() => navigate(`/patients/${patientId}?view=clinical`)}
           >
             Hủy
           </button>

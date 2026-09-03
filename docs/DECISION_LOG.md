@@ -921,10 +921,16 @@ execution governance, không rewrite historical DEC-020 / Package A decisions.
     Package C **NOT ACTIVE / NOT IMPLEMENTATION-AUTHORIZED**; C0 không mở.
 12. Correction task này **không authorize commit / push / merge / tag**; không
     application/source/test/tooling changes, không reset/revert B-GOV work.
+13. **B_GOV_SHA ASSIGNMENT — Owner confirmation 2026-08-31.** Supersedes điểm 7
+    ("NOT YET ASSIGNED") của chính overlay này. `B_GOV_SHA = d33d06186333b8ad3d82fea6aa047adc30d1e7df`.
+    Xác nhận qua verify độc lập (Claude Chat): branch = `correction/owner-acceptance-slice1-3`;
+    HEAD = `d33d06186333b8ad3d82fea6aa047adc30d1e7df`; working tree CLEAN; toàn bộ
+    diff `0c865a26c4425a1c3fe429bb8e42238562025801..af32429ab3d06a20e4c88d2ccb8e760636ba540e`
+    trên `backend/` và `frontend/` rỗng — chỉ có thay đổi trong `docs/`. Sáu điều kiện
+    T0 tại điểm 8 đã thỏa. Package B T0 được phép bắt đầu.
 
-**Next gate:** ChatGPT direct review of corrected B-GOV diff → Owner decision → Owner separately authorizes one governance-only commit/push → actual resulting commit SHA becomes `B_GOV_SHA` → working tree/branch verified clean → Package B T0.
-
----
+**Next gate:** Package B — T0 mandatory local source verification, sử dụng
+`PACKAGE_B_BASE_SHA = B_GOV_SHA = d33d06186333b8ad3d82fea6aa047adc30d1e7df`.
 
 ## WORKING ASSUMPTIONS
 

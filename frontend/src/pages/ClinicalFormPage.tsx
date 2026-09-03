@@ -23,10 +23,10 @@ function FollowupFormHeader({
   return (
     <PageHeader
       parentLabel="Hồ sơ bệnh nhân"
-      parentHref={`/patients/${patientId}`}
+      parentHref={`/patients/${patientId}?view=clinical`}
       breadcrumb={[
         { label: 'Bệnh nhân', href: '/patients' },
-        ...(patientName ? [{ label: patientName, href: `/patients/${patientId}` }] : []),
+        ...(patientName ? [{ label: patientName, href: `/patients/${patientId}?view=clinical` }] : []),
         { label: FORM_TITLE },
       ]}
       title={FORM_TITLE}
@@ -149,7 +149,7 @@ function StartForm({
         </p>
       )}
       <div className="form-actions">
-        <button type="button" className="btn btn-ghost" onClick={() => navigate(`/patients/${patientId}`)}>
+        <button type="button" className="btn btn-ghost" onClick={() => navigate(`/patients/${patientId}?view=clinical`)}>
           Hủy
         </button>
         <button type="button" className="btn btn-primary" disabled={isCreating} onClick={start}>
@@ -326,7 +326,7 @@ function FormEditor({
       )}
 
       <div className="form-actions">
-        <button type="button" className="btn btn-ghost" onClick={() => navigate(`/patients/${patientId}`)}>
+        <button type="button" className="btn btn-ghost" onClick={() => navigate(`/patients/${patientId}?view=clinical`)}>
           Về hồ sơ bệnh nhân
         </button>
         {!isReadOnly && (

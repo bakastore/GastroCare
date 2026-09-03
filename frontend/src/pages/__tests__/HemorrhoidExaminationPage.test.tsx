@@ -173,7 +173,7 @@ describe('HemorrhoidExaminationPage — A3-UX-01 layout correction', () => {
     renderPage();
 
     const back = await screen.findByRole('link', { name: 'Hồ sơ bệnh nhân' });
-    expect(back).toHaveAttribute('href', '/patients/patient-1');
+    expect(back).toHaveAttribute('href', '/patients/patient-1?view=clinical');
     expect(await screen.findByRole('heading', { name: 'Khám trĩ' })).toBeInTheDocument();
   });
 
@@ -245,7 +245,7 @@ describe('HemorrhoidExaminationPage — A3-UX-01 layout correction', () => {
     // The header back link is always available.
     expect(
       screen.getByRole('link', { name: 'Hồ sơ bệnh nhân' }),
-    ).toHaveAttribute('href', '/patients/patient-1');
+    ).toHaveAttribute('href', '/patients/patient-1?view=clinical');
   });
 });
 
@@ -358,5 +358,86 @@ describe('HemorrhoidExaminationPage — A3-UX-02 clock position control', () => 
       'false',
     );
     expect(clinicalFormsApi.amend).not.toHaveBeenCalled();
+  });
+});
+
+// DEC-020 Package B — T4/T12: HEMORRHOID_EXAMINATION v2 renders through the
+// same generic renderer. The v2 template groups fields into the eight
+// source-form clinical sections, keeps aggregate INTERNAL/EXTERNAL/MIXED
+// morphology (no repeatable Pile #1/#2/#3 UI) and introduces no ICD / VAS /
+// automatic-abnormal / treatment-suggestion controls.
+const TEMPLATE_V2 = {
+  templateKey: 'HEMORRHOID_EXAMINATION',
+  version: 2,
+  displayName: 'Khám trĩ',
+  sections: [
+    { key: 'reasonAndSymptoms', label: 'Lý do khám / triệu chứng', fields: [
+      { type: 'boolean', key: 'symptomAnalPain', label: 'Đau hậu môn', required: false },
+    ] },
+    { key: 'historyAndAllergy', label: 'Tiền sử / dị ứng', fields: [
+      { type: 'boolean', key: 'allergyDrug', label: 'Dị ứng thuốc', required: false },
+    ] },
+    { key: 'generalExamAndVitals', label: 'Toàn thân / sinh hiệu', fields: [
+      { type: 'number', key: 'respiratoryRate', label: 'Nhịp thở', required: false, unit: 'lần/phút' },
+      { type: 'number', key: 'spo2', label: 'SpO2', required: false, unit: '%' },
+    ] },
+    { key: 'digitalRectalExam', label: 'Thăm trực tràng', fields: [
+      { type: 'boolean', key: 'palpableTumor', label: 'Sờ thấy u', required: false },
+    ] },
+    { key: 'hemorrhoidMorphology', label: 'Đặc điểm búi trĩ', fields: [
+      { type: 'single_choice', key: 'hemorrhoidGoligherGrade', label: 'Phân độ Goligher (một giá trị chung)', required: false, options: [{ value: 'I', label: 'Độ I' }] },
+      { type: 'multi_select', key: 'internalHemorrhoidLocation', label: 'Vị trí búi trĩ nội (theo mặt đồng hồ)', required: false, options: CLOCK_OPTIONS },
+    ] },
+    { key: 'prolapseAndBleeding', label: 'Sa / chảy máu', fields: [
+      { type: 'boolean', key: 'prolapseSymptom', label: 'Sa búi trĩ (bệnh nhân khai)', required: false },
+    ] },
+    { key: 'otherAnorectalFindings', label: 'Ghi nhận hậu môn-trực tràng khác', fields: [
+      { type: 'textarea', key: 'otherAnorectalFinding', label: 'Ghi nhận hậu môn - trực tràng khác (mô tả tự do)', required: false },
+    ] },
+    { key: 'relatedInvestigations', label: 'Cận lâm sàng liên quan', fields: [
+      { type: 'boolean', key: 'cbcNotedOnForm', label: 'Tổng phân tích tế bào máu ngoại vi (ghi nhận trên phiếu)', required: false },
+    ] },
+  ],
+  scoreInstruments: [],
+};
+
+describe('HemorrhoidExaminationPage — v2 (DEC-020 Package B)', () => {
+  it('renders the eight source-form clinical sections and no Pile-repeatable / ICD / VAS UI', async () => {
+    vi.mocked(clinicalFormsApi.getTemplate).mockResolvedValue(TEMPLATE_V2 as never);
+    vi.mocked(clinicalFormsApi.listByPatient).mockResolvedValue([
+      {
+        id: 'sub-v2',
+        patientId: 'patient-1',
+        encounterId: 'enc-1',
+        templateKey: 'HEMORRHOID_EXAMINATION',
+        templateVersion: 2,
+        status: 'DRAFT',
+        revisionNumber: 1,
+        responses: {},
+      },
+    ] as never);
+
+    renderPage();
+
+    for (const label of [
+      'Lý do khám / triệu chứng',
+      'Tiền sử / dị ứng',
+      'Toàn thân / sinh hiệu',
+      'Thăm trực tràng',
+      'Đặc điểm búi trĩ',
+      'Sa / chảy máu',
+      'Ghi nhận hậu môn-trực tràng khác',
+      'Cận lâm sàng liên quan',
+    ]) {
+      expect(await screen.findByRole('heading', { name: label })).toBeInTheDocument();
+    }
+    expect(screen.getByLabelText('Nhịp thở (lần/phút)')).toBeInTheDocument();
+    expect(screen.getByLabelText('SpO2 (%)')).toBeInTheDocument();
+    // Aggregate-by-type: exactly one Goligher control, no per-lesion "Pile #" row.
+    expect(screen.getByLabelText('Phân độ Goligher (một giá trị chung)')).toBeInTheDocument();
+    expect(screen.queryByText(/Pile #/i)).toBeNull();
+    expect(screen.queryByText(/Búi trĩ #\d/i)).toBeNull();
+    expect(screen.queryByLabelText(/ICD/i)).toBeNull();
+    expect(screen.queryByLabelText(/VAS/i)).toBeNull();
   });
 });
