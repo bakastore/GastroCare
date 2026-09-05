@@ -45,7 +45,7 @@ export function NewCarePlanPage() {
     <div className="form-page">
       <PageHeader
         parentLabel="Hồ sơ bệnh nhân"
-        parentHref={`/patients/${patientId}?view=clinical`}
+        parentHref={`/patients/${patientId}`}
         title="Kế hoạch chăm sóc"
         subtitle={
           patientName
@@ -81,7 +81,7 @@ export function NewCarePlanPage() {
           <button
             type="button"
             className="btn btn-ghost"
-            onClick={() => navigate(`/patients/${patientId}?view=clinical`)}
+            onClick={() => navigate(`/patients/${patientId}`)}
           >
             Hủy
           </button>

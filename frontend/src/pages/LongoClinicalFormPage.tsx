@@ -70,15 +70,12 @@ function ClinicalFormHeader({
       parentLabel={toCase ? 'Đợt điều trị' : 'Hồ sơ bệnh nhân'}
       parentHref={
         toCase
-          ? // DEC-020 Package B F3 — the Case workspace (#case-workspace + the
-            // `tab=` param) only exists inside the `view=clinical` view; without
-            // it this back-link lands on the Dashboard where the anchor is absent.
-            `/patients/${patientId}?view=clinical&tab=${encodeURIComponent('Điều trị')}#case-workspace`
-          : `/patients/${patientId}?view=clinical`
+          ? `/patients/${patientId}?tab=${encodeURIComponent('Điều trị')}#case-workspace`
+          : `/patients/${patientId}`
       }
       breadcrumb={[
         { label: 'Bệnh nhân', href: '/patients' },
-        ...(patientName ? [{ label: patientName, href: `/patients/${patientId}?view=clinical` }] : []),
+        ...(patientName ? [{ label: patientName, href: `/patients/${patientId}` }] : []),
         { label: title },
       ]}
       title={title}
@@ -198,7 +195,7 @@ function StartForm({
         <button
           type="button"
           className="btn btn-ghost"
-          onClick={() => navigate(`/patients/${patientId}?view=clinical`)}
+          onClick={() => navigate(`/patients/${patientId}`)}
         >
           Hủy
         </button>
@@ -505,7 +502,7 @@ function FormEditor({
         <button
           type="button"
           className="btn btn-ghost"
-          onClick={() => navigate(`/patients/${patientId}?view=clinical`)}
+          onClick={() => navigate(`/patients/${patientId}`)}
         >
           Về hồ sơ bệnh nhân
         </button>

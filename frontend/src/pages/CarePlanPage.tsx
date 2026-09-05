@@ -195,7 +195,7 @@ export function CarePlanPage() {
     <div className="form-page">
       <PageHeader
         parentLabel="Hồ sơ bệnh nhân"
-        parentHref={`/patients/${carePlan.patientId}?view=clinical`}
+        parentHref={`/patients/${carePlan.patientId}`}
         title="Kế hoạch chăm sóc"
         subtitle={patientQuery.data?.fullName}
         status={
@@ -412,7 +412,7 @@ export function CarePlanPage() {
         <button
           type="button"
           className="btn btn-ghost"
-          onClick={() => navigate(`/patients/${carePlan.patientId}?view=clinical`)}
+          onClick={() => navigate(`/patients/${carePlan.patientId}`)}
         >
           Về hồ sơ bệnh nhân
         </button>

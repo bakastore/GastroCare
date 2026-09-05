@@ -989,34 +989,3 @@ form textarea {
     grid-template-columns: 1fr;
   }
 }
-
-/* DEC-020 Package B — Patient Dashboard (T8) factual current-state cards. */
-.patient-dashboard {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 14px;
-  margin-top: 14px;
-}
-.dashboard-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  padding: 14px 16px;
-}
-.dashboard-card > h3 {
-  margin: 0 0 10px;
-  font-size: 14px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--color-border);
-}
-.dashboard-muted {
-  color: var(--color-text-muted, #6b7280);
-  font-style: italic;
-}
-.dashboard-freetext {
-  white-space: pre-wrap;
-}
-.dashboard-list {
-  margin: 0;
-  padding-left: 18px;
-}

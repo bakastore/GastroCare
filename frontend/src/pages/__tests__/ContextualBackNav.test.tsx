@@ -75,7 +75,7 @@ describe('Contextual back navigation (NAV-03..05)', () => {
     );
     renderLongoForm('HEMORRHOID_DIAGNOSIS');
     const back = await screen.findByRole('link', { name: 'Hồ sơ bệnh nhân' });
-    expect(back).toHaveAttribute('href', '/patients/p1?view=clinical');
+    expect(back).toHaveAttribute('href', '/patients/p1');
   });
 
   it('Treatment Decision returns to the patient record', async () => {
@@ -85,7 +85,7 @@ describe('Contextual back navigation (NAV-03..05)', () => {
     renderLongoForm('HEMORRHOID_TREATMENT_DECISION');
     expect(await screen.findByRole('link', { name: 'Hồ sơ bệnh nhân' })).toHaveAttribute(
       'href',
-      '/patients/p1?view=clinical',
+      '/patients/p1',
     );
   });
 
@@ -99,9 +99,6 @@ describe('Contextual back navigation (NAV-03..05)', () => {
     expect(href.startsWith('/patients/p1')).toBe(true);
     expect(href).toContain('tab=');
     expect(href).toContain('#case-workspace');
-    // DEC-020 Package B F3 — the Case workspace only renders under
-    // ?view=clinical; this param must never be dropped from the back-link.
-    expect(href).toContain('view=clinical');
     expect(screen.queryByRole('link', { name: 'Hồ sơ bệnh nhân' })).toBeNull();
   });
 
@@ -113,7 +110,7 @@ describe('Contextual back navigation (NAV-03..05)', () => {
     renderLongoForm('HEMORRHOID_DIAGNOSIS');
     expect(await screen.findByRole('link', { name: 'Hồ sơ bệnh nhân' })).toHaveAttribute(
       'href',
-      '/patients/p1?view=clinical',
+      '/patients/p1',
     );
   });
 
@@ -133,7 +130,7 @@ describe('Contextual back navigation (NAV-03..05)', () => {
     );
     expect(await screen.findByRole('link', { name: 'Hồ sơ bệnh nhân' })).toHaveAttribute(
       'href',
-      '/patients/p1?view=clinical',
+      '/patients/p1',
     );
   });
 });

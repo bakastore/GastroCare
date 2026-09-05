@@ -458,9 +458,7 @@ export class ClinicalFormsService {
         | 'pulse'
         | 'temperature'
         | 'systolicBloodPressure'
-        | 'diastolicBloodPressure'
-        | 'respiratoryRate'
-        | 'spo2',
+        | 'diastolicBloodPressure',
         number
       >
     >;
@@ -500,10 +498,6 @@ export class ClinicalFormsService {
 
     const source = candidates[0];
     const responses = source.responses as Record<string, unknown>;
-    // DEC-020 Package B T3 — respiratoryRate / spo2 join the deterministic
-    // copy-forward set (source-form fidelity, same vital mechanism). A v1
-    // source submission simply has no value for them, so "missing previous
-    // value remains missing" holds with no special-casing.
     const vitalKeys = [
       'weight',
       'height',
@@ -511,8 +505,6 @@ export class ClinicalFormsService {
       'temperature',
       'systolicBloodPressure',
       'diastolicBloodPressure',
-      'respiratoryRate',
-      'spo2',
     ] as const;
 
     const vitals: Record<string, number> = {};

@@ -8,7 +8,6 @@ import { longoTwoWeekFollowupV1 } from './longo-two-week-followup.v1';
 import { analDilationAssessmentV1 } from './anal-dilation-assessment.v1';
 import { longoLongTermFollowupV1 } from './longo-long-term-followup.v1';
 import { hemorrhoidExaminationV1 } from './hemorrhoid-examination.v1';
-import { hemorrhoidExaminationV2 } from './hemorrhoid-examination.v2';
 import { hemorrhoidDiagnosisV1 } from './hemorrhoid-diagnosis.v1';
 import { hemorrhoidTreatmentDecisionV1 } from './hemorrhoid-treatment-decision.v1';
 import { hemorrhoidFollowUpAssessmentV1 } from './hemorrhoid-follow-up-assessment.v1';
@@ -23,7 +22,6 @@ const TEMPLATES: ClinicalFormTemplate[] = [
   analDilationAssessmentV1,
   longoLongTermFollowupV1,
   hemorrhoidExaminationV1,
-  hemorrhoidExaminationV2,
   hemorrhoidDiagnosisV1,
   hemorrhoidTreatmentDecisionV1,
   hemorrhoidTreatmentDecisionV2,

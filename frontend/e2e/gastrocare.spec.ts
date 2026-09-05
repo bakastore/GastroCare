@@ -92,7 +92,7 @@ test.describe('CORE-02 — Doctor golden path', () => {
     await expect(row).toHaveCount(0);
 
     // 10. Open Timeline (Patient detail).
-    await page.goto(`/patients/${patientId}?view=clinical`);
+    await page.goto(`/patients/${patientId}`);
 
     // 11. Verify both Encounters are present in correct sequence.
     const timelineItems = page.locator('.timeline-item');
@@ -206,7 +206,7 @@ test.describe('CORE-03 — Clinical Forms (HEMORRHOID_LONGO_FOLLOWUP) golden pat
     await expect(page.getByText('Tổng điểm Wexner (tạm tính): 2 / 20')).toBeVisible();
 
     // Timeline shows the completed submission with its computed score.
-    await page.goto(`/patients/${patientId}?view=clinical`);
+    await page.goto(`/patients/${patientId}`);
     await expect(page.getByText('Tổng điểm Wexner: 2 / 20')).toBeVisible();
 
     // Second longitudinal follow-up encounter + submission.
@@ -242,7 +242,7 @@ test.describe('CORE-03 — Clinical Forms (HEMORRHOID_LONGO_FOLLOWUP) golden pat
     await expect(page.getByText('Đã hoàn tất', { exact: true })).toBeVisible();
 
     // Longitudinal history: Timeline now shows two completed submissions.
-    await page.goto(`/patients/${patientId}?view=clinical`);
+    await page.goto(`/patients/${patientId}`);
     await expect(page.getByText('Phiếu khám lại đã hoàn tất')).toHaveCount(2);
   });
 });
@@ -320,7 +320,7 @@ test.describe('CORE-04 T15 — full Longo Episode pathway golden path', () => {
     });
     expect(initialRes.ok()).toBeTruthy();
     const initial = await initialRes.json();
-    await page.goto(`/patients/${patientId}?view=clinical`);
+    await page.reload();
     await expect(page.getByText('Case trĩ')).toBeVisible();
     await expect(page.getByRole('button', { name: '+ Bắt đầu đợt điều trị Longo' })).toHaveCount(0);
     await page.getByRole('tab', { name: 'Điều trị', exact: true }).click();
@@ -639,7 +639,7 @@ test.describe('DEC-010 Hemorrhoid Vertical Slice 1 — real-world workflow golde
     await page.getByRole('button', { name: 'Đăng nhập' }).click();
     await expect(page).toHaveURL(/\/patients$/);
 
-    await page.goto(`/patients/${patientId}?view=clinical`);
+    await page.goto(`/patients/${patientId}`);
     await expect(page.getByRole('heading', { name: patientName })).toBeVisible();
     // Receptionist role boundary: no clinical-content view, only the
     // Encounter Context entry point.
@@ -678,7 +678,7 @@ test.describe('DEC-010 Hemorrhoid Vertical Slice 1 — real-world workflow golde
     await page.getByRole('button', { name: 'Đăng nhập' }).click();
     await expect(page).toHaveURL(/\/today$/);
 
-    await page.goto(`/patients/${patientId}?view=clinical`);
+    await page.goto(`/patients/${patientId}`);
     await expect(page.getByText('Khám trĩ tái khám (E2E, tiếp đón)')).toBeVisible();
     // Two ungrouped Encounters now exist for this patient (the doctor's
     // first one, and the receptionist's second one) — open the second
@@ -750,7 +750,7 @@ test.describe('DEC-010 Hemorrhoid Vertical Slice 1 — real-world workflow golde
     await expect(page.getByLabel('Chảy máu (bác sĩ ghi nhận khi khám)')).toHaveValue('true');
 
     // Re-navigating (not just reload) also shows the persisted state.
-    await page.goto(`/patients/${patientId}?view=clinical`);
+    await page.goto(`/patients/${patientId}`);
     await page.getByRole('link', { name: 'Khám trĩ', exact: true }).last().click();
     await expect(page.getByText('Đã hoàn tất (phiên bản 1)')).toBeVisible();
     await expect(page.getByLabel(/Cân nặng/)).toHaveValue('62');
@@ -987,7 +987,7 @@ test.describe('DEC-012 Hemorrhoid Vertical Slice 2 — T6 golden path', () => {
     // 13. Timeline projects Diagnosis/Treatment Decision summaries (no new
     // storage — read straight from the minimal Timeline summary field) and
     // keeps the amended CarePlan's version lineage visible.
-    await page.goto(`/patients/${patientId}?view=clinical`);
+    await page.goto(`/patients/${patientId}`);
     await expect(page.getByText(diagnosisSummary)).toBeVisible();
     await expect(page.getByText(decisionSummary)).toBeVisible();
     const timelineItems = page.locator('.timeline-item');
@@ -1040,7 +1040,7 @@ test('DEC-016 Investigation parent/prior evidence and NURSE assigned raw Result 
     },
   });
   expect(initial.ok()).toBeTruthy();
-  await page.goto(`/patients/${patientId}?view=clinical`);
+  await page.goto(`/patients/${patientId}`);
   await page.getByRole('tab', { name: 'CLS', exact: true }).click();
   await page.getByLabel('Tên CLS').fill('SYNTHETIC CBC');
   await page.getByRole('button', { name: 'Thêm CLS', exact: true }).click();
@@ -1080,6 +1080,6 @@ test('DEC-016 Investigation parent/prior evidence and NURSE assigned raw Result 
   await page.reload();
   await expect(page.getByText('synthetic nurse raw value', { exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Bệnh nhân', exact: true })).toHaveCount(0);
-  await page.goto(`/patients/${patientId}?view=clinical`);
+  await page.goto(`/patients/${patientId}`);
   await expect(page).toHaveURL(/\/not-authorized$/);
 });

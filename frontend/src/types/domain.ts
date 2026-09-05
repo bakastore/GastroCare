@@ -91,9 +91,7 @@ export interface VitalsCopyForwardResult {
       | 'pulse'
       | 'temperature'
       | 'systolicBloodPressure'
-      | 'diastolicBloodPressure'
-      | 'respiratoryRate'
-      | 'spo2',
+      | 'diastolicBloodPressure',
       number
     >
   >;
