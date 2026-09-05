@@ -1,11 +1,13 @@
 # GASTROCARE — DEC-020 MASTER EXECUTION MAP
 ## A → B → C dependency and gate map
 
-**Phiên bản:** v0.2\
-**Ngày:** 2026-08-31\
-**Authority:** `DEC-020 v0.2 — OWNER LOCKED` + Package B Owner Lock / implementation authority and subsequent Owner execution-governance overlay (2026-08-31), recorded separately in `DECISION_LOG.md`\
-**Reference baseline:** `a2059ff6ea2796eee0a798d754b95e70221d2504` on `correction/owner-acceptance-slice1-3`\
-**Purpose:** execution coordination only; this map does not supersede DEC-020 or any locked Package Contract.
+**Phiên bản:** v0.2 (governance reconciliation 2026-09-06 for DEC-021 Package R)\
+**Ngày:** 2026-08-31; reconciled 2026-09-06\
+**Authority:** `DEC-020 v0.2 — OWNER LOCKED` + Package B Owner Lock / implementation authority and subsequent Owner execution-governance overlay (2026-08-31); **newest authority `DEC-021 v0.3 — OWNER LOCKED` + `DEC-021 Package R Implementation Contract v0.5 FINAL — OWNER LOCKED` (2026-09-06)** — all recorded separately in `DECISION_LOG.md`\
+**Reference baseline:** DEC-021 Package R analysis baseline `main @ 27500091f268b97d7abd9b59afa1e2c2d6d72f7a`; historical DEC-020 reference baseline `a2059ff6ea2796eee0a798d754b95e70221d2504`\
+**Purpose:** execution coordination only; this map does not supersede DEC-020, DEC-021 or any locked Package Contract.
+
+> **2026-09-06 reconciliation:** DEC-021 selectively rebaselines D20-02 / D20-03 and inserts **Package R** (DEC-021 Selective Rebaseline Core Correction) as the current next execution package, ahead of Package B. Package R Contract v0.5 FINAL = OWNER LOCKED; Package R application implementation (R0→R10) = **NOT AUTHORIZED**. Package B old Contract stays historical authority but **HOLD / T0 NOT OPEN** until Package R closes and the Package B Contract is reconciled. Updated dependency: `Package A OWNER CLOSED → Package R governance / implementation / closure → Package B Contract reconciliation → Package B T0 → Package B implementation / closure → Package C future`. `R_GOV_SHA` / `PACKAGE_R_BASE_SHA` = NOT YET ASSIGNED — assigned only after Owner merges the Package R governance PR and verifies local main == origin/main. A → B → C scope, STOP conditions, privacy/safety and testing/review/acceptance requirements are unchanged.
 
 
 **Nguồn artifact:** `DEC-020_MASTER_EXECUTION_MAP_v0.2.md` — bản v0.2 do Owner cung cấp;
@@ -38,23 +40,36 @@ Post-A governance checkpoint (verified pre-B-GOV HEAD)
 → correction/owner-acceptance-slice1-3; pre-write CLEAN
 → A_CLOSED_SHA ancestor; post-A delta governance/docs only
 
+DEC-021 v0.3
+→ OWNER LOCKED — 2026-09-06 (selective rebaseline of D20-02 / D20-03 + clarifications + new requirements)
+
+Package R / DEC-021 Package R Implementation Contract v0.5 FINAL
+→ OWNER LOCKED — 2026-09-06
+→ application implementation R0→R10 = NOT AUTHORIZED
+→ governance landing only at this gate
+→ R_GOV_SHA / PACKAGE_R_BASE_SHA NOT YET ASSIGNED — assign only after Owner merges the Package R governance PR and verifies local main == origin/main
+→ executes SECOND (immediately after Package A); next gate = Owner merge of Package R governance PR, then separate Owner authorization of Package R implementation
+→ scope: D20-02, D20-03, NR-01, NR-03, NR-04, NR-07 + minimal Treatment Decision for Structured Treatment Activation
+→ NURSE discovery/worklist API + UI = DEFERRED outside Package R
+
 Package B / Contract v0.2
 → EXTERNAL PRE-LOCK REVIEW COMPLETED — PASS; material blockers NONE
-→ OWNER LOCKED — 2026-08-31
-→ T0→T12 implementation OWNER AUTHORIZED subject to T0 and STOP conditions
-→ implementation NOT YET STARTED
-→ waiting for clean B-GOV checkpoint; B_GOV_SHA NOT YET ASSIGNED
-→ executes SECOND; next implementation gate = Package B T0
+→ OWNER LOCKED — 2026-08-31; old Contract retained as HISTORICAL AUTHORITY
+→ HOLD / T0 NOT OPEN until Package R closes AND the Package B Contract is reconciled
+   (must consume Treatment Decision v3, Encounter explicit lifecycle, new Episode linkage,
+    LOST_TO_FOLLOW_UP, D20-03 terminal semantics; NR-06 lightweight surgery-team note lands here)
+→ implementation NOT YET STARTED; B_GOV_SHA NOT YET ASSIGNED
+→ executes THIRD; next Package B gate = Package B Contract reconciliation (after Package R closure)
 → no clinical/product or T0→T12 substantive implementation requirement changed
-→ execution-baseline governance subsequently changed by explicit Owner overlay (§4)
+→ execution-baseline governance changed by explicit Owner overlay (§4)
 → original external review remains valid; no second pre-lock review required
 
 Package C Contract v0.1
 → DRAFT / DISCOVERY-DEPENDENT; NOT ACTIVE
 → technical representation intentionally open
 → NOT IMPLEMENTATION-AUTHORIZED; C0 NOT OPENED
-→ future dependency: A + B closure and C0 Owner decisions
-→ executes THIRD only after applicable Owner authority
+→ future dependency: A + R + B closure and C0 Owner decisions
+→ executes LAST only after applicable Owner authority
 ```
 
 ---
@@ -62,10 +77,14 @@ Package C Contract v0.1
 # 2. Why execution is sequential
 
 ```text
-A = lifecycle truth
-B = clinical capture + current-state UX
+A = lifecycle truth (OWNER CLOSED)
+R = DEC-021 selective core correction (D20-02 activation / D20-03 disposition / NR-01/03/04/07)
+B = clinical capture + current-state UX (HOLD until R closes + Contract reconciled)
 C = performed-treatment / Investigation architecture
 ```
+
+Updated order: `A → R → B → C`. R must close before the Package B Contract is
+reconciled and Package B T0 opens.
 
 Dependency:
 
@@ -106,6 +125,11 @@ Contracts may be prepared/reviewed in advance, but implementation deltas remain 
 | A Review | implementation complete | ChatGPT | direct source review | T10 PASS (historical) |
 | A Audit | ChatGPT review complete | Fresh Codex session | focused concurrency/lifecycle audit | initial FAIL → correction → re-audit PASS — NO P0/P1; residual P2 deferred (see Package A closure record) |
 | A Closure | evidence complete | Owner | closure decision | OWNER CLOSED at `A_CLOSED_SHA` |
+| R Governance landing | DEC-021 v0.3 + Package R Contract v0.5 FINAL OWNER LOCKED | governance executor → Owner | manual GitHub diff review | governance branch pushed; Owner merges PR; record `R_GOV_SHA` / `PACKAGE_R_BASE_SHA` (NOT YET ASSIGNED) |
+| R Implementation | Package R governance merged + **separate Owner implementation authorization (NOT granted)** | Claude Code | targeted tests | R0→R10 implementation report |
+| R Review/Audit | implementation complete | ChatGPT + **mandatory** fresh Codex focused audit | D20-02 activation/domain linkage, single-active invariant, transaction isolation, idempotency, Close ↔ Initial activation, Close ↔ Return, D20-03 disposition, tenant isolation, historical-data non-rewrite | findings closed; audit PASS |
+| R Closure | evidence complete | Owner | synthetic acceptance / closure decision | Package R OWNER CLOSED |
+| B Contract reconciliation | Package R OWNER CLOSED | Claude Chat/Owner | rebaseline old Package B Contract onto Package R outputs | reconciled Package B Contract ready |
 | B Pre-lock | reviewed B v0.2 artifact | Claude Chat/Owner | external review COMPLETED — PASS; material blockers NONE | gate SATISFIED; no second review required |
 | B Owner Lock | Package A prerequisite SATISFIED + external review PASS | Owner | explicit decision 2026-08-31 | B v0.2 OWNER LOCKED; T0→T12 OWNER AUTHORIZED |
 | B-GOV | clean verified post-A governance checkpoint | governance executor → ChatGPT → Owner | direct governance diff review; Owner decision | separately authorized governance commit/push → clean `B_GOV_SHA` (pending) |
@@ -253,6 +277,26 @@ synthetic reconciliation
 
 Does NOT own Examination v2 / Dashboard / Procedure model.
 
+## Package R — DEC-021 Selective Rebaseline Core Correction
+
+Owns (per DEC-021 v0.3 + Package R Implementation Contract v0.5 FINAL):
+
+```text
+D20-02 CareEpisode creation/start via explicit Structured Treatment Activation
+D20-03 Episode closure + deterministic future Episode-linked CareTask disposition
+single-active HEMORRHOID_TREATMENT invariant + DB partial unique index
+NR-01 Lost to Follow-up (DOCTOR + NURSE on exactly 2 endpoints; RECEPTIONIST excluded)
+NR-03 explicit Encounter start/end lifecycle
+NR-04 Doctor handover / receiving-Doctor acceptance (machine-checkable linkage)
+NR-07 patient declines all treatment
+Treatment Decision v3 (proposal vs effective modalities) — minimal, for activation only
+```
+
+Does NOT own: NR-02 duplicate merge, NR-05 prescription dispensed-lock, NR-06
+surgery-team note (→ Package B reconciled scope), full pharmacy, diagnosis/ICD
+redesign, multi-specialty, AI, **NURSE discovery/worklist API + UI (DEFERRED)**.
+Application implementation (R0→R10) = NOT AUTHORIZED at the governance-landing gate.
+
 ## Package B — Clinical Form Fidelity + Functional UX
 
 Owns:
@@ -295,6 +339,16 @@ Does NOT expand into HIS, generic EMR, laboratory platform or AI.
 Package A
 → Codex focused audit MANDATORY
   because lifecycle + transaction + concurrency
+
+Package R
+→ Codex focused audit MANDATORY (per DEC-021 + Package R Contract §14)
+  because D20-02 activation/domain linkage + single-active invariant
+  + partial unique index + transaction isolation + idempotency
+  + Close ↔ Initial activation / Close ↔ Return races
+→ mandatory question: can closing an Episode concurrently with an Initial
+  Encounter satisfying a valid D20-02 activation create two ACTIVE hemorrhoid
+  CareEpisodes, temporarily or permanently? If not proven safe → audit cannot PASS
+→ only relevant once Package R implementation is separately Owner-authorized
 
 Package B
 → Codex NOT mandatory by default
@@ -352,35 +406,42 @@ Clinical truth remains Doctor-controlled.
 # 10. Immediate execution order
 
 ```text
-NOW — B-GOV GOVERNANCE LANDING ONLY
+NOW — DEC-021 PACKAGE R GOVERNANCE LANDING ONLY
 │
-├─ canonical reviewed Package B Contract v0.2 + Master Execution Map v0.2
-├─ reconcile DECISION_LOG / PROJECT_STATE / ROADMAP
-├─ preserve Package A closure/history/residual P2 and historical DEC-020 wording
-└─ STOP — no Package B T0→T12, no C0, no Git mutation
+├─ land canonical DEC-021 v0.3 + DEC-021 Package R Implementation Contract v0.5 FINAL
+├─ reconcile DECISION_LOG / PROJECT_STATE / ROADMAP / this Map
+├─ preserve Package A closure/history/residual P2, historical DEC-020 wording,
+│  and the old Package B Contract as historical authority (not rewritten)
+├─ R_GOV_SHA / PACKAGE_R_BASE_SHA = NOT YET ASSIGNED
+└─ STOP — no Package R R0→R10, no Package B T0→T12, no C0, no main write / merge / PR
 
 NEXT
 │
-├─ ChatGPT direct review of corrected B-GOV diff
-├─ Owner decision
-├─ Owner separately authorizes one governance-only commit/push
-├─ actual resulting commit SHA becomes B_GOV_SHA under the newer Owner overlay
-├─ working tree/branch verified clean
-├─ Package B T0 — verify all six overlay conditions; record PACKAGE_B_BASE_SHA
-├─ Package B T1→T12 — subject to locked Contract / STOP conditions
-├─ ChatGPT direct source review
-├─ Owner + BS Thái browser/workflow acceptance
-├─ Owner Package B closure decision
+├─ Owner opens the Package R governance compare URL → creates PR
+├─ Owner manually reviews the GitHub diff → Owner manually merges
+├─ after merge: verify local main == origin/main
+├─ record merged main HEAD as R_GOV_SHA / PACKAGE_R_BASE_SHA
+├─ separate Owner authorization of Package R implementation (R0→R10) — NOT yet granted
+├─ Package R R0→R10 → ChatGPT direct source review → mandatory fresh Codex focused audit
+│  (D20-02 activation/domain linkage, single-active invariant, transaction isolation,
+│   idempotency, Close ↔ Initial activation, Close ↔ Return, D20-03 task disposition, …)
+└─ Owner Package R synthetic acceptance / closure decision
+
+THEN — PACKAGE B (after Package R closure)
+│
+├─ reconcile the Package B Contract to consume Package R outputs
+├─ Package B T0 — verify overlay conditions; record PACKAGE_B_BASE_SHA
+├─ Package B T1→T12 → ChatGPT review → Owner + BS Thái acceptance → Owner closure
 └─ separately authorized clean B_CLOSED_SHA
 
 FUTURE — AFTER B CLOSE, ONLY WITH APPLICABLE OWNER AUTHORITY
 │
 ├─ rebind C to B_CLOSED_SHA
-├─ C0 source discovery (NOT OPENED in B-GOV)
+├─ C0 source discovery (NOT OPENED)
 ├─ Owner resolves ≤5 technical decisions
 ├─ finalize/review/lock C
 └─ implement C only after explicit Owner authorization
 ```
 
-**Current gate:** B-GOV; implementation NOT YET STARTED.
-**Next gate:** ChatGPT direct review of corrected B-GOV diff → Owner decision → Owner separately authorizes one governance-only commit/push → actual resulting commit SHA becomes `B_GOV_SHA` → working tree/branch verified clean → Package B T0.
+**Current gate:** DEC-021 Package R governance landing; Package R implementation (R0→R10) NOT AUTHORIZED.
+**Next gate:** Owner opens the Package R governance compare URL → creates PR → manually reviews GitHub diff → Owner manually merges → verify local main == origin/main → record merged main HEAD as `R_GOV_SHA` / `PACKAGE_R_BASE_SHA`. Package R implementation remains NOT AUTHORIZED until separate Owner authorization.

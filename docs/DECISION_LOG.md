@@ -1,6 +1,6 @@
 # GastroCare — Decision Log
 
-Cập nhật: 2026-08-31
+Cập nhật: 2026-09-06
 
 Đây là Decision Log hiện hành và là nguồn chuẩn cho Owner Decisions
 và Working Assumptions của GastroCare.
@@ -955,9 +955,117 @@ execution governance, không rewrite historical DEC-020 / Package A decisions.
     DEC-021 selective clinical rebaseline đang ở trạng thái DRAFT. Không tái sử dụng
     WIP Package B làm accepted implementation checkpoint.
 
-**Next gate:** hoàn thiện/Owner Lock DEC-021 → impact analysis → reconcile
-Implementation Contract / execution map bị ảnh hưởng → chỉ sau đó mới xác lập gate
-execution tiếp theo.
+**Next gate:** *(superseded 2026-09-06)* DEC-021 v0.3 và DEC-021 Package R
+Implementation Contract v0.5 FINAL đã **OWNER LOCKED**; xem `DEC-021` và
+`DEC-021 PACKAGE R` bên dưới. Next gate hiện tại: Owner merge DEC-021 Package R
+governance PR → record `R_GOV_SHA` / `PACKAGE_R_BASE_SHA` → Package R
+implementation authorization riêng (chưa cấp).
+
+---
+
+### DEC-021 — Hemorrhoid Clinical Workflow Selective Rebaseline
+
+**Ngày:** 2026-09-06
+
+**Trạng thái:** OWNER LOCKED — v0.3
+
+**Nguồn chuẩn:** [`DEC-021_HEMORRHOID_CLINICAL_WORKFLOW_SELECTIVE_REBASELINE.md`](DEC-021_HEMORRHOID_CLINICAL_WORKFLOW_SELECTIVE_REBASELINE.md)
+(Owner-supplied artifact, SHA-256 `74dd72a1e1125324322ad0672ae14fab01780a8782f66d55dc877e586c995e63`).
+Baseline for analysis: `main @ 27500091f268b97d7abd9b59afa1e2c2d6d72f7a`.
+
+Đây là record bổ sung; không sửa hay rút gọn các Owner Decision phía trên.
+DEC-021 dùng **selective supersession / clarification / requirement
+reconciliation** trên DEC-020 — không phủ nhận DEC-020 và không redesign toàn bộ
+GastroCare. DEC-020 vẫn là historical decision record và authority cho mọi phần
+PRESERVE.
+
+Owner quyết định (2026-09-06):
+
+1. `OWNER LOCK DEC-021 v0.3` — completed. DEC-021 v0.3 trở thành authority mới
+   cho các phần SUPERSEDE / CLARIFY / NEW REQUIREMENT nêu trong tài liệu:
+   D20-02 = SUPERSEDE (CareEpisode bắt đầu tại Encounter nơi treatment trigger
+   hợp lệ, đúng treatment domain, thực sự xuất hiện — không chờ First Return);
+   D20-03 = PARTIAL SUPERSEDE + CLARIFY (một lần Doctor xác nhận → future
+   Episode-linked CareTask tự động close/cancel theo deterministic mapping trong
+   Implementation Contract; không hard-delete; giữ audit tối thiểu).
+2. Structured Treatment Activation được Owner chấp nhận ở **mức định hướng khái
+   niệm**; schema, migration, transaction boundary và historical-data policy
+   được khóa tại DEC-021 Package R Implementation Contract **trước**
+   implementation.
+3. NR-01 Package R v1: `DOCTOR + NURSE` được phép `contact-attempt` và
+   `lost-to-follow-up`; `RECEPTIONIST` **không** được mở hai action này.
+4. DEC-021 Package R Implementation Contract v0.5 FINAL = **OWNER LOCKED** (xem
+   `DEC-021 PACKAGE R` bên dưới); application implementation vẫn **CHƯA ĐƯỢC
+   AUTHORIZE**.
+5. Package A vẫn **OWNER CLOSED** ngoài scoped reopen D20-02 / D20-03 và các
+   code path / invariant / test / transaction / migration bị tác động trực tiếp.
+   Không rewrite Package A historical closure.
+6. Package B theo Contract cũ tiếp tục **HOLD / T0 NOT OPEN** cho tới khi
+   Package R đóng và Package B Contract được reconcile. Không rewrite old
+   Package B Contract trong lần landing này.
+7. `NR-06` (external surgery team note) chuyển sang Package B reconciled scope.
+   `NR-02`, `NR-05` = DEFERRED. NURSE discovery/worklist API + UI = **DEFERRED —
+   ngoài phạm vi Package R**.
+8. Independent focused Codex audit là **mandatory** cho correction D20-02 /
+   D20-03 khi implementation được authorize (không phải bây giờ).
+9. `SYNTHETIC DATA ONLY`; real-patient runtime và production vẫn `NOT
+   AUTHORIZED`. OWNER LOCK DEC-021 **không** authorize application code,
+   migration, commit/push hoặc implementation.
+
+**Căn cứ:** Owner Lock 06/09/2026 (DEC-021 §22); DEC-020 v0.2 OWNER LOCKED;
+Owner Decision Structured Treatment Activation (conceptual) + NR-01 authority
+scope (2026-09-05); repository readiness PASS tại `main @ 27500091…`.
+
+---
+
+### DEC-021 PACKAGE R — Implementation Contract v0.5 FINAL Owner Lock (governance landing)
+
+**Ngày:** 2026-09-06
+
+**Trạng thái:** `Package R Implementation Contract v0.5 FINAL` = **OWNER LOCKED —
+IMPLEMENTATION NOT AUTHORIZED**.
+
+**Nguồn chuẩn:** [`DEC-021_PACKAGE_R_SELECTIVE_REBASELINE_IMPLEMENTATION_CONTRACT.md`](DEC-021_PACKAGE_R_SELECTIVE_REBASELINE_IMPLEMENTATION_CONTRACT.md)
+(Owner-supplied artifact, SHA-256 `0d79b04d590a13ecf4a5b872397cb7da742b7950927498a19c88b616d8ec3d15`).
+Authority: `DEC-021 v0.3 — OWNER LOCKED`. Baseline for analysis:
+`main @ 27500091f268b97d7abd9b59afa1e2c2d6d72f7a`.
+
+1. Package R triển khai core bị DEC-021 thay đổi trực tiếp **trước khi** Package
+   B được mở lại: D20-02, D20-03, NR-01, NR-03, NR-04, NR-07 và phần tối thiểu
+   Treatment Decision cần cho Structured Treatment Activation. NR-02 / NR-05 /
+   NR-06 / full pharmacy / diagnosis redesign / multi-specialty / AI = ngoài
+   Package R.
+2. Package R là **current next execution package**. Application implementation
+   `R0 → R10` = **NOT AUTHORIZED**. Không implementation begins cho tới khi:
+   Contract Owner Locked (done) → exact write set approved → execution baseline
+   verified clean → Owner explicitly authorizes implementation.
+3. DEFER disposition của Contract là authoritative: **không** re-add NURSE
+   discovery/worklist endpoint (`GET /care-tasks/follow-up-worklist` và mọi
+   implementation/test liên quan đã BỎ KHỎI Package R); NURSE discovery/worklist
+   API + UI DEFERRED, chỉ mở khi product workflow thực sự cần.
+4. `R_GOV_SHA` và `PACKAGE_R_BASE_SHA` = **NOT YET ASSIGNED — assign only after
+   Owner merges the governance PR and verifies local main == origin/main.**
+   Branch commit SHA của governance branch **không** tự động là `R_GOV_SHA`;
+   merged `main` HEAD sẽ được Owner ghi nhận sau merge theo governance.
+5. Dependency: `Package A OWNER CLOSED → Package R governance / implementation /
+   closure → Package B Contract reconciliation → Package B T0 → Package B
+   implementation / closure → Package C future`.
+6. Governance landing này: **không** claim tests đã rerun; **không** claim Codex
+   audit đã chạy; **không** claim implementation đã bắt đầu; **không** invent
+   implementation SHA hoặc test result. Không backend/frontend/schema/migration/
+   test/tooling change. Không commit/push `main`, không merge, không tạo PR.
+7. `SYNTHETIC DATA ONLY`; real-patient runtime / production `NOT AUTHORIZED`.
+
+**Next gate:** Owner mở compare URL
+`https://github.com/bakastore/GastroCare/compare/main...governance/dec-021-package-r-v05-landing?expand=1`
+→ tạo PR → manual GitHub diff review → Owner merge → verify local main ==
+origin/main → record merged main HEAD thành `R_GOV_SHA` / `PACKAGE_R_BASE_SHA`.
+Implementation vẫn NOT AUTHORIZED cho tới khi có Owner authorization riêng.
+
+**Căn cứ:** Owner Lock DEC-021 v0.3 + Owner Lock Package R Contract v0.5 FINAL;
+two Owner-supplied locked artifacts với SHA-256 ghi ở trên.
+
+---
 
 ## WORKING ASSUMPTIONS
 
@@ -983,6 +1091,10 @@ Các mục trên không bị hủy; chúng chỉ không còn thuộc Decision Lo
 ## SUPERSEDED
 
 - DEC-009 §6 (chỉ phần câu "Đây là direction, không phải work package mới được mở bởi quyết định này") — superseded by [[DEC-010]] (2026-08-24), việc mở HEMORRHOID REAL-WORLD WORKFLOW — VERTICAL SLICE 1. Toàn bộ nội dung khác của DEC-009 (điểm 1–5, 7) không đổi.
+
+- DEC-020 `D20-02` (CareEpisode chỉ tạo/resolve tại First Return Encounter) — SUPERSEDED by [[DEC-021]] (2026-09-06): CareEpisode bắt đầu tại Encounter nơi treatment trigger hợp lệ, đúng treatment domain, thực sự xuất hiện. DEC-020 D20-02 giữ giá trị lịch sử.
+- DEC-020 `D20-03` (đóng Episode không cancel/dispose future CareTask) — PARTIAL SUPERSEDE by [[DEC-021]] (2026-09-06): sau một lần Doctor xác nhận, future Episode-linked CareTask nhận terminal disposition deterministic; các nguyên tắc D20-03 khác (Doctor authority, explicit closure, reopen/new Episode) giữ nguyên.
+- DEC-013 §2 và DEC-020 Package A "Initial Encounter permanently ungrouped / first Return creates CareEpisode" — reconciled by [[DEC-021]] Package R scope (D20-02 activation-trigger model). Package A historical closure không bị rewrite; nếu Package R implementation đổi T4 production code thì T4 independent gate mở lại cho affected delta.
 
 ---
 
