@@ -927,10 +927,37 @@ execution governance, không rewrite historical DEC-020 / Package A decisions.
     HEAD = `d33d06186333b8ad3d82fea6aa047adc30d1e7df`; working tree CLEAN; toàn bộ
     diff `0c865a26c4425a1c3fe429bb8e42238562025801..af32429ab3d06a20e4c88d2ccb8e760636ba540e`
     trên `backend/` và `frontend/` rỗng — chỉ có thay đổi trong `docs/`. Sáu điều kiện
-    T0 tại điểm 8 đã thỏa. Package B T0 được phép bắt đầu.
+    T0 tại điểm 8 đã thỏa tại thời điểm xác minh. `PACKAGE_B_BASE_SHA = B_GOV_SHA =
+    d33d06186333b8ad3d82fea6aa047adc30d1e7df`.
 
-**Next gate:** Package B — T0 mandatory local source verification, sử dụng
-`PACKAGE_B_BASE_SHA = B_GOV_SHA = d33d06186333b8ad3d82fea6aa047adc30d1e7df`.
+14. **REPOSITORY DRIFT DISPOSITION — PR #12 — Owner confirmation 2026-09-05.**
+    Owner xác định PR #12 (`cc530323a5fb8d360d74a11113f5960813d8d033`) là
+    **UNINTENTIONAL GOVERNANCE DRIFT**. PR #12 đã merge nhánh
+    `wip/package-b-draft-uncommitted`, chứa WIP commit
+    `6c73919e9eaa5073636bc2e1fe6e705de407afc5`, vào `main`.
+    WIP commit tự ghi rõ đây không phải Package B acceptance checkpoint, chưa
+    verification/clinical acceptance/Owner acceptance đầy đủ và không được merge
+    khi chưa có Owner Decision cùng verification phù hợp.
+
+    Owner-authorized correction commit
+    `effcc51eb7ab9030879ef8ef32538bc1887e10c5` loại WIP delta khỏi `main`
+    bằng cách phục hồi content tree đúng bằng
+    `c8605bce98e1a2ca06e210036917041bdf523d96`. Correction này:
+    - không reset hoặc rewrite history;
+    - không force-push;
+    - giữ nguyên PR #12 / WIP commit trong Git history;
+    - giữ nguyên remote branch `wip/package-b-draft-uncommitted` làm evidence/reuse source;
+    - giữ nguyên B_GOV governance hợp lệ và `PACKAGE_B_BASE_SHA` đã ghi nhận;
+    - đưa application/test tree ra khỏi WIP Package B về đúng pre-WIP content.
+
+    Package A vẫn **OWNER CLOSED** đối với phạm vi không bị quyết định mới thay đổi.
+    Package B execution theo DEC-020 cũ được đặt **HOLD / T0 NOT OPEN** trong khi
+    DEC-021 selective clinical rebaseline đang ở trạng thái DRAFT. Không tái sử dụng
+    WIP Package B làm accepted implementation checkpoint.
+
+**Next gate:** hoàn thiện/Owner Lock DEC-021 → impact analysis → reconcile
+Implementation Contract / execution map bị ảnh hưởng → chỉ sau đó mới xác lập gate
+execution tiếp theo.
 
 ## WORKING ASSUMPTIONS
 

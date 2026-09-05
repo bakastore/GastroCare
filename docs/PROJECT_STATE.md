@@ -1,10 +1,18 @@
 # GastroCare — Trạng thái dự án
 
-**Current gate — 2026-08-31:** DEC-020 Package B **B-GOV — GOVERNANCE LANDING ONLY**.
-Contract v0.2 **OWNER LOCKED**; external pre-lock review **COMPLETED — PASS**;
-material blockers **NONE**; Package A prerequisite **SATISFIED**; T0→T12
-**OWNER AUTHORIZED**, implementation **NOT YET STARTED**. Governance diff chờ
-ChatGPT / Owner review và checkpoint riêng; không thực hiện Package B T0 ở task này.
+**Current gate — 2026-09-05:** **DEC-021 — SELECTIVE CLINICAL REBASELINE PRE-LOCK**.
+Owner đã xác định PR #12 là **UNINTENTIONAL GOVERNANCE DRIFT**. Corrective commit
+`effcc51eb7ab9030879ef8ef32538bc1887e10c5` đã loại WIP Package B khỏi `main`
+mà không rewrite history; repository content sau correction khớp tree
+`c8605bce98e1a2ca06e210036917041bdf523d96`. Remote branch
+`wip/package-b-draft-uncommitted` được giữ làm evidence/reuse source.
+
+Package A vẫn **OWNER CLOSED** ngoài phạm vi selective correction sẽ được DEC-021
+quyết định. Package B execution theo DEC-020 cũ = **HOLD / T0 NOT OPEN**.
+`B_GOV_SHA = PACKAGE_B_BASE_SHA = d33d06186333b8ad3d82fea6aa047adc30d1e7df`
+vẫn là governance record hợp lệ; WIP PR #12 không được coi là Package B checkpoint.
+Next gate = hoàn thiện/Owner Lock DEC-021 → impact analysis → reconcile Contract /
+execution map bị ảnh hưởng → xác lập execution gate mới.
 
 **Cập nhật:** 31/08/2026 — **DEC-019 — Staff Profile & Credential Management v1:
 OWNER CLOSED** (Owner-directed governance closure 2026-08-31). DEC-019 +
@@ -66,17 +74,16 @@ B-GOV landing ban đầu; **current dirty B-GOV = governance preparation only**,
 
 **Historical reviewed v0.2 rule:** Contract rebind về clean Package A
 closure/checkpoint SHA; Master Execution Map rebind về literal `A_CLOSED_SHA`.
-**NEWER Owner execution-governance overlay — 2026-08-31** supersedes only that
-literal checkpoint mechanic và cho phép clean governance-only descendant.
-Operative future Package B execution baseline = **`B_GOV_SHA`**, chỉ sau direct
-review corrected governance diff → Owner authorization riêng → governance-only
-commit/push → clean state trên đúng branch. `B_GOV_SHA` **NOT YET ASSIGNED**;
-không phải rule có sẵn trong original reviewed v0.2 và không relabel
-`A_CLOSED_SHA` hoặc pre-B-GOV HEAD. T0 phải verify `A_CLOSED_SHA` ancestor, toàn bộ
-`A_CLOSED_SHA..HEAD` governance/docs only, không unexplained application/backend/
-frontend/schema/migration/test/tooling delta, CLEAN working tree, Owner-authorized
-branch và ghi actual HEAD thành `PACKAGE_B_BASE_SHA`. Các điều kiện này chưa được
-thực hiện ở Package B T0; B-GOV correction không bắt đầu implementation. Package C = **NOT ACTIVE / DRAFT / DISCOVERY-DEPENDENT / NOT
+**NEWER Owner execution-governance overlay — 2026-08-31** superseded only that
+literal checkpoint mechanic và đã gán
+`B_GOV_SHA = PACKAGE_B_BASE_SHA = d33d06186333b8ad3d82fea6aa047adc30d1e7df`.
+PR #12 sau đó đưa WIP Package B vào `main` ngoài governance record và đã được Owner
+phân loại **UNINTENTIONAL GOVERNANCE DRIFT** ngày 2026-09-05. Corrective commit
+`effcc51eb7ab9030879ef8ef32538bc1887e10c5` đã loại WIP delta, giữ history và giữ
+nhánh WIP trên remote. Vì DEC-021 đang selective rebaseline D20-02/D20-03 cùng các
+clarification/new requirements liên quan, Package B execution theo Contract cũ
+được **HOLD / T0 NOT OPEN** cho tới khi DEC-021 Owner Lock và Contract/execution
+map được reconcile. Package C = **NOT ACTIVE / DRAFT / DISCOVERY-DEPENDENT / NOT
 IMPLEMENTATION-AUTHORIZED**; C0 không mở.
 
 Baseline = DEC-018 CLOSED — OWNER ACCEPTED — remote
@@ -87,7 +94,8 @@ T10/T11 corrections COMMITTED at `A_CLOSED_SHA`
 runtime/data, production deployment and AI clinical reasoning remain NOT
 AUTHORIZED (Package A closure/checkpoint/push is not production acceptance); no
 commit/push/merge/tag without separate Owner authorization. Next gate =
-ChatGPT direct review of corrected B-GOV diff → Owner decision → Owner separately authorizes one governance-only commit/push → actual resulting commit SHA becomes `B_GOV_SHA` → working tree/branch verified clean → Package B T0.
+DEC-021 Owner Lock → impact analysis → reconcile affected Contract/execution map →
+Owner-authorized execution gate mới. Package B T0 theo Contract cũ hiện **HOLD**.
 
 Prior context: **DEC-018 — Admin Boundary / User Management v1: T0 → T8 CLOSED —
 OWNER ACCEPTED** (2026-08-30), committed at remote checkpoint `7d33e02`. T7 Fresh
