@@ -1,6 +1,6 @@
 # GastroCare — Trạng thái dự án
 
-**Current gate — 2026-09-06:** **DEC-021 — PACKAGE R GOVERNANCE LANDED; IMPLEMENTATION NOT AUTHORIZED**.
+**Current gate — 2026-09-06:** **DEC-021 — PACKAGE R IMPLEMENTATION R0→R7 EXECUTED; R9 = FAIL — CORRECTION REQUIRED (focused corrections applied, re-audit pending)**.
 `DEC-021 v0.3 = OWNER LOCKED` (Hemorrhoid Clinical Workflow Selective Rebaseline);
 `DEC-021 Package R Implementation Contract v0.5 FINAL = OWNER LOCKED`. Canonical
 copies: [`DEC-021_HEMORRHOID_CLINICAL_WORKFLOW_SELECTIVE_REBASELINE.md`](DEC-021_HEMORRHOID_CLINICAL_WORKFLOW_SELECTIVE_REBASELINE.md),
@@ -10,7 +10,15 @@ schema/migration/transaction boundary/historical-data policy được khóa tạ
 Contract trước implementation. NR-01 Package R v1: `DOCTOR + NURSE` cho đúng hai
 mutation `contact-attempt` và `lost-to-follow-up`; `RECEPTIONIST` bị loại. NURSE
 discovery/worklist API + UI = **DEFERRED — ngoài phạm vi Package R**.
-**Package R application implementation (R0→R10) = NOT AUTHORIZED.**
+**Package R application implementation R0→R7 = EXECUTED on branch
+`implementation/dec-021-package-r-v05` (baseline `PACKAGE_R_BASE_SHA`).**
+R8 (ChatGPT direct source review) COMPLETED. **R9 (fresh Codex focused
+independent audit) = FAIL — CORRECTION REQUIRED** (5 material findings:
+Return-path D20-02 auto-start/reopen; missing §13 #12/#17 race tests;
+concurrent accept-handover idempotency; incomplete R6 frontend; PROJECT_STATE
+drift). Focused corrections applied; **fresh Codex focused re-audit of the
+corrected findings is the next gate.** R10 (Owner synthetic acceptance /
+closure) remains pending. Not committed/pushed yet.
 
 Owner đã xác định PR #12 là **UNINTENTIONAL GOVERNANCE DRIFT**. Corrective commit
 `effcc51eb7ab9030879ef8ef32538bc1887e10c5` đã loại WIP Package B khỏi `main`
@@ -25,15 +33,22 @@ authority nhưng **HOLD / T0 NOT OPEN** cho tới khi Package R đóng và Packa
 Contract được reconcile.
 `B_GOV_SHA = PACKAGE_B_BASE_SHA = d33d06186333b8ad3d82fea6aa047adc30d1e7df`
 vẫn là governance record hợp lệ; WIP PR #12 không được coi là Package B checkpoint.
-`R_GOV_SHA` và `PACKAGE_R_BASE_SHA` = **NOT YET ASSIGNED — assign only after Owner
-merges PR and verifies local main == origin/main**.
+`R_GOV_SHA = PACKAGE_R_BASE_SHA = 66bf91664afaf3a8a0f6952dc93d511b6b7a68c6`
+(merged `main` HEAD after PR #13 — DEC-021 Package R governance v0.5 landed;
+local `main` == `origin/main` == this SHA).
+
+**2026-09-06 — Package R implementation R0→R7 EXECUTED** on branch
+`implementation/dec-021-package-r-v05` (baseline `PACKAGE_R_BASE_SHA`).
+R8 ChatGPT direct source review COMPLETED. R9 fresh Codex focused independent
+audit returned **FAIL — CORRECTION REQUIRED**; a focused correction batch was
+applied and a fresh Codex focused re-audit of only the corrected findings is
+the next gate. R10 (Owner synthetic acceptance / closure) is NOT self-certified.
+Package B remains **HOLD / T0 NOT OPEN**; Package C not authorized; synthetic
+data only; historical governance unchanged.
 
 Dependency: `Package A OWNER CLOSED → Package R governance / implementation /
 closure → Package B Contract reconciliation → Package B T0 → Package B
 implementation / closure → Package C future`.
-Next gate = Owner mở compare URL → tạo PR → review GitHub diff → Owner merge →
-record merged main HEAD thành `R_GOV_SHA` / `PACKAGE_R_BASE_SHA`. Implementation
-vẫn NOT AUTHORIZED cho tới khi có Owner authorization riêng.
 
 **Cập nhật:** 31/08/2026 — **DEC-019 — Staff Profile & Credential Management v1:
 OWNER CLOSED** (Owner-directed governance closure 2026-08-31). DEC-019 +
@@ -382,7 +397,8 @@ Chỉ được dùng synthetic data (dữ liệu giả lập) cho triển khai, 
 
 | Thuộc tính | Giá trị |
 |---|---|
-| Current branch | `correction/owner-acceptance-slice1-3` |
+| Current branch | `implementation/dec-021-package-r-v05` (baseline `PACKAGE_R_BASE_SHA` = `66bf91664afaf3a8a0f6952dc93d511b6b7a68c6`) |
+| DEC-021 Package R implementation | **R0→R7 EXECUTED (2026-09-06).** `R_GOV_SHA` = `PACKAGE_R_BASE_SHA` = `66bf91664afaf3a8a0f6952dc93d511b6b7a68c6`; branch `implementation/dec-021-package-r-v05`; not committed/pushed. **R8 ChatGPT direct source review = COMPLETED. R9 fresh Codex focused independent audit = FAIL — CORRECTION REQUIRED** (5 findings: D20-02 Return auto-start/reopen; missing §13 #12/#17 race tests; concurrent accept-handover idempotency; incomplete R6 frontend; PROJECT_STATE drift). Focused correction batch applied; **fresh Codex focused re-audit of the corrected findings = next gate**. R10 Owner synthetic acceptance = NOT self-certified. Contract `docs/DEC-021_PACKAGE_R_SELECTIVE_REBASELINE_IMPLEMENTATION_CONTRACT.md` v0.5 FINAL. Synthetic data only. Package B **HOLD / T0 NOT OPEN**; Package C not authorized |
 | DEC-016 implementation checkpoint | `6dd8d5226b6f4d2c264227226cb996900aa3d9f6` — COMMITTED/PUSHED; Owner xác nhận theo DEC-017 |
 | Repository state reconciliation | Mô tả trước đây "chưa commit theo lệnh Owner" / baseline `c0dfe1a4` đã lỗi thời kể từ checkpoint `6dd8d52`; local worktree state được kiểm tra riêng tại mỗi execution gate |
 | Pre-DEC-016 T0 baseline (history) | `c0dfe1a4f774bef334dd2c2e0eac45f89a2e106b` — CLEAN; C1–C5 + DEC-015 CLOSED / PASS theo Owner authority |
@@ -408,7 +424,7 @@ Chỉ được dùng synthetic data (dữ liệu giả lập) cho triển khai, 
 | Implementation notes/evidence (DEC-016 historical) | `docs/13_DEC016_CASE_PATHWAY_IMPLEMENTATION.md`, `docs/DEC016_SESSION_A_REPORT.md`, `docs/evidence/DEC016_SESSION_A/` |
 | Startup domain/schema/privacy SSOT | Current DEC-021 Package R: `docs/DEC-021_PACKAGE_R_SELECTIVE_REBASELINE_IMPLEMENTATION_CONTRACT.md` (v0.5 FINAL) + `docs/DEC-021_HEMORRHOID_CLINICAL_WORKFLOW_SELECTIVE_REBASELINE.md` (v0.3) + DEC-020 Master Execution Map; preserve Package A Contract/closure evidence and Package B old Contract as historical authority. Domain/schema/privacy where relevant: docs/04, 05, 06 and applicable DEC-020/DEC-021 selective supersession; Longo 08/09, Hemorrhoid 10/12 remain historical SSOT except explicitly superseded scope |
 | Implementation status | DEC-016: T0 → M7 PASS (self-attested) + independent audit CLOSED — PASS; committed as `6dd8d52` per DEC-017. **DEC-018: T0 → T8 CLOSED — OWNER ACCEPTED (2026-08-30)** — committed at remote checkpoint `7d33e02`. **DEC-019: OWNER CLOSED (2026-08-31)** — T0→T6 implementation exists in working tree and is preserved; T7/T8 WAIVED BY OWNER — NOT EXECUTED; no PASS / acceptance claim. **DEC-020 Package A: OWNER CLOSED (2026-08-31)** — `T0 → T9` COMPLETED; `T10` PASS; `T11` initial FAIL — CORRECTION REQUIRED → correction batch COMPLETED → focused source recheck PASS → `T11` focused independent re-audit PASS — NO P0/P1 (final P0=0/P1=0/P2=1/P3=0); residual P2 (Unicode reason-length parity) NON-BLOCKING/DEFERRED; complete implementation + T10/T11 corrections + closure governance **COMMITTED at `A_CLOSED_SHA` `0c865a26c4425a1c3fe429bb8e42238562025801`** (execution-START baseline `a03b1878…` kept distinct); no schema/migration change; SYNTHETIC DATA ONLY. Owner closure ≠ Product/production acceptance |
-| Current authorized task | **DEC-021 Package R governance landing only** (2 canonical DEC-021 docs + reconcile 4 governance docs) → STOP for Owner GitHub diff review. No application/backend/frontend/schema/migration/test/tooling edits, no Package R R0→R10 execution, no Package B T0→T12, no C0, no merge/PR/main write |
+| Current authorized task | **DEC-021 Package R — R9 focused correction batch** (fix the 5 Codex R9 findings only) on branch `implementation/dec-021-package-r-v05`, per Contract v0.5 FINAL. Forbidden: rediscovery/redesign of Package R, Package B T0→T12, Package C / C0, merge/PR/main write, `.claude/settings.json` staging, self-certification of R8/R9/R10, commit/push |
 | DEC-018 T7 independent audit | Fresh Codex focused read-only audit — COMPLETED. 1 MEDIUM finding: disabled DOCTOR/NURSE could still be selected via `GET /investigations/assignees` and accepted via `POST /investigations/:id/orders` as a NEW assignee. Remediation: `status = ACTIVE` filter added to both paths in `investigations.service.ts`; targeted E2E added (`dec016-case-workspace.e2e-spec.ts`, CASE 1–4 + historical-assignment survives). Full backend e2e 378/378. Owner accepted the remediation as closing T7 |
 | DEC-018 T8 Owner Synthetic Acceptance | **PASS** (2026-08-30). Accepted T8 corrections: reset-password one-time temporary-password handoff modal; unified mutation notification (toast) system; simplified UsersPage (search + list + "+" add); create-user modal; edit-user modal; **T8.9 Last Clinic Admin protection verified PASS** (SERIALIZABLE, no auto-retry, 409, mandatory concurrent test) |
 | DEC-018 non-blocking UX note | Facility/Room card interaction can be made clearer in a later pass — recorded, not blocking acceptance |
@@ -419,7 +435,7 @@ Chỉ được dùng synthetic data (dữ liệu giả lập) cho triển khai, 
 | Demo Admin UI (`frontend/src/pages/admin/*`) | DEMO-oriented/view-only ở frontend. `UsersPage` chưa có user-lifecycle write API. Backend Facility/Room có write API hiện hữu; DEC-017 không thay đổi authorization semantics của các API đó |
 | AppSidebar.tsx nav v1 | OWNER LOCKED (DEC-017) |
 | DEC-018 status | **CLOSED — OWNER ACCEPTED (2026-08-30)**. OWNER LOCKED 2026-08-29; external review CLOSED — PASS; Contract v0.2; T0→T8 complete |
-| Next gate | **Owner opens the DEC-021 Package R governance compare URL → creates PR → manually reviews GitHub diff → Owner manually merges. After merge: verify local main == origin/main and record merged main HEAD as `R_GOV_SHA` / `PACKAGE_R_BASE_SHA`. Package R implementation (R0→R10) remains NOT AUTHORIZED until separate Owner authorization.** Then: Package B Contract reconciliation → Package B T0. Package A remains OWNER CLOSED except the DEC-021 scoped reopen/direct impacts; no further A audit/review loop; residual P2 NON-BLOCKING / DEFERRED. DEC-019 has no pending gate (T7/T8 WAIVED BY OWNER — NOT EXECUTED) |
+| Next gate | **Fresh Codex focused RE-AUDIT of the 5 corrected R9 findings only** (Contract §14 mandatory question still applies). On PASS → R10 Owner synthetic acceptance / closure. Then: Package B Contract reconciliation → Package B T0. Package A remains OWNER CLOSED except the DEC-021 scoped reopen/direct impacts; no further A audit/review loop; residual P2 NON-BLOCKING / DEFERRED. DEC-019 has no pending gate (T7/T8 WAIVED BY OWNER — NOT EXECUTED) |
 | Session A role | Implementation executor; không phải independent auditor |
 | M0 | Disposable synthetic PRE backup/hash → migrate → explicit reconciliation → actual destroy/restore PRE → deterministic reapply PASS; repeatable from immutable baseline Git |
 | Migration | Additive `20260828000000_dec016_case_pathway_investigation`; 11 migrations, none pending; DEC-015 immutable |

@@ -13,9 +13,15 @@ const filters: { value: CareTaskStatus; label: string }[] = [
   { value: 'OPEN', label: 'Đang mở' },
   { value: 'COMPLETED', label: 'Hoàn thành' },
   { value: 'CANCELLED', label: 'Đã hủy' },
+  { value: 'LOST_TO_FOLLOW_UP', label: 'Mất dấu theo dõi' },
 ];
 
-const STATUS_VALUES = new Set<CareTaskStatus>(['OPEN', 'COMPLETED', 'CANCELLED']);
+const STATUS_VALUES = new Set<CareTaskStatus>([
+  'OPEN',
+  'COMPLETED',
+  'CANCELLED',
+  'LOST_TO_FOLLOW_UP',
+]);
 
 export function FollowUpPage() {
   // Filter lives in the URL so leaving the page and coming back (or a
@@ -79,6 +85,41 @@ export function FollowUpPage() {
       tasksQuery.reload();
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : 'Không hủy được nhiệm vụ.');
+    } finally {
+      setPendingTaskId(null);
+    }
+  }
+
+  // DEC-021 NR-01 §8 — DOCTOR or NURSE. Append-only contact attempt.
+  async function recordContactAttempt(taskId: string) {
+    const note = window.prompt('Ghi chú lần liên hệ (không bắt buộc):') ?? undefined;
+    setActionError(null);
+    setPendingTaskId(taskId);
+    try {
+      await careTasksApi.contactAttempt(taskId, note || undefined);
+      setActionError(null);
+    } catch (err) {
+      setActionError(
+        err instanceof ApiError ? err.message : 'Không ghi nhận được lần liên hệ.',
+      );
+    } finally {
+      setPendingTaskId(null);
+    }
+  }
+
+  // DEC-021 NR-01 §8 — DOCTOR or NURSE. Reason is mandatory. Terminal.
+  async function markLost(taskId: string) {
+    const reason = window.prompt('Lý do mất dấu theo dõi (bắt buộc):');
+    if (!reason || !reason.trim()) return;
+    setActionError(null);
+    setPendingTaskId(taskId);
+    try {
+      await careTasksApi.markLostToFollowUp(taskId, reason.trim());
+      tasksQuery.reload();
+    } catch (err) {
+      setActionError(
+        err instanceof ApiError ? err.message : 'Không đánh dấu được mất dấu theo dõi.',
+      );
     } finally {
       setPendingTaskId(null);
     }
@@ -229,6 +270,26 @@ export function FollowUpPage() {
                               }
                             >
                               Dời lịch
+                            </button>
+                          )}
+                          {isGenericFollowUpTask && (
+                            <button
+                              type="button"
+                              className="btn btn-ghost"
+                              disabled={pendingTaskId === task.id}
+                              onClick={() => recordContactAttempt(task.id)}
+                            >
+                              Ghi nhận liên hệ
+                            </button>
+                          )}
+                          {isGenericFollowUpTask && (
+                            <button
+                              type="button"
+                              className="btn btn-ghost"
+                              disabled={pendingTaskId === task.id}
+                              onClick={() => markLost(task.id)}
+                            >
+                              Mất dấu theo dõi
                             </button>
                           )}
                           <button

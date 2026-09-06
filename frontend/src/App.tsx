@@ -19,6 +19,7 @@ import { ClinicalFormPage } from './pages/ClinicalFormPage';
 import { LongoClinicalFormPage } from './pages/LongoClinicalFormPage';
 import { NewHemorrhoidEncounterPage } from './pages/NewHemorrhoidEncounterPage';
 import { HemorrhoidExaminationPage } from './pages/HemorrhoidExaminationPage';
+import { EncounterActionsPage } from './pages/EncounterActionsPage';
 import { UsersPage } from './pages/admin/UsersPage';
 import { UserDetailPage } from './pages/admin/UserDetailPage';
 import { SelfProfilePage } from './pages/SelfProfilePage';
@@ -66,6 +67,10 @@ export default function App() {
             <Route
               path="/patients/:patientId/encounters/:encounterId/clinical-forms/:templateKey"
               element={<LongoClinicalFormPage />}
+            />
+            <Route
+              path="/patients/:patientId/encounters/:encounterId/actions"
+              element={<EncounterActionsPage />}
             />
             <Route
               path="/patients/:patientId/encounters/:encounterId/hemorrhoid-examination"

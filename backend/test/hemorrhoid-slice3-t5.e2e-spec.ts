@@ -1,4 +1,5 @@
 import { decisionFixture } from './dec016-fixtures';
+import { activateHemorrhoidTreatment } from './dec021-activation-helper';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthRole } from '@prisma/client';
@@ -159,13 +160,9 @@ describe('Hemorrhoid Vertical Slice 3 — T5 Timeline/backend integration (e2e)'
       { diagnosisSummary: 'x' },
     );
     await completeSubmission(doctorToken, diagnosis.body.id);
-    const decision1 = await createSubmission(
-      doctorToken,
-      initialEncounterId,
-      'HEMORRHOID_TREATMENT_DECISION',
-      { decisionSummary: 'x' },
-    );
-    await completeSubmission(doctorToken, decision1.body.id);
+    // DEC-021 R9 finding 1 — episode established by Structured Treatment
+    // Activation (v3 decision), not by the first Return.
+    await activateHemorrhoidTreatment(app, doctorToken, initialEncounterId);
     const carePlan = await request(app.getHttpServer())
       .post('/care-plans')
       .set('Authorization', `Bearer ${doctorToken}`)
@@ -242,21 +239,21 @@ describe('Hemorrhoid Vertical Slice 3 — T5 Timeline/backend integration (e2e)'
     );
     expect(decisionEvent?.data.summary).toBe('Ngừng theo dõi (T5, synthetic)');
 
-    // The permanently-ungrouped initial Encounter must still appear in
-    // ungroupedEncounters, unaffected by the continuous-care episode.
+    // DEC-021 §5.6 Scenario B — the Initial Encounter activated treatment, so
+    // it is grouped under the HEMORRHOID_TREATMENT episode, not ungrouped.
     const ungrouped = timelineRes.body.ungroupedEncounters as {
       type: string;
       data: Record<string, unknown>;
     }[];
-    const initialEvent = ungrouped.find(
-      (e) => e.type === 'ENCOUNTER' && e.data.id === initialEncounterId,
-    );
-    expect(initialEvent).toBeTruthy();
-    // DEC-020 D20-02: it is never grouped into the treatment episode.
+    expect(
+      ungrouped.find(
+        (e) => e.type === 'ENCOUNTER' && e.data.id === initialEncounterId,
+      ),
+    ).toBeUndefined();
     expect(
       events.find(
         (e) => e.type === 'ENCOUNTER' && e.data.id === initialEncounterId,
       ),
-    ).toBeUndefined();
+    ).toBeTruthy();
   });
 });

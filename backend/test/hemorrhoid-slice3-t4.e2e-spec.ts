@@ -1,4 +1,5 @@
 import { decisionFixture } from './dec016-fixtures';
+import { activateHemorrhoidTreatment } from './dec021-activation-helper';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthRole, CareEpisodeStatus, CareTaskStatus } from '@prisma/client';
@@ -134,13 +135,9 @@ describe('Hemorrhoid Vertical Slice 3 — T4 episode lifecycle/concurrency (e2e)
       { diagnosisSummary: 'x' },
     );
     await completeSubmission(doctorToken, diagnosis.body.id);
-    const decision = await createSubmission(
-      doctorToken,
-      encounterId,
-      'HEMORRHOID_TREATMENT_DECISION',
-      { decisionSummary: 'x' },
-    );
-    await completeSubmission(doctorToken, decision.body.id);
+    // DEC-021 R9 finding 1 — HEMORRHOID_TREATMENT episode is established by
+    // Structured Treatment Activation (v3 decision), not by the first Return.
+    await activateHemorrhoidTreatment(app, doctorToken, encounterId);
 
     const carePlan = await request(app.getHttpServer())
       .post('/care-plans')
@@ -598,9 +595,12 @@ describe('Hemorrhoid Vertical Slice 3 — T4 episode lifecycle/concurrency (e2e)
       const episodes = await prisma.careEpisode.findMany({
         where: { tenantId, patientId: patient, episodeType: 'HEMORRHOID_TREATMENT' },
       });
-      // DEC-020: this is a first-ever Return, so the failed transaction would
-      // have created the episode too — it must roll back with everything else.
-      expect(episodes).toHaveLength(0);
+      // DEC-021 R9 finding 1 — the Return never creates the episode; the
+      // ACTIVE episode was established earlier by Structured Treatment
+      // Activation (a separate committed transaction). The failed Return
+      // must leave it exactly as it was: still the one ACTIVE episode.
+      expect(episodes).toHaveLength(1);
+      expect(episodes[0].status).toBe(CareEpisodeStatus.ACTIVE);
 
       const returnEncounters = await prisma.encounter.count({
         where: { tenantId, patientId: patient, episodeId: { not: null }, workflowKind: null, treatmentPathwayId: null },

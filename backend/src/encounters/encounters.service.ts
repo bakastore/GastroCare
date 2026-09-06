@@ -5,7 +5,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { AuthRole, Encounter, Prisma } from '@prisma/client';
+import {
+  AuthRole,
+  Encounter,
+  EncounterClinicalStatus,
+  Prisma,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CliniciansService } from '../clinicians/clinicians.service';
@@ -177,6 +182,10 @@ export class EncountersService {
               // DEC-015 — explicit persisted discriminator; never inferred,
               // never normalised. Omitted -> NULL (generic Encounter).
               workflowKind: dto.workflowKind ?? null,
+              // DEC-021 NR-03 §5 — a new Encounter Context starts REGISTERED
+              // (receptionist record creation != clinical start). Historical
+              // rows stay NULL and are never backfilled.
+              clinicalStatus: EncounterClinicalStatus.REGISTERED,
             },
           });
 
@@ -308,7 +317,10 @@ export class EncountersService {
         );
       }
 
-      await tx.clinicianAssignmentHistory.create({
+      // DEC-021 §6.1 — retain the new assignment row id so the handover
+      // AuditEvent carries a machine-checkable bridge (assignmentHistoryId)
+      // to the exact ClinicianAssignmentHistory row this handover created.
+      const assignment = await tx.clinicianAssignmentHistory.create({
         data: {
           tenantId,
           encounterId,
@@ -322,7 +334,8 @@ export class EncountersService {
       // Written inside the same transaction as the Encounter update and
       // history row (Finding 4, point 7) — a failed audit write rolls back
       // the whole handover; a committed handover is never observable
-      // without its AuditEvent.
+      // without its AuditEvent. DEC-021 §6.1 — metadata now also carries
+      // `assignmentHistoryId` (additive).
       await this.audit.record(
         {
           tenantId,
@@ -333,6 +346,7 @@ export class EncountersService {
           metadata: {
             previousClinicianId,
             newClinicianId: newClinician.id,
+            assignmentHistoryId: assignment.id,
             reason,
           },
         },
@@ -343,6 +357,286 @@ export class EncountersService {
     });
 
     return updated;
+  }
+
+  /**
+   * DEC-021 NR-03 §5 — `POST /encounters/:id/start`. DOCTOR-only (controller).
+   * REGISTERED -> IN_PROGRESS, sets clinicalStartedAt, audited. A legacy
+   * (clinicalStatus NULL) Encounter cannot be started — it has no new-format
+   * lifecycle and is never backfilled.
+   */
+  async startEncounter(
+    tenantId: string,
+    actorId: string,
+    encounterId: string,
+  ): Promise<Encounter> {
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.encounter.findFirst({
+        where: { id: encounterId, tenantId },
+      });
+      if (!existing) throw new NotFoundException('Encounter not found');
+      if (existing.clinicalStatus == null) {
+        throw new ConflictException(
+          'Encounter has no new-format clinical lifecycle (legacy row); cannot start',
+        );
+      }
+      if (existing.clinicalStatus !== EncounterClinicalStatus.REGISTERED) {
+        throw new ConflictException(
+          `Encounter is not REGISTERED (current: ${existing.clinicalStatus})`,
+        );
+      }
+      const startedAt = new Date();
+      const transition = await tx.encounter.updateMany({
+        where: {
+          id: encounterId,
+          tenantId,
+          clinicalStatus: EncounterClinicalStatus.REGISTERED,
+        },
+        data: {
+          clinicalStatus: EncounterClinicalStatus.IN_PROGRESS,
+          clinicalStartedAt: startedAt,
+        },
+      });
+      if (transition.count !== 1) {
+        throw new ConflictException(
+          'Encounter clinical status changed concurrently; reload and retry',
+        );
+      }
+      await this.audit.record(
+        {
+          tenantId,
+          actorId,
+          action: 'ENCOUNTER_CLINICAL_STARTED',
+          entityType: 'Encounter',
+          entityId: encounterId,
+          metadata: { clinicalStartedAt: startedAt.toISOString() },
+        },
+        tx,
+      );
+      return tx.encounter.findUniqueOrThrow({ where: { id: encounterId } });
+    });
+  }
+
+  /**
+   * DEC-021 NR-03 §5 + §6.4 — `POST /encounters/:id/end`. DOCTOR-only.
+   * IN_PROGRESS -> COMPLETED, sets clinicalEndedAt, audited. If a handover
+   * exists after the initial assignment, the exact latest handover
+   * (resolved by AuditEvent.seq, §6.2) MUST have a matching
+   * ENCOUNTER_HANDOVER_ACCEPTED by the current responsible Doctor, else the
+   * Encounter is not ended (§6.4).
+   */
+  async endEncounter(
+    tenantId: string,
+    actorId: string,
+    encounterId: string,
+  ): Promise<Encounter> {
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.encounter.findFirst({
+        where: { id: encounterId, tenantId },
+      });
+      if (!existing) throw new NotFoundException('Encounter not found');
+      if (existing.clinicalStatus == null) {
+        throw new ConflictException(
+          'Encounter has no new-format clinical lifecycle (legacy row); cannot end',
+        );
+      }
+      if (existing.clinicalStatus !== EncounterClinicalStatus.IN_PROGRESS) {
+        throw new ConflictException(
+          `Encounter is not IN_PROGRESS (current: ${existing.clinicalStatus})`,
+        );
+      }
+
+      // §6.4 — end-Encounter guard after handover.
+      const latestHandover = await this.resolveLatestHandover(
+        tx,
+        tenantId,
+        existing,
+      );
+      if (latestHandover) {
+        const accepted = await tx.auditEvent.findFirst({
+          where: {
+            tenantId,
+            action: 'ENCOUNTER_HANDOVER_ACCEPTED',
+            entityType: 'ClinicianAssignmentHistory',
+            entityId: latestHandover.assignmentHistoryId,
+            actorId: existing.responsibleClinicianId,
+          },
+          select: { id: true },
+        });
+        if (!accepted) {
+          throw new ConflictException(
+            'The latest Doctor handover has not been accepted by the current responsible Doctor; the Encounter cannot be ended',
+          );
+        }
+      }
+
+      const endedAt = new Date();
+      const transition = await tx.encounter.updateMany({
+        where: {
+          id: encounterId,
+          tenantId,
+          clinicalStatus: EncounterClinicalStatus.IN_PROGRESS,
+        },
+        data: {
+          clinicalStatus: EncounterClinicalStatus.COMPLETED,
+          clinicalEndedAt: endedAt,
+        },
+      });
+      if (transition.count !== 1) {
+        throw new ConflictException(
+          'Encounter clinical status changed concurrently; reload and retry',
+        );
+      }
+      await this.audit.record(
+        {
+          tenantId,
+          actorId,
+          action: 'ENCOUNTER_CLINICAL_ENDED',
+          entityType: 'Encounter',
+          entityId: encounterId,
+          metadata: { clinicalEndedAt: endedAt.toISOString() },
+        },
+        tx,
+      );
+      return tx.encounter.findUniqueOrThrow({ where: { id: encounterId } });
+    });
+  }
+
+  /**
+   * DEC-021 §6.2 — deterministic latest-handover resolution. Returns null if
+   * the Encounter has had no handover (only its initial assignment). Never
+   * resolves "latest" by assignedAt / timestamp proximity / free text /
+   * arbitrary ordering — only by AuditEvent.seq (DESC, take 1).
+   */
+  private async resolveLatestHandover(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    encounter: Encounter,
+  ): Promise<{ assignmentHistoryId: string } | null> {
+    const latest = await tx.auditEvent.findFirst({
+      where: {
+        tenantId,
+        action: 'ENCOUNTER_CLINICIAN_HANDOVER',
+        entityType: 'Encounter',
+        entityId: encounter.id,
+      },
+      orderBy: { seq: 'desc' },
+    });
+    if (!latest) return null;
+
+    const meta = (latest.metadata ?? {}) as Record<string, unknown>;
+    const assignmentHistoryId = meta.assignmentHistoryId;
+    const newClinicianId = meta.newClinicianId;
+    if (typeof assignmentHistoryId !== 'string') {
+      throw new ConflictException(
+        'Latest handover AuditEvent has no machine-checkable assignmentHistoryId; independent review required',
+      );
+    }
+
+    const assignment = await tx.clinicianAssignmentHistory.findFirst({
+      where: { id: assignmentHistoryId, tenantId },
+    });
+    if (
+      !assignment ||
+      assignment.encounterId !== encounter.id ||
+      assignment.clinicianId !== encounter.responsibleClinicianId ||
+      assignment.previousClinicianId == null ||
+      newClinicianId !== encounter.responsibleClinicianId
+    ) {
+      throw new ConflictException(
+        'Latest handover assignment does not reconcile with the Encounter state; not repaired automatically',
+      );
+    }
+    return { assignmentHistoryId };
+  }
+
+  /**
+   * DEC-021 §6.3 — `POST /encounters/:id/accept-handover`. DOCTOR-only. Only
+   * the current responsibleClinicianId Doctor, only while IN_PROGRESS, only
+   * for the exact latest handover (§6.2). Idempotent: repeated acceptance of
+   * the exact same latest assignment returns already-accepted and appends no
+   * duplicate event. Never mutates a historical ClinicianAssignmentHistory
+   * row.
+   */
+  async acceptHandover(
+    tenantId: string,
+    actorId: string,
+    encounterId: string,
+  ): Promise<{ assignmentHistoryId: string; alreadyAccepted: boolean }> {
+    // Read-only validation snapshot (§6.3): right Doctor, IN_PROGRESS, exact
+    // latest handover (§6.2). The only write is the single acceptance
+    // AuditEvent, appended below.
+    const { assignmentHistoryId, alreadyAccepted } = await this.prisma.$transaction(
+      async (tx) => {
+        const encounter = await tx.encounter.findFirst({
+          where: { id: encounterId, tenantId },
+        });
+        if (!encounter) throw new NotFoundException('Encounter not found');
+        if (encounter.clinicalStatus !== EncounterClinicalStatus.IN_PROGRESS) {
+          throw new ConflictException(
+            'Encounter must be IN_PROGRESS to accept a handover',
+          );
+        }
+        if (encounter.responsibleClinicianId !== actorId) {
+          throw new ForbiddenException(
+            'Only the current responsible Doctor may accept the handover',
+          );
+        }
+        const latestHandover = await this.resolveLatestHandover(
+          tx,
+          tenantId,
+          encounter,
+        );
+        if (!latestHandover) {
+          throw new ConflictException('This Encounter has had no handover');
+        }
+        const existing = await tx.auditEvent.findFirst({
+          where: {
+            tenantId,
+            action: 'ENCOUNTER_HANDOVER_ACCEPTED',
+            entityType: 'ClinicianAssignmentHistory',
+            entityId: latestHandover.assignmentHistoryId,
+          },
+          select: { id: true },
+        });
+        return {
+          assignmentHistoryId: latestHandover.assignmentHistoryId,
+          alreadyAccepted: existing !== null,
+        };
+      },
+    );
+
+    if (alreadyAccepted) {
+      return { assignmentHistoryId, alreadyAccepted: true };
+    }
+
+    // DEC-021 R9 finding 3 — the read above is a fast path only. Two
+    // concurrent requests can both observe no existing acceptance; the
+    // partial unique index `audit_events_one_handover_acceptance_per_assignment`
+    // (migration 20260906000100) is the real guard — it rejects the second
+    // insert with P2002, which we treat as "already accepted" (§6.3: no
+    // duplicate event, no error to the client). The insert is done outside
+    // the read transaction so a uniqueness violation does not abort a
+    // transaction that also holds other writes (it holds none).
+    try {
+      await this.audit.record({
+        tenantId,
+        actorId,
+        action: 'ENCOUNTER_HANDOVER_ACCEPTED',
+        entityType: 'ClinicianAssignmentHistory',
+        entityId: assignmentHistoryId,
+        metadata: { encounterId, clinicianId: actorId },
+      });
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        return { assignmentHistoryId, alreadyAccepted: true };
+      }
+      throw err;
+    }
+    return { assignmentHistoryId, alreadyAccepted: false };
   }
 
   /** Full clinician-assignment provenance for an Encounter, oldest first. */

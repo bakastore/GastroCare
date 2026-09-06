@@ -130,17 +130,30 @@ export function NewHemorrhoidEncounterPage() {
             Về hồ sơ bệnh nhân
           </button>
           {user?.role === 'DOCTOR' && (
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() =>
-                navigate(
-                  `/patients/${patientId}/encounters/${created.id}/hemorrhoid-examination`,
-                )
-              }
-            >
-              Mở phiếu khám trĩ
-            </button>
+            <>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() =>
+                  navigate(
+                    `/patients/${patientId}/encounters/${created.id}/actions`,
+                  )
+                }
+              >
+                Vòng đời & bàn giao
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() =>
+                  navigate(
+                    `/patients/${patientId}/encounters/${created.id}/hemorrhoid-examination`,
+                  )
+                }
+              >
+                Mở phiếu khám trĩ
+              </button>
+            </>
           )}
         </div>
       </div>

@@ -102,6 +102,19 @@ describe('Hemorrhoid Vertical Slice 3 — T1 templates + ancestry/sequence (e2e)
     patient: string,
     startedAt: Date = new Date(),
   ) {
+    // DEC-021 §4.1 — the partial unique index now allows at most one ACTIVE
+    // HEMORRHOID_TREATMENT episode per (tenant, patient). This synthetic
+    // helper is called once per test with a shared patient and no per-test
+    // reset, so retire any prior ACTIVE episode first.
+    await prisma.careEpisode.updateMany({
+      where: {
+        tenantId,
+        patientId: patient,
+        episodeType: 'HEMORRHOID_TREATMENT',
+        status: CareEpisodeStatus.ACTIVE,
+      },
+      data: { status: CareEpisodeStatus.CLOSED, endedAt: new Date() },
+    });
     return prisma.careEpisode.create({
       data: {
         tenantId,

@@ -302,6 +302,34 @@ export const encountersApi = {
   /** Clinician handover — DOCTOR-only (DEC-010 §B). */
   handover: (id: string, dto: { newClinicianId: string; reason?: string }) =>
     api.post<Encounter>(`/encounters/${id}/handover`, dto),
+  /** DEC-021 NR-03 §5 — explicit clinical start (REGISTERED -> IN_PROGRESS). */
+  start: (id: string) => api.post<Encounter>(`/encounters/${id}/start`),
+  /** DEC-021 NR-03 §5 / §6.4 — explicit clinical end (IN_PROGRESS -> COMPLETED). */
+  end: (id: string) => api.post<Encounter>(`/encounters/${id}/end`),
+  /** DEC-021 §6.3 — the receiving Doctor accepts the latest handover. */
+  acceptHandover: (id: string) =>
+    api.post<{ assignmentHistoryId: string; alreadyAccepted: boolean }>(
+      `/encounters/${id}/accept-handover`,
+    ),
+  /**
+   * DEC-021 §3.1 — Structured Treatment Activation. DOCTOR-only. `recurrence*`
+   * fields are only needed when the patient has CLOSED HEMORRHOID_TREATMENT
+   * history and no ACTIVE episode (§3.4 step 5).
+   */
+  activateHemorrhoidTreatment: (
+    id: string,
+    dto: {
+      sourceDecisionSubmissionId: string;
+      recurrenceAction?: 'REOPEN_EXISTING' | 'START_NEW';
+      recurrenceClosedEpisodeId?: string;
+      recurrenceReason?: string;
+    },
+  ) =>
+    api.post<{
+      encounter: Encounter;
+      episode: CareEpisode;
+      alreadyActivated: boolean;
+    }>(`/encounters/${id}/hemorrhoid-treatment/activate`, dto),
   getClinicianHistory: (id: string) =>
     api.get<ClinicianAssignmentHistoryEntry[]>(`/encounters/${id}/clinician-history`),
   /**
@@ -387,11 +415,27 @@ export const careTasksApi = {
    * CarePlan.followUpDate signed clinical intent amended via carePlansApi.amend. */
   reschedule: (id: string, dueDate: string) =>
     api.post<CareTask>(`/care-tasks/${id}/reschedule`, { dueDate }),
+  /** DEC-021 NR-01 §8 — append-only contact attempt. DOCTOR or NURSE. */
+  contactAttempt: (id: string, note?: string) =>
+    api.post<{ id: string; attemptedAt: string; note: string | null }>(
+      `/care-tasks/${id}/contact-attempt`,
+      { note },
+    ),
+  /** DEC-021 NR-01 §8 — mark LOST_TO_FOLLOW_UP (mandatory reason). DOCTOR or NURSE. */
+  markLostToFollowUp: (id: string, reason: string) =>
+    api.post<CareTask>(`/care-tasks/${id}/lost-to-follow-up`, { reason }),
 };
 
 export const clinicalFormsApi = {
-  create: (dto: { encounterId: string; templateKey: string; responses: ClinicalFormResponses }) =>
-    api.post<ClinicalFormSubmission>('/clinical-forms', dto),
+  create: (dto: {
+    encounterId: string;
+    templateKey: string;
+    responses: ClinicalFormResponses;
+    /** DEC-021 §3.2 — explicit template version; needed to request
+     * HEMORRHOID_TREATMENT_DECISION v3 (the activation source), which is not
+     * the auto-latest. Omit for every other form. */
+    templateVersion?: number;
+  }) => api.post<ClinicalFormSubmission>('/clinical-forms', dto),
   getById: (id: string) => api.get<ClinicalFormSubmission>(`/clinical-forms/${id}`),
   listByPatient: (patientId: string) =>
     api.get<ClinicalFormSubmission[]>(`/clinical-forms?patientId=${patientId}`),
@@ -427,6 +471,12 @@ export const careEpisodesApi = {
     api.post<CareEpisode>('/care-episodes', dto),
   listByPatient: (patientId: string) =>
     api.get<CareEpisode[]>(`/patients/${patientId}/care-episodes`),
+  /**
+   * DEC-021 D20-03 §7 — closing an ACTIVE episode now also deterministically
+   * CANCELS every authoritatively Episode-linked OPEN CareTask (reason
+   * EPISODE_CLOSED); LOST_TO_FOLLOW_UP / COMPLETED / already-CANCELLED tasks
+   * are untouched. One Doctor confirmation, no per-task handling.
+   */
   close: (id: string) => api.post<CareEpisode>(`/care-episodes/${id}/close`),
   reopen: (id: string, dto: { reason: string }) =>
     api.post<CareEpisode>(`/care-episodes/${id}/reopen`, dto),
