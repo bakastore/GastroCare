@@ -1,103 +1,166 @@
 ---
 name: startup
-description: Thực thi Startup Protocol của GastroCare (đọc AGENTS.md, PROJECT_STATE, DECISION_LOG, Roadmap, xác định branch/HEAD/task hiện tại) và trả STARTUP STATUS. Dùng đầu mỗi session, trước khi đọc/sửa bất kỳ file nào khác trong repo GastroCare.
+description: Thực thi Startup Protocol v2 của GastroCare: xác minh Git thực tế, chọn FOCUSED hoặc FULL theo AGENTS.md, đọc đúng context cần thiết và trả STARTUP STATUS.
 disable-model-invocation: true
 ---
 
 # GastroCare Startup
 
-Chạy đúng trình tự sau. Đây là READ-ONLY — không sửa file nào trong skill này.
+Skill này bootstrap context một lần ở đầu session.
 
-## 1. Git state
+Task tiếp theo trong cùng session không gọi lại skill.
+Agent re-evaluate FOCUSED/FULL trực tiếp.
+
+Nếu FOCUSED cần escalate sang FULL thì đọc FULL context theo protocol bên dưới,
+không yêu cầu Owner chạy lại slash command.
+
+READ-ONLY — skill này không sửa repository.
+
+## 1. Actual Git state
+
+Luôn lấy execution facts từ Git thực tế trước:
 
 ```bash
 git branch --show-current
 git rev-parse HEAD
 git status --short
-git fetch origin --quiet
-git rev-parse origin/$(git branch --show-current) 2>/dev/null
+git rev-parse '@{u}' 2>/dev/null || true
 ```
 
-Nếu local HEAD khác remote HEAD của cùng branch, ghi rõ chênh lệch, không tự
-giả định bên nào đúng.
+Xác định actual branch, HEAD, working tree CLEAN/DIRTY và upstream HEAD nếu có.
+Không tự stash/checkout/reset/clean hoặc bỏ qua pre-existing diff.
+Git thực tế là authority cho branch / HEAD / working-tree / local source state.
 
-Nếu `git status --short` không rỗng, liệt kê nguyên văn danh sách file — không
-tự ý bỏ qua, không tự `git stash`/`git checkout` để "dọn sạch".
+## 2. Context Mode Gate
 
-## 2. Đọc theo đúng thứ tự bắt buộc
+Đọc `AGENTS.md`.
 
-```
-AGENTS.md
+Nếu `.ai/HANDOFF.md` tồn tại, được phép đọc để lấy handoff context nhưng phải coi đây là
+NON-AUTHORITATIVE cache. HANDOFF không override Git facts, Owner Decision, applicable Contract
+hoặc governance SSOT và không authorize checkpoint/task mới.
+
+Chọn `FOCUSED` chỉ khi đồng thời đủ cả 4:
+
+1. Owner task explicit và bounded.
+2. Current Decision / Package / applicable Contract đã biết.
+3. Relevant source/test/finding scope đã biết.
+4. Không có governance conflict hoặc clinical semantic ambiguity đã biết.
+
+Nếu đủ cả 4:
+- `MODE = FOCUSED`;
+- đọc đúng applicable Contract section;
+- đọc source/test/evidence trong declared scope;
+- không tự động đọc full `PROJECT_STATE.md`, `DECISION_LOG.md`, Roadmap, historical Decisions
+  hoặc unrelated Contracts.
+
+Nếu HANDOFF có Expected branch khác actual Git branch theo cách material: ghi `HANDOFF STALE`
+và chuyển FULL.
+
+Trong FOCUSED, tự chuyển `FOCUSED -> FULL` nếu phát hiện:
+- unexpected branch;
+- material pre-existing diff ngoài declared scope;
+- HANDOFF/task inconsistency material;
+- applicable Contract conflict với Owner instruction;
+- evidence của newer applicable Owner Decision;
+- clinical semantic ambiguity;
+- schema/migration impact ngoài scope;
+- material cross-package dependency;
+- task không thể giải quyết an toàn trong declared scope.
+
+Escalation chỉ để đọc thêm authoritative context, không cần Owner permission.
+
+Nếu thiếu bất kỳ điều kiện FOCUSED nào: `MODE = FULL`.
+
+## 3. FULL Bootstrap
+
+Chỉ thực hiện khi `MODE = FULL`.
+
+Đọc theo thứ tự:
+
+```text
 docs/PROJECT_STATE.md
 docs/DECISION_LOG.md
 docs/07_ROADMAP_AND_GATES.md
 ```
 
-Từ `PROJECT_STATE.md`, tìm section `CURRENT EXECUTION CONTEXT` (hoặc tên
-tương đương gần nhất nếu file đã đổi cấu trúc — không suy đoán, nếu không tìm
-thấy section này thì báo rõ trong BLOCKERS) để xác định:
+Từ `PROJECT_STATE.md`, xác định `CURRENT EXECUTION CONTEXT`, current work package,
+current authoritative SSOT / Implementation Contract, implementation status và next gate.
 
-- current branch được chỉ định (so với branch thực tế ở bước 1)
-- current work package
-- current authoritative SSOT / Implementation Contract
-- implementation status
-- next execution gate
+Sau đó đọc đúng current authoritative SSOT / Implementation Contract và tài liệu task-specific cần thiết.
+FULL không có nghĩa đọc toàn bộ repository.
 
-## 3. Đọc SSOT/Contract tương ứng
+## 4. Reconcile / Escalation Check
 
-Đọc đúng file được `PROJECT_STATE.md` chỉ định làm current authoritative SSOT
-và Implementation Contract (nếu có). Không dùng ký ức từ session trước để thay
-thế việc đọc lại — mỗi session phải tự bootstrap.
+Nếu MODE = FOCUSED, xác minh tối thiểu:
+- actual Git branch phù hợp declared task;
+- applicable Contract path/section thực sự tồn tại;
+- declared source/test/finding scope thực sự tồn tại;
+- không có material pre-existing diff ngoài scope.
 
-## 4. Đối chiếu
+Nếu phát hiện escalation trigger:
+1. ghi rõ `FOCUSED -> FULL`;
+2. chuyển `MODE = FULL`;
+3. thực hiện mục 3;
+4. tiếp tục reconciliation theo FULL.
 
-So sánh những gì `PROJECT_STATE.md` khai báo với thực tế:
+Nếu MODE = FULL, đối chiếu governance context với repo thực tế:
+- actual branch/HEAD;
+- relevant commit history khi task cần;
+- authoritative files thực sự tồn tại;
+- current Contract/SSOT path đúng;
+- material repository drift có hay không.
 
-- commit log thật (`git log --oneline <baseline>..HEAD`) có khớp mô tả không
-- các file mà Contract/DECISION_LOG nói đã tồn tại có thật sự tồn tại không
-  (dùng `Read`/`Glob`, không suy đoán từ tên)
+Nếu có sai lệch đáng kể không giải được bằng authority hierarchy, áp dụng STOP CONDITION
+tương ứng trong `AGENTS.md`.
 
-Nếu có sai lệch đáng kể giữa PROJECT_STATE.md và thực tế repo, đây là STOP
-CONDITION E (Repository drift) theo AGENTS.md — báo rõ trong BLOCKERS, không
-tự ý chọn một bên để tin.
+## 5. Trả kết quả
 
-## 5. Trả kết quả — đúng format sau, không thêm bớt heading
+Luôn bắt đầu:
 
+```text
+MODE: FOCUSED | FULL
+REF: branch=<actual branch> HEAD=<actual SHA> tree=<CLEAN|DIRTY>
 ```
+
+Sau đó:
+
+```text
 ## STARTUP STATUS
 
 Startup Protocol: PASS / BLOCKED
 Repository: <tên repo>
-Current branch: <branch>
-HEAD: <sha>
-Remote HEAD: <sha hoặc "khớp local">
-Baseline: <sha/tag liên quan>
+Current branch: <actual branch>
+HEAD: <actual sha>
+Upstream HEAD: <sha / NONE / NOT CHECKED>
 
 ## CURRENT EXECUTION
 
-Phase: ...
+Decision / Phase: ...
 Work package: ...
 Current task: ...
+Applicable Contract: ...
 Implementation status: ...
-Next gate: ...
+Next gate/action: ...
 
 ## VERIFIED FINDINGS
 
-(chỉ liệt kê điều đã tự xác minh bằng git/Read/Glob ở trên — không suy đoán)
+(chỉ liệt kê điều đã tự xác minh bằng Git/Read/Glob; không suy đoán)
 
 ## BLOCKERS / CONFLICTS
 
-NONE, hoặc liệt kê cụ thể (kèm STOP CONDITION nào áp dụng nếu có)
+NONE hoặc liệt kê cụ thể.
 
 ## RECOMMENDED NEXT ACTION
 
-(chỉ một đề xuất checkpoint giá trị cao nhất tiếp theo)
+(chỉ một hành động giá trị cao nhất tiếp theo)
 
 ## WRITE AUTHORIZATION
 
 READ-ONLY — no repository changes made
 ```
 
-Không tự chuyển sang implementation ngay sau bước này trừ khi người dùng yêu
-cầu rõ trong cùng lượt, và trước đó phải chạy `/gastrocare-dev:checkpoint-preflight`
-cho đúng task sắp làm.
+Trong FOCUSED, field không cần cho declared scope và chưa được authoritatively xác minh thì ghi
+`N/A — FOCUSED`, không tự discovery chỉ để điền report.
+
+Không tự chuyển sang implementation ngay sau startup trừ khi Owner yêu cầu rõ trong cùng lượt,
+và trước đó phải chạy `/gastrocare-dev:checkpoint-preflight` cho đúng task sắp làm.
