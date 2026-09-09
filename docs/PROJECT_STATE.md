@@ -1,6 +1,6 @@
 # GastroCare — Trạng thái dự án
 
-**Current gate — 2026-09-06:** **DEC-021 Package R R9 corrections have been applied. No known open P0/P1 remains from the R9 correction batch. This state does not claim R9 PASS or independent verification PASS. R10 Owner Synthetic Acceptance = PENDING; Package R is not OWNER CLOSED. Package B = HOLD / T0 NOT OPEN. R9 correction implementation checkpoint `89438706e9411646e7f58530b824eb6b3d6b2adb` is committed/pushed; PROJECT_STATE consistency is reconciled in the current branch state.**
+**Current gate — 2026-09-09:** **DEC-021 Package R core (R0–R9) = PASS — CLOSED. R10 Owner Synthetic Acceptance = DEFERRED BY OWNER (not waived, not PASS) — sẽ thực hiện sau khi Package B + C + business logic hoàn thiện và UI/UX rebuild theo workflow bác sĩ. Package R = frozen sau R9, không OWNER CLOSED, không cần OWNER CLOSED để Package B bắt đầu. Package B = UNBLOCKED — proceed to Package B Contract reconciliation → T0.**
 `DEC-021 v0.3 = OWNER LOCKED` (Hemorrhoid Clinical Workflow Selective Rebaseline);
 `DEC-021 Package R Implementation Contract v0.5 FINAL = OWNER LOCKED`. Canonical
 copies: [`DEC-021_HEMORRHOID_CLINICAL_WORKFLOW_SELECTIVE_REBASELINE.md`](DEC-021_HEMORRHOID_CLINICAL_WORKFLOW_SELECTIVE_REBASELINE.md),
