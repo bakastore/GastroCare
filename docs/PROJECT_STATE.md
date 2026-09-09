@@ -1,6 +1,6 @@
 # GastroCare — Trạng thái dự án
 
-**Current gate — 2026-09-06:** **DEC-021 Package R R9 = FAIL — CORRECTION REQUIRED. Latest focused Codex re-audit: P1-1 accept↔handover race = CLOSED; P1-2 PROJECT_STATE current-state consistency = OPEN — CORRECTION REQUIRED. Exactly 1 P1 remains. Current gate = correct PROJECT_STATE current-state consistency only. Next gate = fresh focused independent verification of P1-2 only. R10 Owner synthetic acceptance / closure = PENDING. Package B = HOLD / T0 NOT OPEN. Newest correction batch remains local and uncommitted/unpushed relative to WIP checkpoint `703f06872ca225f3db07feae98fbb350b2888ca5`.**
+**Current gate — 2026-09-06:** **DEC-021 Package R R9 corrections have been applied. No known open P0/P1 remains from the R9 correction batch. This state does not claim R9 PASS or independent verification PASS. R10 Owner Synthetic Acceptance = PENDING; Package R is not OWNER CLOSED. Package B = HOLD / T0 NOT OPEN. R9 correction implementation checkpoint `89438706e9411646e7f58530b824eb6b3d6b2adb` is committed/pushed; PROJECT_STATE consistency is reconciled in the current branch state.**
 `DEC-021 v0.3 = OWNER LOCKED` (Hemorrhoid Clinical Workflow Selective Rebaseline);
 `DEC-021 Package R Implementation Contract v0.5 FINAL = OWNER LOCKED`. Canonical
 copies: [`DEC-021_HEMORRHOID_CLINICAL_WORKFLOW_SELECTIVE_REBASELINE.md`](DEC-021_HEMORRHOID_CLINICAL_WORKFLOW_SELECTIVE_REBASELINE.md),
@@ -14,7 +14,7 @@ discovery/worklist API + UI = **DEFERRED — ngoài phạm vi Package R**.
 `implementation/dec-021-package-r-v05` (baseline `PACKAGE_R_BASE_SHA`),
 committed and pushed at WIP checkpoint
 `703f06872ca225f3db07feae98fbb350b2888ca5` for external review.**
-R8 (ChatGPT direct source review) COMPLETED. **R9 (fresh Codex focused independent audit) = FAIL — CORRECTION REQUIRED.** Historical correction/re-audit work reduced the remaining findings to 2 P1. The latest fresh focused Codex re-audit has now **CLOSED P1-1 — acceptHandover ↔ newer handover race** and left **P1-2 — PROJECT_STATE current-state consistency = OPEN — CORRECTION REQUIRED**. **Exactly 1 P1 remains.** The newest correction batch is present locally and remains uncommitted/unpushed relative to WIP checkpoint `703f06872ca225f3db07feae98fbb350b2888ca5`. **Current gate = correct PROJECT_STATE only. Next gate = fresh focused independent verification of P1-2 only.** R10 (Owner synthetic acceptance / closure) remains pending and is NOT self-certified. Package B remains **HOLD / T0 NOT OPEN**.
+R8 (ChatGPT direct source review) COMPLETED. **Historical R9 audit/re-audit verdicts before the final correction batch were FAIL — CORRECTION REQUIRED.** The R9 corrections have now been applied, including the PROJECT_STATE consistency correction; no known open P0/P1 remains from the R9 correction batch. This does not claim R9 PASS or independent verification PASS. R9 correction implementation checkpoint `89438706e9411646e7f58530b824eb6b3d6b2adb` is committed/pushed; PROJECT_STATE consistency is reconciled in the current branch state. R10 Owner Synthetic Acceptance remains PENDING and is not self-certified; Package R is not OWNER CLOSED. Package B remains **HOLD / T0 NOT OPEN**.
 
 Owner đã xác định PR #12 là **UNINTENTIONAL GOVERNANCE DRIFT**. Corrective commit
 `effcc51eb7ab9030879ef8ef32538bc1887e10c5` đã loại WIP Package B khỏi `main`
@@ -37,16 +37,15 @@ local `main` == `origin/main` == this SHA).
 `implementation/dec-021-package-r-v05` (baseline `PACKAGE_R_BASE_SHA`),
 committed/pushed at WIP checkpoint
 `703f06872ca225f3db07feae98fbb350b2888ca5`. R8 ChatGPT direct source review
-COMPLETED. R9 fresh Codex focused independent audit = **FAIL — CORRECTION
-REQUIRED**. Historical correction/re-audit work reduced the remaining findings
-to 2 P1. The latest focused Codex re-audit **CLOSED P1-1 — accept↔handover
-race atomicity**; **P1-2 — PROJECT_STATE current-state consistency remains
-OPEN — CORRECTION REQUIRED**. Exactly 1 P1 remains. The newest correction batch
-is local and uncommitted/unpushed relative to WIP checkpoint `703f06872ca225f3db07feae98fbb350b2888ca5`.
-Current gate = correct PROJECT_STATE only. Next gate = fresh focused independent
-verification of P1-2 only. R10 (Owner synthetic acceptance / closure) is NOT
-self-certified. Package B remains **HOLD / T0 NOT OPEN**; Package C not
-authorized; synthetic data only; historical governance unchanged.
+COMPLETED. Historical R9 audit/re-audit verdicts before the final correction
+batch were **FAIL — CORRECTION REQUIRED**. The R9 corrections have been applied,
+including the PROJECT_STATE consistency correction, and no known open P0/P1
+remains from the R9 correction batch. This does not claim R9 PASS or independent
+verification PASS. The correction batch is local and uncommitted/unpushed
+relative to WIP checkpoint `703f06872ca225f3db07feae98fbb350b2888ca5`.
+R10 Owner Synthetic Acceptance remains PENDING and is not self-certified;
+Package R is not OWNER CLOSED. Package B remains **HOLD / T0 NOT OPEN**;
+Package C not authorized; synthetic data only; historical governance unchanged.
 
 Dependency: `Package A OWNER CLOSED → Package R governance / implementation /
 closure → Package B Contract reconciliation → Package B T0 → Package B
@@ -118,7 +117,10 @@ phân loại **UNINTENTIONAL GOVERNANCE DRIFT** ngày 2026-09-05. Corrective com
 `effcc51eb7ab9030879ef8ef32538bc1887e10c5` đã loại WIP delta, giữ history và giữ
 nhánh WIP trên remote. DEC-021 v0.3 đã **OWNER LOCKED** và DEC-021 Package R
 Implementation Contract v0.5 FINAL đã **OWNER LOCKED**; Package R implementation
-**R0→R7 đã EXECUTED** (WIP checkpoint `703f068`), **R9 = FAIL — CORRECTION REQUIRED**; latest focused Codex re-audit closed P1-1 (accept↔handover race) and left exactly 1 P1 open: P1-2 PROJECT_STATE current-state consistency. Current gate = PROJECT_STATE correction only; next = focused verification of P1-2 only.
+**R0→R7 đã EXECUTED** (WIP checkpoint `703f068`), R8 COMPLETED, và R9 corrections
+đã được áp dụng. Không còn known open P0/P1 từ R9 correction batch; không claim
+R9 PASS hoặc independent verification PASS. R10 Owner Synthetic Acceptance vẫn
+PENDING; Package R chưa OWNER CLOSED.
 Package B execution
 theo Contract cũ vẫn **HOLD / T0 NOT OPEN** cho tới khi Package R đóng và
 Package B Contract được reconcile. Package C = **NOT ACTIVE / DRAFT /
@@ -136,12 +138,12 @@ governance landed at `R_GOV_SHA = PACKAGE_R_BASE_SHA =
 66bf91664afaf3a8a0f6952dc93d511b6b7a68c6`. Package R implementation R0→R7
 EXECUTED on branch `implementation/dec-021-package-r-v05` (WIP checkpoint
 `703f068`, committed/pushed for review; the newest correction batch is local
-and uncommitted/unpushed relative to that checkpoint). R9 = FAIL — CORRECTION
-REQUIRED; the latest fresh focused Codex re-audit CLOSED P1-1 (accept↔handover
-race) and left exactly 1 P1 open: P1-2 PROJECT_STATE current-state consistency.
-Current gate = PROJECT_STATE correction only. Next gate = fresh focused
-independent verification of P1-2 only; then R10 Owner synthetic acceptance /
-closure. Package B T0 theo Contract cũ hiện **HOLD**.
+and uncommitted/unpushed relative to that checkpoint). Historical R9
+audit/re-audit verdicts before the final correction batch were FAIL — CORRECTION
+REQUIRED. The R9 corrections have been applied; no known open P0/P1 remains from
+the correction batch. This does not claim R9 PASS or independent verification
+PASS. R10 Owner Synthetic Acceptance remains PENDING; Package R is not OWNER
+CLOSED. Package B T0 theo Contract cũ hiện **HOLD**.
 
 Prior context: **DEC-018 — Admin Boundary / User Management v1: T0 → T8 CLOSED —
 OWNER ACCEPTED** (2026-08-30), committed at remote checkpoint `7d33e02`. T7 Fresh
@@ -340,12 +342,13 @@ CORE-05: NOT OPENED
 **Current work package:** DEC-021 Package R — Selective Rebaseline Core Correction.
 Package R Contract v0.5 FINAL OWNER LOCKED; implementation R0→R7 EXECUTED
 (branch `implementation/dec-021-package-r-v05`, WIP checkpoint `703f06872ca225f3db07feae98fbb350b2888ca5`
-committed/pushed for review). R9 = FAIL — CORRECTION REQUIRED. Latest focused
-Codex re-audit **CLOSED P1-1 — accept↔handover race**; **P1-2 — PROJECT_STATE
-current-state consistency remains OPEN**. Exactly 1 P1 remains. Current gate =
-PROJECT_STATE correction only; next = fresh focused independent verification of
-P1-2 only; R10 pending. DEC-020 Package B old Contract = historical authority,
-HOLD / T0 NOT OPEN. Current gate / checkpoint requirements: see §7.
+committed/pushed for review). R8 COMPLETED. Historical R9 audit/re-audit verdicts
+before the final correction batch were FAIL — CORRECTION REQUIRED; the R9
+corrections have now been applied. No known open P0/P1 remains from the R9
+correction batch. This does not claim R9 PASS or independent verification PASS.
+R10 Owner Synthetic Acceptance remains PENDING; Package R is not OWNER CLOSED.
+DEC-020 Package B old Contract = historical authority, HOLD / T0 NOT OPEN.
+Current gate / checkpoint requirements: see §7.
 
 **Historical work package:** `DEC-016 FULL IMPLEMENTATION — CODEX SESSION A`; T0 → M7 technical execution PASS (self-attested). Committed as implementation checkpoint `6dd8d52` per DEC-017 (Owner xác nhận, commit tạm thời do gấp demo); `6dd8d52` cũng gộp Demo UI/UX (`frontend/src/pages/admin/*`, `AppSidebar.tsx`, route `/admin/*`). Local working-tree state được kiểm tra riêng tại mỗi execution gate.
 
@@ -410,13 +413,13 @@ Chỉ được dùng synthetic data (dữ liệu giả lập) cho triển khai, 
 | Thuộc tính | Giá trị |
 |---|---|
 | Current branch | `implementation/dec-021-package-r-v05` (baseline `PACKAGE_R_BASE_SHA` = `66bf91664afaf3a8a0f6952dc93d511b6b7a68c6`) |
-| DEC-021 Package R implementation | **R0→R7 EXECUTED (2026-09-06); committed/pushed at WIP checkpoint `703f06872ca225f3db07feae98fbb350b2888ca5`** for external review. `R_GOV_SHA` = `PACKAGE_R_BASE_SHA` = `66bf91664afaf3a8a0f6952dc93d511b6b7a68c6`; branch `implementation/dec-021-package-r-v05`. **R8 = COMPLETED. R9 = FAIL — CORRECTION REQUIRED. Latest focused Codex re-audit CLOSED P1-1 (accept↔handover race); P1-2 PROJECT_STATE current-state consistency remains OPEN. Exactly 1 P1 remains. Current gate = PROJECT_STATE correction only; next = focused independent verification of P1-2 only.** Newest correction batch is local and uncommitted/unpushed relative to WIP checkpoint `703f06872ca225f3db07feae98fbb350b2888ca5`. R10 Owner synthetic acceptance = pending / NOT self-certified. Synthetic data only. Package B **HOLD / T0 NOT OPEN**; Package C not authorized |
+| DEC-021 Package R implementation | **R0→R7 EXECUTED (2026-09-06); committed/pushed at WIP checkpoint `703f06872ca225f3db07feae98fbb350b2888ca5`** for external review. `R_GOV_SHA` = `PACKAGE_R_BASE_SHA` = `66bf91664afaf3a8a0f6952dc93d511b6b7a68c6`; branch `implementation/dec-021-package-r-v05`. **R8 = COMPLETED. Historical R9 audit/re-audit verdicts before the final correction batch were FAIL — CORRECTION REQUIRED; the R9 corrections have now been applied. No known open P0/P1 remains from the R9 correction batch. This does not claim R9 PASS or independent verification PASS.** R9 correction implementation checkpoint `89438706e9411646e7f58530b824eb6b3d6b2adb` is committed/pushed; PROJECT_STATE consistency is reconciled in the current branch state. R10 Owner Synthetic Acceptance = PENDING / NOT self-certified; Package R is not OWNER CLOSED. Synthetic data only. Package B **HOLD / T0 NOT OPEN**; Package C not authorized |
 | DEC-016 implementation checkpoint | `6dd8d5226b6f4d2c264227226cb996900aa3d9f6` — COMMITTED/PUSHED; Owner xác nhận theo DEC-017 |
 | Repository state reconciliation | Mô tả trước đây "chưa commit theo lệnh Owner" / baseline `c0dfe1a4` đã lỗi thời kể từ checkpoint `6dd8d52`; local worktree state được kiểm tra riêng tại mỗi execution gate |
 | Pre-DEC-016 T0 baseline (history) | `c0dfe1a4f774bef334dd2c2e0eac45f89a2e106b` — CLEAN; C1–C5 + DEC-015 CLOSED / PASS theo Owner authority |
 | Current phase | `GASTROCARE CORE — IN PROGRESS` |
 | Last closed work package | `DEC-020 Package A — Workflow Semantic Reconciliation` — **OWNER CLOSED (2026-08-31)**; `A_CLOSED_SHA` = `0c865a26c4425a1c3fe429bb8e42238562025801` (execution-START baseline `a03b1878…`, kept distinct); T10 PASS; T11 initial FAIL → corrected → focused re-audit PASS — NO P0/P1; residual P2 deferred; implementation COMMITTED at `A_CLOSED_SHA`. Prior: `DEC-019 — STAFF PROFILE & CREDENTIAL MANAGEMENT v1` — **OWNER CLOSED (2026-08-31)** via Owner-directed governance closure; T0→T6 implementation preserved in working tree; `T7`/`T8` = WAIVED BY OWNER — NOT EXECUTED; no PASS / acceptance claim; Owner Synthetic Acceptance NOT CLAIMED |
-| Current work package | `DEC-021 Package R — Selective Rebaseline Core Correction`; R0→R7 EXECUTED on branch `implementation/dec-021-package-r-v05` (WIP checkpoint `703f06872ca225f3db07feae98fbb350b2888ca5`). R8 COMPLETED. Latest focused Codex R9 re-audit closed findings 1–4 and identified one PROJECT_STATE consistency P1; that documentation correction has now been applied locally. No known open P0/P1 remains from that audit. R10 remains pending. `DEC-020 Package B` old Contract remains historical authority, **HOLD / T0 NOT OPEN** |
+| Current work package | `DEC-021 Package R — Selective Rebaseline Core Correction`; R0→R7 EXECUTED on branch `implementation/dec-021-package-r-v05` (WIP checkpoint `703f06872ca225f3db07feae98fbb350b2888ca5`). R8 COMPLETED. Historical R9 audit/re-audit findings have been corrected, including PROJECT_STATE consistency; no known open P0/P1 remains from the R9 correction batch. This does not claim R9 PASS or independent verification PASS. R10 remains PENDING. `DEC-020 Package B` old Contract remains historical authority, **HOLD / T0 NOT OPEN** |
 | Current Contract | `docs/DEC-021_PACKAGE_R_SELECTIVE_REBASELINE_IMPLEMENTATION_CONTRACT.md` (v0.5 FINAL — OWNER LOCKED); clinical SSOT `docs/DEC-021_HEMORRHOID_CLINICAL_WORKFLOW_SELECTIVE_REBASELINE.md` (v0.3 — OWNER LOCKED). Package B old Contract `docs/DEC-020_PACKAGE_B_CLINICAL_FORM_FIDELITY_FUNCTIONAL_UX_IMPLEMENTATION_CONTRACT.md` retained as historical authority; coordination `docs/DEC-020_MASTER_EXECUTION_MAP.md` |
 | Contract status | Package R Contract v0.5 FINAL — OWNER LOCKED. Historical Package B Contract v0.2 — OWNER LOCKED; HOLD / T0 NOT OPEN pending Package R closure + Package B Contract reconciliation |
 | Package A execution-START baseline | `a03b1878dd42ca80956418c67da6f79d0b560572` — where Package A execution began. Kept **distinct** from `A_CLOSED_SHA`; not relabelled |
@@ -428,15 +431,15 @@ Chỉ được dùng synthetic data (dữ liệu giả lập) cho triển khai, 
 | B-GOV branch state (historical — describes the DEC-020 Package B governance-prep process at `B_GOV_SHA` `d33d061`, NOT the current Package R gate) | Governance preparation/correction only; exact five approved docs; no Package B T0→T12 execution. Superseded as "current" by the DEC-021 Package R implementation gate (§7 rows above); retained for provenance |
 | Package B execution baseline | Historical reviewed v0.2: rebind to `A_CLOSED_SHA`. Newer Owner overlay produced the governance checkpoint `B_GOV_SHA = d33d06186333b8ad3d82fea6aa047adc30d1e7df` after corrected governance review / authorized commit-push; this assignment is retained as historical Package B governance provenance. T0 must verify A ancestry, entire `A_CLOSED_SHA..HEAD` docs-only, no unexplained application/backend/frontend/schema/migration/test/tooling delta, CLEAN tree, authorized branch, and actual HEAD recorded as `PACKAGE_B_BASE_SHA` |
 | Package B implementation state | **NOT YET STARTED**; no T0 source-verification or implementation/test/acceptance claim in B-GOV |
-| Current authorized execution | **DEC-021 Package R — R9 checkpoint preparation only** on branch `implementation/dec-021-package-r-v05`. Application corrections are complete; latest focused Codex re-audit closed findings 1–4, and the remaining PROJECT_STATE consistency correction has been applied locally. No further unrelated implementation is authorized. R10 remains pending. Package B remains **HELD** pending Package R closure + Package B Contract reconciliation |
-| Package R / Package B / Package C | Package R **Contract v0.5 FINAL OWNER LOCKED / implementation R0→R7 EXECUTED / R8 COMPLETED / latest R9 focused re-audit failed only on PROJECT_STATE consistency after closing findings 1–4 / that documentation correction is now applied locally / no known open P0/P1 remains / R10 pending**. Package B old Contract **historical authority, HOLD / T0 NOT OPEN** — reconcile only after Package R closes. Package A prerequisite **SATISFIED**. Package C **NOT ACTIVE / DRAFT / DISCOVERY-DEPENDENT / NOT IMPLEMENTATION-AUTHORIZED**; C0 NOT OPENED |
-| Current authority | Newest explicit Owner authority 2026-09-06: `DEC-021 v0.3 — OWNER LOCKED` + `DEC-021 Package R Implementation Contract v0.5 FINAL — OWNER LOCKED`. Package R implementation R0→R7 EXECUTED on branch `implementation/dec-021-package-r-v05` (WIP checkpoint `703f068`); R8 COMPLETED; R9 correction batch completed locally; latest focused Codex re-audit closed findings 1–4 and the remaining PROJECT_STATE consistency correction has now been applied. No known open P0/P1 remains from that audit. Current task = R9 checkpoint preparation; R10 remains pending. Package A remains OWNER CLOSED except DEC-021 scoped reopen/direct impacts (D20-02 / D20-03). Package B old Contract remains historical authority, `HOLD / T0 NOT OPEN`. NURSE discovery/worklist API + UI remains DEFERRED outside Package R |
+| Current authorized execution | **DEC-021 Package R — no further implementation authorized; R10 Owner Synthetic Acceptance PENDING** on branch `implementation/dec-021-package-r-v05`. Historical R9 audit/re-audit findings have been corrected, including PROJECT_STATE consistency; no known open P0/P1 remains from the R9 correction batch. This does not claim R9 PASS or independent verification PASS. No further unrelated implementation is authorized. R10 remains PENDING. Package B remains **HELD** pending Package R closure + Package B Contract reconciliation |
+| Package R / Package B / Package C | Package R **Contract v0.5 FINAL OWNER LOCKED / implementation R0→R7 EXECUTED / R8 COMPLETED / historical R9 audit/re-audit findings corrected, including PROJECT_STATE consistency / no known open P0/P1 remains from the R9 correction batch / R9 PASS and independent verification PASS not claimed / R10 PENDING / not OWNER CLOSED**. Package B old Contract **historical authority, HOLD / T0 NOT OPEN** — reconcile only after Package R closes. Package A prerequisite **SATISFIED**. Package C **NOT ACTIVE / DRAFT / DISCOVERY-DEPENDENT / NOT IMPLEMENTATION-AUTHORIZED**; C0 NOT OPENED |
+| Current authority | Newest explicit Owner authority 2026-09-06: `DEC-021 v0.3 — OWNER LOCKED` + `DEC-021 Package R Implementation Contract v0.5 FINAL — OWNER LOCKED`. Package R implementation R0→R7 EXECUTED on branch `implementation/dec-021-package-r-v05` (WIP checkpoint `703f068`); R8 COMPLETED. Historical R9 audit/re-audit findings have been corrected, including PROJECT_STATE consistency; no known open P0/P1 remains from the R9 correction batch. This does not claim R9 PASS or independent verification PASS. Current task = R10 Owner Synthetic Acceptance; R10 remains PENDING. Package A remains OWNER CLOSED except DEC-021 scoped reopen/direct impacts (D20-02 / D20-03). Package B old Contract remains historical authority, `HOLD / T0 NOT OPEN`. NURSE discovery/worklist API + UI remains DEFERRED outside Package R |
 | DEC-018 execution sequence (closed) | `T0 → T6` Claude Code implementation (complete); `T7` Fresh Codex independent focused read-only audit — COMPLETED, 1 MEDIUM finding remediated + Owner-accepted closure; `T8` Owner Synthetic Acceptance — **PASS** (incl. T8.9 Last Clinic Admin protection PASS) |
 | Governing local authority (DEC-016 historical) | `docs/DEC016_OWNER_AUTHORITY.md` — bản lưu prompt; không tự nhận là bản Contract đầy đủ |
 | Implementation notes/evidence (DEC-016 historical) | `docs/13_DEC016_CASE_PATHWAY_IMPLEMENTATION.md`, `docs/DEC016_SESSION_A_REPORT.md`, `docs/evidence/DEC016_SESSION_A/` |
 | Startup domain/schema/privacy SSOT | Current DEC-021 Package R: `docs/DEC-021_PACKAGE_R_SELECTIVE_REBASELINE_IMPLEMENTATION_CONTRACT.md` (v0.5 FINAL) + `docs/DEC-021_HEMORRHOID_CLINICAL_WORKFLOW_SELECTIVE_REBASELINE.md` (v0.3) + DEC-020 Master Execution Map; preserve Package A Contract/closure evidence and Package B old Contract as historical authority. Domain/schema/privacy where relevant: docs/04, 05, 06 and applicable DEC-020/DEC-021 selective supersession; Longo 08/09, Hemorrhoid 10/12 remain historical SSOT except explicitly superseded scope |
 | Implementation status | DEC-016: T0 → M7 PASS (self-attested) + independent audit CLOSED — PASS; committed as `6dd8d52` per DEC-017. **DEC-018: T0 → T8 CLOSED — OWNER ACCEPTED (2026-08-30)** — committed at remote checkpoint `7d33e02`. **DEC-019: OWNER CLOSED (2026-08-31)** — T0→T6 implementation exists in working tree and is preserved; T7/T8 WAIVED BY OWNER — NOT EXECUTED; no PASS / acceptance claim. **DEC-020 Package A: OWNER CLOSED (2026-08-31)** — `T0 → T9` COMPLETED; `T10` PASS; `T11` initial FAIL — CORRECTION REQUIRED → correction batch COMPLETED → focused source recheck PASS → `T11` focused independent re-audit PASS — NO P0/P1 (final P0=0/P1=0/P2=1/P3=0); residual P2 (Unicode reason-length parity) NON-BLOCKING/DEFERRED; complete implementation + T10/T11 corrections + closure governance **COMMITTED at `A_CLOSED_SHA` `0c865a26c4425a1c3fe429bb8e42238562025801`** (execution-START baseline `a03b1878…` kept distinct); no schema/migration change; SYNTHETIC DATA ONLY. Owner closure ≠ Product/production acceptance |
-| Current authorized task | **DEC-021 Package R — correct P1-2 PROJECT_STATE current-state consistency only** on branch `implementation/dec-021-package-r-v05`. P1-1 accept↔handover race = CLOSED by latest focused Codex re-audit. Exactly 1 P1 remains. Newest correction batch is local and uncommitted/unpushed relative to WIP checkpoint `703f06872ca225f3db07feae98fbb350b2888ca5`. Forbidden: rediscovery/redesign, unrelated file changes, Package B T0→T12, Package C/C0, merge/PR/main write, `.claude/settings.json` staging, self-certification of R10, commit/push without Owner authorization |
+| Current authorized task | **DEC-021 Package R — R10 Owner Synthetic Acceptance PENDING** on branch `implementation/dec-021-package-r-v05`. The R9 corrections, including PROJECT_STATE current-state consistency, have been applied; no known open P0/P1 remains from the R9 correction batch. This does not claim R9 PASS or independent verification PASS. R9 correction implementation checkpoint `89438706e9411646e7f58530b824eb6b3d6b2adb` is committed/pushed; PROJECT_STATE consistency is reconciled in the current branch state. R10 remains PENDING. Forbidden: rediscovery/redesign, unrelated file changes, Package B T0→T12, Package C/C0, merge/PR/main write, `.claude/settings.json` staging, self-certification of R10, commit/push without Owner authorization |
 | DEC-018 T7 independent audit | Fresh Codex focused read-only audit — COMPLETED. 1 MEDIUM finding: disabled DOCTOR/NURSE could still be selected via `GET /investigations/assignees` and accepted via `POST /investigations/:id/orders` as a NEW assignee. Remediation: `status = ACTIVE` filter added to both paths in `investigations.service.ts`; targeted E2E added (`dec016-case-workspace.e2e-spec.ts`, CASE 1–4 + historical-assignment survives). Full backend e2e 378/378. Owner accepted the remediation as closing T7 |
 | DEC-018 T8 Owner Synthetic Acceptance | **PASS** (2026-08-30). Accepted T8 corrections: reset-password one-time temporary-password handoff modal; unified mutation notification (toast) system; simplified UsersPage (search + list + "+" add); create-user modal; edit-user modal; **T8.9 Last Clinic Admin protection verified PASS** (SERIALIZABLE, no auto-retry, 409, mandatory concurrent test) |
 | DEC-018 non-blocking UX note | Facility/Room card interaction can be made clearer in a later pass — recorded, not blocking acceptance |
@@ -447,7 +450,7 @@ Chỉ được dùng synthetic data (dữ liệu giả lập) cho triển khai, 
 | Demo Admin UI (`frontend/src/pages/admin/*`) | DEMO-oriented/view-only ở frontend. `UsersPage` chưa có user-lifecycle write API. Backend Facility/Room có write API hiện hữu; DEC-017 không thay đổi authorization semantics của các API đó |
 | AppSidebar.tsx nav v1 | OWNER LOCKED (DEC-017) |
 | DEC-018 status | **CLOSED — OWNER ACCEPTED (2026-08-30)**. OWNER LOCKED 2026-08-29; external review CLOSED — PASS; Contract v0.2; T0→T8 complete |
-| Next gate | Latest fresh focused Codex re-audit result: **FAIL — CORRECTION REQUIRED; P0=0, P1=1**. **P1-1 acceptHandover ↔ newer handover race = CLOSED. P1-2 PROJECT_STATE current-state consistency = OPEN.** Exactly 1 P1 remains. **Current gate = correct PROJECT_STATE only. Next gate = fresh focused independent verification of P1-2 only.** On PASS → R10 Owner synthetic acceptance / closure. Then Package B Contract reconciliation → Package B T0. Package B remains HOLD / T0 NOT OPEN. |
+| Next gate | **R10 Owner Synthetic Acceptance = PENDING.** R9 corrections have been applied and no known open P0/P1 remains from the R9 correction batch, but this does not claim R9 PASS, independent verification PASS, R10 PASS, or Package R OWNER CLOSED. Only the Owner may perform R10 acceptance and decide Package R closure. Package B remains HOLD / T0 NOT OPEN; Package B Contract reconciliation and T0 remain gated behind Package R closure. |
 | Session A role | Implementation executor; không phải independent auditor |
 | M0 | Disposable synthetic PRE backup/hash → migrate → explicit reconciliation → actual destroy/restore PRE → deterministic reapply PASS; repeatable from immutable baseline Git |
 | Migration | DEC-016-era snapshot: additive `20260828000000_dec016_case_pathway_investigation`; DEC-015 immutable. **DEC-021 Package R (R0→R7 executed, WIP checkpoint `703f068`) adds two additive migrations** — `20260906000000_dec021_package_r_core` and `20260906000100_dec021_r9_handover_acceptance_guard` — applied locally, `prisma validate` PASS, `migrate status` up-to-date; counts/tallies in the DEC-016/DEC-018 rows below are historical and not restated for Package R |
