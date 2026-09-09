@@ -1,64 +1,124 @@
 # GastroCare — AI Agent Working Agreement
 
-## A. Startup Protocol
+## A. Startup Protocol v2 — Context Modes
 
-Trước khi phân tích hoặc đề xuất thay đổi, agent phải đọc theo thứ tự:
+Mỗi task phải dùng một context mode: `FOCUSED` hoặc `FULL`.
 
+Trước mọi phân tích hoặc execution, agent phải lấy execution facts từ Git thực tế:
+
+```text
+git branch --show-current
+git rev-parse HEAD
+git status --short
+git rev-parse '@{u}' 2>/dev/null || true
+```
+
+`.ai/HANDOFF.md`, nếu tồn tại, chỉ là local non-authoritative handoff cache.
+HANDOFF không được override Git facts, Owner Decision, applicable Contract hoặc governance SSOT.
+HANDOFF không authorize checkpoint/task mới.
+
+### FOCUSED
+
+Chỉ được dùng khi đồng thời đủ cả 4 điều kiện:
+
+1. Owner task explicit và bounded.
+2. Current Decision / Package / applicable Contract đã biết.
+3. Relevant source/test/finding scope đã biết.
+4. Không có governance conflict hoặc clinical semantic ambiguity đã biết.
+
+FOCUSED chỉ đọc context cần thiết:
+- `AGENTS.md`;
+- `.ai/HANDOFF.md` nếu có;
+- đúng section của applicable Contract;
+- source/test/evidence trong declared scope.
+
+FOCUSED không mặc định đọc toàn bộ `docs/DECISION_LOG.md`, `docs/07_ROADMAP_AND_GATES.md`,
+historical Decisions, unrelated Contracts hoặc unrelated repository files.
+
+FOCUSED phải tự chuyển sang FULL ngay khi phát hiện:
+- unexpected branch;
+- material pre-existing diff ngoài declared scope;
+- HANDOFF/task inconsistency ảnh hưởng execution;
+- applicable Contract conflict với Owner instruction;
+- evidence của newer applicable Owner Decision;
+- clinical semantic ambiguity;
+- schema/migration impact ngoài declared scope;
+- material cross-package dependency;
+- task không thể giải quyết an toàn trong declared scope.
+
+Escalation chỉ để đọc thêm authoritative context, không cần Owner permission.
+
+### FULL
+
+Dùng khi thiếu bất kỳ điều kiện FOCUSED nào hoặc khi FOCUSED bị escalation.
+
+FULL đọc theo thứ tự:
 1. `docs/PROJECT_STATE.md`
 2. `docs/DECISION_LOG.md`
 3. `docs/07_ROADMAP_AND_GATES.md`
 
-Sau đó đọc SSOT chuyên biệt cho task hiện tại được chỉ định trong `CURRENT EXECUTION CONTEXT` của `PROJECT_STATE.md`.
+Sau đó đọc current authoritative SSOT / Implementation Contract và tài liệu task-specific cần thiết.
+FULL không có nghĩa đọc toàn bộ repository.
 
-Nếu task liên quan Longo Clinical Core, phải đọc:
+Mọi agent report phải mở đầu:
 
-4. `docs/08_LONGO_CLINICAL_WORKFLOW_v1.0.md`
-
-Nếu CORE-04 Implementation Contract đã tồn tại thì đọc thêm:
-
-5. `docs/09_CORE04_IMPLEMENTATION_CONTRACT.md`
-
-Nếu task liên quan domain/schema/migration/privacy thì đọc thêm:
-
-- `docs/04_CORE_DOMAIN_MODEL.md`
-- `docs/05_ARCHITECTURE_BASELINE.md`
-- `docs/06_SAFETY_PRIVACY_AND_GOVERNANCE.md`
+```text
+MODE: FOCUSED | FULL
+REF: branch=<actual> HEAD=<actual SHA> tree=<CLEAN|DIRTY>
+```
 
 Không yêu cầu Owner kể lại lịch sử nếu repository có thể trả lời.
 
 ## B. Authority Hierarchy
 
+Governance authority:
+
 ```text
 Newest explicit Owner Decision
-> Previous Owner Decision
-> Verified Project State
+> applicable OWNER LOCKED Decision / Contract
+> PROJECT_STATE / DECISION_LOG
 > Approved Baseline
 > Working Assumption
 > AI Recommendation
 ```
 
-`OWNER LOCKED` ánh xạ vào `OWNER DECISION`.
+Execution facts:
 
-Khi tài liệu cũ và tài liệu mới xung đột, không tự hòa giải bằng suy đoán; áp dụng authority hierarchy.
+```text
+Actual local Git
+> Owner-provided local evidence
+> explicit remote branch/ref
+> HANDOFF cache
+```
+
+Git/source existence không tự tạo authorization.
+Khi local và remote khác nhau, remote không được override actual local execution state.
+`OWNER LOCKED` ánh xạ vào Owner Decision.
+
+Khi governance authorities xung đột, không tự hòa giải bằng suy đoán; áp dụng authority hierarchy ở trên.
 
 ## C. Current Task Discovery
 
-Không hard-code task đang làm vào `AGENTS.md`.
+Không hard-code current task vào `AGENTS.md`.
 
-Task hiện tại phải lấy từ `docs/PROJECT_STATE.md`, section `CURRENT EXECUTION CONTEXT`. Nhờ vậy `AGENTS.md` ổn định qua nhiều phase.
+Trong `FOCUSED`, task / authority / scope phải đã được xác định rõ từ Owner instruction
+và/hoặc HANDOFF + applicable Contract. Nếu không xác định chắc chắn, chuyển sang FULL.
+
+Trong `FULL`, task hiện tại lấy từ `docs/PROJECT_STATE.md`, section `CURRENT EXECUTION CONTEXT`.
 
 ### Active Branch Rule
 
-`CURRENT EXECUTION CONTEXT` có thể chỉ định một branch khác default branch (`main`).
+Actual branch luôn lấy từ Git trước.
 
-Sau khi đọc `PROJECT_STATE.md`, agent phải:
+- Trong FOCUSED: so actual branch với branch được Owner/HANDOFF mong đợi.
+  Material mismatch => ghi `HANDOFF STALE` nếu liên quan và chuyển FULL.
+- Trong FULL: đối chiếu actual branch với `CURRENT EXECUTION CONTEXT`.
+- Khi dùng GitHub connector hoặc remote source, phải dùng explicit branch/ref;
+  không mặc định `main` đại diện cho local work-in-progress.
+- Không kết luận file/task chưa tồn tại chỉ vì không thấy trên `main`.
 
-1. xác định `Current branch`;
-2. nếu branch hiện hành khác `main`, ưu tiên đọc các artifact của task hiện tại từ branch đó;
-3. không suy ra rằng file chưa tồn tại chỉ vì không thấy nó trên `main`;
-4. khi dùng GitHub connector hoặc remote source, phải xác minh branch/ref trước khi kết luận trạng thái công việc.
-
-`main` là durable baseline (đường nền ổn định); current execution branch là nguồn cho work-in-progress (công việc đang triển khai).
+`main` là durable published baseline. Current execution branch/local working tree là execution state
+khi work chưa được merge/publish.
 
 ## D. Git Governance
 

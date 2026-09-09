@@ -9,10 +9,7 @@ bổ sung các quy ước riêng cho Claude Code, không thay thế hay nới l�
 
 ## Bắt buộc đầu mỗi session
 
-Chạy `/gastrocare-dev:startup` trước khi đọc/sửa bất kỳ file nào khác. Skill này
-tự thực hiện đúng Startup Protocol (đọc PROJECT_STATE, DECISION_LOG, Roadmap,
-xác định branch/HEAD/task hiện tại) và trả về STARTUP STATUS. Không tự suy luận
-trạng thái dự án khi chưa chạy skill này.
+Chạy `/gastrocare-dev:startup` trước khi đọc/sửa bất kỳ file nào khác; skill này phải tuân theo canonical FOCUSED/FULL Startup Protocol trong `AGENTS.md`, không duplicate hoặc tự diễn giải policy tại đây.
 
 ## Trước khi bắt đầu một checkpoint/task mới (Tn)
 
