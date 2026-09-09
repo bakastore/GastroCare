@@ -6,6 +6,14 @@ disable-model-invocation: true
 
 # GastroCare Startup
 
+Skill này bootstrap context một lần ở đầu session.
+
+Task tiếp theo trong cùng session không gọi lại skill.
+Agent re-evaluate FOCUSED/FULL trực tiếp.
+
+Nếu FOCUSED cần escalate sang FULL thì đọc FULL context theo protocol bên dưới,
+không yêu cầu Owner chạy lại slash command.
+
 READ-ONLY — skill này không sửa repository.
 
 ## 1. Actual Git state

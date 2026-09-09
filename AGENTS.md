@@ -4,6 +4,18 @@
 
 Mỗi task phải dùng một context mode: `FOCUSED` hoặc `FULL`.
 
+`/gastrocare-dev:startup` chỉ chạy một lần khi bắt đầu session.
+
+Khi task thay đổi trong cùng session, agent chỉ re-evaluate context mode.
+Nếu FOCUSED cần chuyển sang FULL thì đọc thêm FULL context trực tiếp,
+không yêu cầu Owner chạy lại `/gastrocare-dev:startup`.
+
+Chỉ chạy lại startup khi:
+- mở session mới;
+- branch/HEAD thay đổi ngoài session;
+- repository state bị thay đổi đáng kể từ bên ngoài;
+- startup context trước đó không còn đáng tin.
+
 Trước mọi phân tích hoặc execution, agent phải lấy execution facts từ Git thực tế:
 
 ```text
