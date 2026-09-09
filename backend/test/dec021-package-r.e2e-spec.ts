@@ -6,6 +6,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { EncountersService } from '../src/encounters/encounters.service';
 
 /**
  * DEC-021 Package R — Selective Rebaseline Core Correction, targeted synthetic
@@ -18,6 +19,7 @@ import { PrismaService } from '../src/prisma/prisma.service';
 describe('DEC-021 Package R — targeted synthetic acceptance (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
+  let encountersService: EncountersService;
 
   let tenantId: string;
   let otherTenantId: string;
@@ -227,6 +229,7 @@ describe('DEC-021 Package R — targeted synthetic acceptance (e2e)', () => {
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
     await app.init();
     prisma = app.get(PrismaService);
+    encountersService = app.get(EncountersService);
     await resetTables();
 
     const tenant = await prisma.tenant.create({
@@ -1211,7 +1214,7 @@ describe('DEC-021 Package R — targeted synthetic acceptance (e2e)', () => {
   });
 
   // 17 — Close <-> CareTask reschedule race.
-  it('17: Episode close vs a concurrent task reschedule is atomic', async () => {
+  it('17: Episode close vs a concurrent task reschedule — exactly one 201, one 409, never both', async () => {
     const { encounterId, episodeId } = await goldenActivate(doctorToken, patientId);
     const taskId = await linkedOpenTask(encounterId);
 
@@ -1224,39 +1227,53 @@ describe('DEC-021 Package R — targeted synthetic acceptance (e2e)', () => {
         .set(auth(doctorToken))
         .send({ dueDate: '2027-01-15' }),
     ]);
-    expect(closeRes.status === 201 || reschedRes.status === 201).toBe(true);
+
+    const statuses = [closeRes.status, reschedRes.status].sort();
+    expect(statuses).toEqual([201, 409]);
+
     const task = await prisma.careTask.findUniqueOrThrow({ where: { id: taskId } });
-    // No partial/corrupt state: the task is either CANCELLED by a committed
-    // close (with its disposition audit) or still OPEN with a committed
-    // reschedule — never both effects observable as inconsistent.
-    if (task.status === CareTaskStatus.CANCELLED) {
-      expect(closeRes.status).toBe(201);
+    const rescheduleAudits = await prisma.auditEvent.count({
+      where: { action: 'CARE_TASK_RESCHEDULED', entityId: taskId },
+    });
+    const dispositionAudits = await prisma.auditEvent.count({
+      where: {
+        action: 'CARE_TASK_DISPOSED_ON_EPISODE_CLOSE',
+        entityId: taskId,
+      },
+    });
+
+    if (closeRes.status === 201) {
+      // close won: task CANCELLED with exactly one disposition audit, no
+      // reschedule side effects.
+      expect(reschedRes.status).toBe(409);
+      expect(task.status).toBe(CareTaskStatus.CANCELLED);
+      expect(dispositionAudits).toBe(1);
+      expect(rescheduleAudits).toBe(0);
       expect(
-        await prisma.auditEvent.count({
-          where: {
-            action: 'CARE_TASK_DISPOSED_ON_EPISODE_CLOSE',
-            entityId: taskId,
-          },
-        }),
-      ).toBe(1);
+        (
+          await prisma.careEpisode.findUniqueOrThrow({ where: { id: episodeId } })
+        ).status,
+      ).toBe(CareEpisodeStatus.CLOSED);
     } else {
-      expect(task.status).toBe(CareTaskStatus.OPEN);
-      expect(reschedRes.status).toBe(201);
+      // reschedule won: task still OPEN with the new dueDate + exactly one
+      // reschedule audit, episode still ACTIVE, no disposition audit.
       expect(closeRes.status).toBe(409);
+      expect(task.status).toBe(CareTaskStatus.OPEN);
       expect(task.dueDate.toISOString()).toBe(
         new Date('2027-01-15').toISOString(),
       );
+      expect(rescheduleAudits).toBe(1);
+      expect(dispositionAudits).toBe(0);
+      expect(
+        (
+          await prisma.careEpisode.findUniqueOrThrow({ where: { id: episodeId } })
+        ).status,
+      ).toBe(CareEpisodeStatus.ACTIVE);
     }
-    // exactly one CARE_TASK_RESCHEDULED audit at most (guarded transition)
-    expect(
-      await prisma.auditEvent.count({
-        where: { action: 'CARE_TASK_RESCHEDULED', entityId: taskId },
-      }),
-    ).toBeLessThanOrEqual(1);
   });
 
-  // R9 finding 3 — concurrent accept-handover never appends a duplicate event.
-  it('R9-3: concurrent accept-handover for the same latest assignment appends exactly one event', async () => {
+  // R9 residual P1 — duplicate concurrent accept-handover -> ONE acceptance event.
+  it('R9-3a: 8 concurrent accept-handover for the same latest assignment -> exactly one acceptance event', async () => {
     const encounterId = await createInitialEncounter(doctorToken, patientId);
     await start(doctorToken, encounterId);
     await request(app.getHttpServer())
@@ -1266,7 +1283,7 @@ describe('DEC-021 Package R — targeted synthetic acceptance (e2e)', () => {
       .expect(201);
 
     const results = await Promise.all(
-      Array.from({ length: 5 }, () =>
+      Array.from({ length: 8 }, () =>
         request(app.getHttpServer())
           .post(`/encounters/${encounterId}/accept-handover`)
           .set(auth(doctor2Token)),
@@ -1288,9 +1305,176 @@ describe('DEC-021 Package R — targeted synthetic acceptance (e2e)', () => {
         },
       }),
     ).toBe(1);
-    // exactly one result reports the fresh acceptance
     expect(
       results.filter((r) => r.body.alreadyAccepted === false).length,
+    ).toBe(1);
+    // a subsequent sequential accept is still idempotent
+    const again = await request(app.getHttpServer())
+      .post(`/encounters/${encounterId}/accept-handover`)
+      .set(auth(doctor2Token));
+    expect(again.status).toBe(201);
+    expect(again.body.alreadyAccepted).toBe(true);
+  });
+
+  // R9 residual P1 — accept racing a NEW handover: a stale acceptance (for an
+  // assignment that a concurrent handover supersedes) can never satisfy the
+  // new handover's end-guard.
+  it('R9-3b: accept-handover racing a concurrent new handover -> stale acceptance cannot satisfy the later handover', async () => {
+    const doctorId = (
+      await prisma.authUser.findFirstOrThrow({ where: { email: DOCTOR } })
+    ).id;
+    const encounterId = await createInitialEncounter(doctorToken, patientId);
+    await start(doctorToken, encounterId);
+    // handover 1: doctor -> doctor2 (assignment X)
+    await request(app.getHttpServer())
+      .post(`/encounters/${encounterId}/handover`)
+      .set(auth(doctorToken))
+      .send({ newClinicianId: doctor2Id })
+      .expect(201);
+    const xAudit = await prisma.auditEvent.findFirstOrThrow({
+      where: { action: 'ENCOUNTER_CLINICIAN_HANDOVER', entityId: encounterId },
+      orderBy: { seq: 'desc' },
+    });
+    const xAssignmentId = (xAudit.metadata as Record<string, unknown>)
+      .assignmentHistoryId as string;
+
+    // doctor2 accepts X while doctor2 concurrently hands over to doctor (Y).
+    const [acceptRes, handoverRes] = await Promise.all([
+      request(app.getHttpServer())
+        .post(`/encounters/${encounterId}/accept-handover`)
+        .set(auth(doctor2Token)),
+      request(app.getHttpServer())
+        .post(`/encounters/${encounterId}/handover`)
+        .set(auth(doctor2Token))
+        .send({ newClinicianId: doctorId }),
+    ]);
+    // accept either lost the race (409) or committed for X *before* Y — never
+    // a stale write of X after Y.
+    expect([201, 409]).toContain(acceptRes.status);
+    // acceptance for X is never duplicated
+    expect(
+      await prisma.auditEvent.count({
+        where: {
+          action: 'ENCOUNTER_HANDOVER_ACCEPTED',
+          entityId: xAssignmentId,
+        },
+      }),
     ).toBeLessThanOrEqual(1);
+
+    // Ensure Y exists (if the racing handover lost an SSI race it now retries
+    // uncontended).
+    if (handoverRes.status !== 201) {
+      await request(app.getHttpServer())
+        .post(`/encounters/${encounterId}/handover`)
+        .set(auth(doctor2Token))
+        .send({ newClinicianId: doctorId })
+        .expect(201);
+    }
+    const yAudit = await prisma.auditEvent.findFirstOrThrow({
+      where: { action: 'ENCOUNTER_CLINICIAN_HANDOVER', entityId: encounterId },
+      orderBy: { seq: 'desc' },
+    });
+
+    if (acceptRes.status === 201) {
+      // Causal proof: acceptance-X was appended BEFORE handover-Y's audit
+      // (smaller seq) — it committed when X was still latest, it is not a
+      // stale write inserted after Y.
+      const acceptX = await prisma.auditEvent.findFirstOrThrow({
+        where: {
+          action: 'ENCOUNTER_HANDOVER_ACCEPTED',
+          entityId: xAssignmentId,
+        },
+      });
+      expect(acceptX.seq).toBeLessThan(yAudit.seq);
+    }
+
+    // The Encounter is now responsible = doctor (Y). Its end-guard requires
+    // acceptance of Y — a stale acceptance of X does NOT count.
+    expect((await end(doctorToken, encounterId)).status).toBe(409);
+    await request(app.getHttpServer())
+      .post(`/encounters/${encounterId}/accept-handover`)
+      .set(auth(doctorToken))
+      .expect(201);
+    expect((await end(doctorToken, encounterId)).status).toBe(201);
+  });
+
+  // R9 residual P1 — DETERMINISTIC interleave: a NEW handover (Y) is forced to
+  // commit AFTER accept has resolved the latest handover (X) but BEFORE
+  // accept commits. A stale acceptance of X must NOT commit -> 409.
+  it('R9-3c: forced commit order (handover Y commits mid-accept) -> stale accept rejected with 409', async () => {
+    const doctorId = (
+      await prisma.authUser.findFirstOrThrow({ where: { email: DOCTOR } })
+    ).id;
+    const encounterId = await createInitialEncounter(doctorToken, patientId);
+    await start(doctorToken, encounterId);
+    // handover 1: doctor -> doctor2 (assignment X)
+    await request(app.getHttpServer())
+      .post(`/encounters/${encounterId}/handover`)
+      .set(auth(doctorToken))
+      .send({ newClinicianId: doctor2Id })
+      .expect(201);
+    const xAudit = await prisma.auditEvent.findFirstOrThrow({
+      where: { action: 'ENCOUNTER_CLINICIAN_HANDOVER', entityId: encounterId },
+      orderBy: { seq: 'desc' },
+    });
+    const xAssignmentId = (xAudit.metadata as Record<string, unknown>)
+      .assignmentHistoryId as string;
+
+    // Inject: the first time accept resolves the latest handover, commit a
+    // brand-new handover Y (doctor2 -> doctor) before returning. This forces
+    // "A read X, then Y committed, then A tries to write acceptance-X".
+    const svc = encountersService as unknown as {
+      resolveLatestHandover: (...a: unknown[]) => Promise<unknown>;
+    };
+    const original = svc.resolveLatestHandover.bind(svc);
+    let injected = false;
+    const spy = jest
+      .spyOn(svc, 'resolveLatestHandover')
+      .mockImplementation(async (...args: unknown[]) => {
+        const result = await original(...args);
+        if (!injected) {
+          injected = true;
+          await request(app.getHttpServer())
+            .post(`/encounters/${encounterId}/handover`)
+            .set(auth(doctor2Token))
+            .send({ newClinicianId: doctorId })
+            .expect(201);
+        }
+        return result;
+      });
+
+    let acceptRes;
+    try {
+      acceptRes = await request(app.getHttpServer())
+        .post(`/encounters/${encounterId}/accept-handover`)
+        .set(auth(doctor2Token));
+    } finally {
+      spy.mockRestore();
+    }
+
+    // A must be rejected — its assignment X is now stale.
+    expect(acceptRes.status).toBe(409);
+    // No acceptance for the stale assignment X was committed.
+    expect(
+      await prisma.auditEvent.count({
+        where: {
+          action: 'ENCOUNTER_HANDOVER_ACCEPTED',
+          entityId: xAssignmentId,
+        },
+      }),
+    ).toBe(0);
+    // The Encounter's responsible clinician is now the Y target (doctor).
+    expect(
+      (
+        await prisma.encounter.findUniqueOrThrow({ where: { id: encounterId } })
+      ).responsibleClinicianId,
+    ).toBe(doctorId);
+    // End-guard: still blocked until Y is accepted.
+    expect((await end(doctorToken, encounterId)).status).toBe(409);
+    await request(app.getHttpServer())
+      .post(`/encounters/${encounterId}/accept-handover`)
+      .set(auth(doctorToken))
+      .expect(201);
+    expect((await end(doctorToken, encounterId)).status).toBe(201);
   });
 });

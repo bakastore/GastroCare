@@ -282,7 +282,10 @@ export class EncountersService {
 
     const reason = dto.reason?.trim() || null;
 
-    const updated = await this.prisma.$transaction(async (tx) => {
+    let updated: Encounter;
+    try {
+      updated = await this.prisma.$transaction(
+        async (tx) => {
       const existing = await tx.encounter.findFirst({
         where: { id: encounterId, tenantId },
       });
@@ -354,7 +357,34 @@ export class EncountersService {
       );
 
       return tx.encounter.findUniqueOrThrow({ where: { id: encounterId } });
-    });
+        },
+        // R9 residual P1 — run at the SAME isolation level as
+        // acceptHandover() so Postgres SSI can reason about a real conflict
+        // between a new handover and a concurrent accept on this Encounter.
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2034'
+      ) {
+        throw new ConflictException(
+          'Concurrent handover change; reload before retrying',
+        );
+      }
+      if (
+        err instanceof Error &&
+        (err.message.includes('40001') ||
+          err.message.includes('40P01') ||
+          err.message.includes('could not serialize access') ||
+          err.message.includes('deadlock detected'))
+      ) {
+        throw new ConflictException(
+          'Concurrent handover change; reload before retrying',
+        );
+      }
+      throw err;
+    }
 
     return updated;
   }
@@ -509,7 +539,10 @@ export class EncountersService {
    * arbitrary ordering — only by AuditEvent.seq (DESC, take 1).
    */
   private async resolveLatestHandover(
-    tx: Prisma.TransactionClient,
+    tx: Pick<
+      Prisma.TransactionClient,
+      'auditEvent' | 'clinicianAssignmentHistory'
+    >,
     tenantId: string,
     encounter: Encounter,
   ): Promise<{ assignmentHistoryId: string } | null> {
@@ -553,90 +586,203 @@ export class EncountersService {
   /**
    * DEC-021 §6.3 — `POST /encounters/:id/accept-handover`. DOCTOR-only. Only
    * the current responsibleClinicianId Doctor, only while IN_PROGRESS, only
-   * for the exact latest handover (§6.2). Idempotent: repeated acceptance of
-   * the exact same latest assignment returns already-accepted and appends no
-   * duplicate event. Never mutates a historical ClinicianAssignmentHistory
-   * row.
+   * for the exact latest handover resolved by AuditEvent.seq +
+   * assignmentHistoryId (§6.2).
+   *
+   * R9 residual P1 fix — validation AND the acceptance write are one atomic
+   * SERIALIZABLE transaction. A concurrent handover mutates
+   * Encounter.responsibleClinicianId and appends a newer
+   * ENCOUNTER_CLINICIAN_HANDOVER; this transaction reads both of those, so
+   * SSI aborts whichever commits second (P2034 -> 409). A stale acceptance
+   * (validated against assignment X, then X superseded by Y) therefore
+   * cannot commit. The partial unique index
+   * `audit_events_one_handover_acceptance_per_assignment` guards duplicate
+   * concurrent accepts for the *same* assignment; a P2002 is only reported
+   * as idempotent success after a fresh authoritative re-check proves the
+   * same assignment is still latest, the actor is still the current
+   * responsible clinician, and an acceptance for that exact assignment
+   * exists. Never mutates a historical ClinicianAssignmentHistory row.
    */
   async acceptHandover(
     tenantId: string,
     actorId: string,
     encounterId: string,
   ): Promise<{ assignmentHistoryId: string; alreadyAccepted: boolean }> {
-    // Read-only validation snapshot (§6.3): right Doctor, IN_PROGRESS, exact
-    // latest handover (§6.2). The only write is the single acceptance
-    // AuditEvent, appended below.
-    const { assignmentHistoryId, alreadyAccepted } = await this.prisma.$transaction(
-      async (tx) => {
-        const encounter = await tx.encounter.findFirst({
-          where: { id: encounterId, tenantId },
-        });
-        if (!encounter) throw new NotFoundException('Encounter not found');
-        if (encounter.clinicalStatus !== EncounterClinicalStatus.IN_PROGRESS) {
-          throw new ConflictException(
-            'Encounter must be IN_PROGRESS to accept a handover',
-          );
-        }
-        if (encounter.responsibleClinicianId !== actorId) {
-          throw new ForbiddenException(
-            'Only the current responsible Doctor may accept the handover',
-          );
-        }
-        const latestHandover = await this.resolveLatestHandover(
-          tx,
-          tenantId,
-          encounter,
-        );
-        if (!latestHandover) {
-          throw new ConflictException('This Encounter has had no handover');
-        }
-        const existing = await tx.auditEvent.findFirst({
-          where: {
-            tenantId,
-            action: 'ENCOUNTER_HANDOVER_ACCEPTED',
-            entityType: 'ClinicianAssignmentHistory',
-            entityId: latestHandover.assignmentHistoryId,
-          },
-          select: { id: true },
-        });
-        return {
-          assignmentHistoryId: latestHandover.assignmentHistoryId,
-          alreadyAccepted: existing !== null,
-        };
-      },
-    );
-
-    if (alreadyAccepted) {
-      return { assignmentHistoryId, alreadyAccepted: true };
-    }
-
-    // DEC-021 R9 finding 3 — the read above is a fast path only. Two
-    // concurrent requests can both observe no existing acceptance; the
-    // partial unique index `audit_events_one_handover_acceptance_per_assignment`
-    // (migration 20260906000100) is the real guard — it rejects the second
-    // insert with P2002, which we treat as "already accepted" (§6.3: no
-    // duplicate event, no error to the client). The insert is done outside
-    // the read transaction so a uniqueness violation does not abort a
-    // transaction that also holds other writes (it holds none).
     try {
-      await this.audit.record({
-        tenantId,
-        actorId,
-        action: 'ENCOUNTER_HANDOVER_ACCEPTED',
-        entityType: 'ClinicianAssignmentHistory',
-        entityId: assignmentHistoryId,
-        metadata: { encounterId, clinicianId: actorId },
-      });
+      return await this.prisma.$transaction(
+        async (tx) => {
+          const encounter = await tx.encounter.findFirst({
+            where: { id: encounterId, tenantId },
+          });
+          if (!encounter) throw new NotFoundException('Encounter not found');
+          if (
+            encounter.clinicalStatus !== EncounterClinicalStatus.IN_PROGRESS
+          ) {
+            throw new ConflictException(
+              'Encounter must be IN_PROGRESS to accept a handover',
+            );
+          }
+          if (encounter.responsibleClinicianId !== actorId) {
+            throw new ForbiddenException(
+              'Only the current responsible Doctor may accept the handover',
+            );
+          }
+          const latestHandover = await this.resolveLatestHandover(
+            tx,
+            tenantId,
+            encounter,
+          );
+          if (!latestHandover) {
+            throw new ConflictException('This Encounter has had no handover');
+          }
+          const existing = await tx.auditEvent.findFirst({
+            where: {
+              tenantId,
+              action: 'ENCOUNTER_HANDOVER_ACCEPTED',
+              entityType: 'ClinicianAssignmentHistory',
+              entityId: latestHandover.assignmentHistoryId,
+            },
+            select: { id: true },
+          });
+          if (existing) {
+            return {
+              assignmentHistoryId: latestHandover.assignmentHistoryId,
+              alreadyAccepted: true,
+            };
+          }
+
+          // 1. Append the acceptance event. The partial unique index
+          //    `audit_events_one_handover_acceptance_per_assignment` makes a
+          //    concurrent duplicate for the SAME assignment fail with P2002
+          //    (only after that other tx committed) — handled in the catch
+          //    as idempotent success via a fresh authoritative re-check.
+          await this.audit.record(
+            {
+              tenantId,
+              actorId,
+              action: 'ENCOUNTER_HANDOVER_ACCEPTED',
+              entityType: 'ClinicianAssignmentHistory',
+              entityId: latestHandover.assignmentHistoryId,
+              metadata: { encounterId, clinicianId: actorId },
+            },
+            tx,
+          );
+
+          // 2. R9 residual P1 — EXPLICIT optimistic-concurrency guard (same
+          //    pattern as handover() / HemorrhoidReturnEncounterService), not
+          //    a bet on SSI alone. A no-op self-write on the Encounter row
+          //    that still requires `responsibleClinicianId === actorId`. A
+          //    concurrent NEW handover updates that same row: if it committed
+          //    first, this WHERE no longer matches (count 0) and the whole
+          //    transaction — including the acceptance event inserted in step
+          //    1 — rolls back, so a stale acceptance can never commit. If
+          //    this accept holds the row first it committed before the
+          //    handover existed (causally valid, not stale).
+          const stillCurrent = await tx.encounter.updateMany({
+            where: {
+              id: encounterId,
+              tenantId,
+              responsibleClinicianId: actorId,
+            },
+            data: { responsibleClinicianId: actorId },
+          });
+          if (stillCurrent.count !== 1) {
+            throw new ConflictException(
+              'Handover changed concurrently; reload and retry',
+            );
+          }
+
+          return {
+            assignmentHistoryId: latestHandover.assignmentHistoryId,
+            alreadyAccepted: false,
+          };
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
     } catch (err) {
-      if (
-        err instanceof Prisma.PrismaClientKnownRequestError &&
-        err.code === 'P2002'
-      ) {
-        return { assignmentHistoryId, alreadyAccepted: true };
+      // A serialization abort (P2034 / 40001, from a concurrent duplicate
+      // accept OR a concurrent new handover) or a uniqueness violation
+      // (P2002, from the partial unique index on a concurrent duplicate
+      // accept). In BOTH cases only report idempotent success if a FRESH
+      // authoritative check still holds — same assignment is still latest,
+      // actor is still the current responsible clinician, and an acceptance
+      // for that exact assignment already exists. Otherwise a newer handover
+      // superseded it -> 409. This is the only path that treats a conflict
+      // as success, and never for a stale assignment.
+      const isConflict =
+        (err instanceof Prisma.PrismaClientKnownRequestError &&
+          (err.code === 'P2002' || err.code === 'P2034')) ||
+        (err instanceof Error &&
+          (err.message.includes('40001') ||
+            err.message.includes('40P01') ||
+            err.message.includes('could not serialize access') ||
+            err.message.includes('deadlock detected')));
+      if (isConflict) {
+        const proven = await this.freshAcceptanceProven(
+          tenantId,
+          actorId,
+          encounterId,
+        );
+        if (proven) {
+          return { assignmentHistoryId: proven, alreadyAccepted: true };
+        }
+        throw new ConflictException(
+          'Handover changed concurrently; reload and retry',
+        );
       }
       throw err;
     }
-    return { assignmentHistoryId, alreadyAccepted: false };
+  }
+
+  /**
+   * Fresh authoritative re-check after a serialization/uniqueness conflict on
+   * the acceptance write. Returns the assignmentHistoryId iff, on ONE
+   * consistent SERIALIZABLE snapshot: the same assignment is still the latest
+   * handover (§6.2), `actorId` is still the current responsible clinician,
+   * and an ENCOUNTER_HANDOVER_ACCEPTED for that exact assignment already
+   * exists. Otherwise null (a newer handover superseded it -> the caller
+   * returns 409). All three reads run inside one transaction so a handover
+   * committing between them cannot produce a half-consistent answer.
+   */
+  private async freshAcceptanceProven(
+    tenantId: string,
+    actorId: string,
+    encounterId: string,
+  ): Promise<string | null> {
+    try {
+      return await this.prisma.$transaction(
+        async (tx) => {
+          const encounter = await tx.encounter.findFirst({
+            where: { id: encounterId, tenantId },
+          });
+          if (!encounter || encounter.responsibleClinicianId !== actorId) {
+            return null;
+          }
+          let latest: { assignmentHistoryId: string } | null;
+          try {
+            latest = await this.resolveLatestHandover(tx, tenantId, encounter);
+          } catch {
+            return null;
+          }
+          if (!latest) return null;
+          const accepted = await tx.auditEvent.findFirst({
+            where: {
+              tenantId,
+              action: 'ENCOUNTER_HANDOVER_ACCEPTED',
+              entityType: 'ClinicianAssignmentHistory',
+              entityId: latest.assignmentHistoryId,
+            },
+            select: { id: true },
+          });
+          return accepted ? latest.assignmentHistoryId : null;
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+    } catch {
+      // A serialization failure on the re-check itself means state is still
+      // in flux — do not claim idempotent success.
+      return null;
+    }
   }
 
   /** Full clinician-assignment provenance for an Encounter, oldest first. */

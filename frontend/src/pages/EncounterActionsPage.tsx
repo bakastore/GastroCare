@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { clinicalFormsApi, encountersApi } from '../api/resources';
 import { useApiQuery } from '../api/useApiQuery';
 import { ApiError } from '../api/client';
@@ -21,6 +21,8 @@ export function EncounterActionsPage() {
     patientId: string;
     encounterId: string;
   }>();
+  const navigate = useNavigate();
+  const v3FormHref = `/patients/${patientId}/encounters/${encounterId}/longo-forms/HEMORRHOID_TREATMENT_DECISION?version=3`;
 
   const encounterQuery = useApiQuery(
     () => encountersApi.getById(encounterId as string),
@@ -124,6 +126,21 @@ export function EncounterActionsPage() {
 
         <button
           type="button"
+          className="btn btn-ghost"
+          disabled={
+            busy !== null ||
+            status !== 'IN_PROGRESS' ||
+            !!encounter.treatmentActivationSubmissionId
+          }
+          onClick={() => navigate(v3FormHref)}
+        >
+          {activationSource
+            ? 'Sửa phiếu Quyết định điều trị v3'
+            : 'Mở phiếu Quyết định điều trị v3'}
+        </button>
+
+        <button
+          type="button"
           className="btn btn-primary"
           disabled={
             busy !== null ||
@@ -133,7 +150,7 @@ export function EncounterActionsPage() {
           }
           title={
             !activationSource
-              ? 'Cần một phiếu Quyết định điều trị v3 đã hoàn tất (ACCEPTED)'
+              ? 'Cần một phiếu Quyết định điều trị v3 đã hoàn tất (ACCEPTED + phương thức điều trị)'
               : undefined
           }
           onClick={() =>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { clinicalFormsApi, patientsApi } from '../api/resources';
 import { useApiQuery } from '../api/useApiQuery';
 import { ApiError } from '../api/client';
@@ -92,6 +92,17 @@ export function LongoClinicalFormPage() {
     encounterId: string;
     templateKey: string;
   }>();
+  // DEC-021 §3.2 — an explicit `?version=3` selects a specific, non-latest
+  // template version (used to open Treatment Decision v3 for Structured
+  // Treatment Activation). Never inferred from workflowKind. Omitted → the
+  // "latest" version for this key (Slice-2 flow stays v2).
+  const [searchParams] = useSearchParams();
+  const forcedVersionRaw = searchParams.get('version');
+  const forcedVersion =
+    forcedVersionRaw && /^[1-9][0-9]*$/.test(forcedVersionRaw)
+      ? Number(forcedVersionRaw)
+      : undefined;
+
   const patientQuery = useApiQuery(
     () => patientsApi.getById(patientId as string),
     [patientId],
@@ -101,18 +112,27 @@ export function LongoClinicalFormPage() {
   const submissionQuery = useApiQuery(async () => {
     const submissions = await clinicalFormsApi.listByPatient(patientId as string);
     const chain = submissions.filter(
-      (s) => s.encounterId === encounterId && s.templateKey === templateKey,
+      (s) =>
+        s.encounterId === encounterId &&
+        s.templateKey === templateKey &&
+        // Version-aware lookup: when an explicit version is requested, only
+        // that version's chain counts (a same-key v2 submission must not
+        // shadow the v3 flow, and vice versa).
+        (forcedVersion === undefined || s.templateVersion === forcedVersion),
     );
     if (chain.length === 0) return null;
     // Pick the latest revision (the current head of the amendment chain),
     // not just the first chain member found.
     return chain.reduce((latest, s) => (s.revisionNumber > latest.revisionNumber ? s : latest));
-  }, [patientId, encounterId, templateKey]);
+  }, [patientId, encounterId, templateKey, forcedVersion]);
 
   const templateQuery = useApiQuery(
     () =>
-      clinicalFormsApi.getTemplate(templateKey as string, submissionQuery.data?.templateVersion),
-    [templateKey, submissionQuery.data?.templateVersion],
+      clinicalFormsApi.getTemplate(
+        templateKey as string,
+        submissionQuery.data?.templateVersion ?? forcedVersion,
+      ),
+    [templateKey, submissionQuery.data?.templateVersion, forcedVersion],
   );
 
   if (templateQuery.isLoading || submissionQuery.isLoading) return <LoadingState />;
@@ -128,6 +148,7 @@ export function LongoClinicalFormPage() {
         encounterId={encounterId as string}
         patientId={patientId as string}
         patientName={patientName}
+        forcedVersion={forcedVersion}
         onCreated={submissionQuery.reload}
       />
     );
@@ -150,12 +171,14 @@ function StartForm({
   encounterId,
   patientId,
   patientName,
+  forcedVersion,
   onCreated,
 }: {
   template: ClinicalFormTemplateDef;
   encounterId: string;
   patientId: string;
   patientName?: string;
+  forcedVersion?: number;
   onCreated: () => void;
 }) {
   const navigate = useNavigate();
@@ -170,6 +193,11 @@ function StartForm({
         encounterId,
         templateKey: template.templateKey,
         responses: {},
+        // Send the explicit version so the backend creates the exact
+        // (non-latest) template the caller opened — e.g. Treatment Decision v3.
+        ...(forcedVersion !== undefined
+          ? { templateVersion: forcedVersion }
+          : {}),
       });
       onCreated();
     } catch (err) {

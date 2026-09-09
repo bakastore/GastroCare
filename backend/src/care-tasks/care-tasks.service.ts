@@ -146,6 +146,10 @@ export class CareTasksService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
+        // R9 residual P1 (Contract §13 #17 / §7.4) — SERIALIZABLE so a
+        // concurrent Episode close that reads + writes this same CareTask row
+        // forms an SSI conflict: exactly one of {this transition, that close}
+        // commits, the loser is mapped to 409. No automatic retry.
         const transition = await tx.careTask.updateMany({
           where: { id: taskId, tenantId, status: CareTaskStatus.OPEN },
           data: {
@@ -176,6 +180,8 @@ export class CareTasksService {
           tx,
         );
         return withDerivedOverdue(updated);
+      }, {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
       });
     } catch (err) {
       this.throwIfConcurrencyConflict(err);
@@ -197,6 +203,10 @@ export class CareTasksService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
+        // R9 residual P1 (Contract §13 #17 / §7.4) — SERIALIZABLE so a
+        // concurrent Episode close that reads + writes this same CareTask row
+        // forms an SSI conflict: exactly one of {this transition, that close}
+        // commits, the loser is mapped to 409. No automatic retry.
         const current = await tx.careTask.findFirst({
           where: { id: taskId, tenantId },
         });
@@ -228,6 +238,8 @@ export class CareTasksService {
           tx,
         );
         return withDerivedOverdue(updated);
+      }, {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
       });
     } catch (err) {
       this.throwIfConcurrencyConflict(err);
@@ -247,6 +259,10 @@ export class CareTasksService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
+        // R9 residual P1 (Contract §13 #17 / §7.4) — SERIALIZABLE so a
+        // concurrent Episode close that reads + writes this same CareTask row
+        // forms an SSI conflict: exactly one of {this transition, that close}
+        // commits, the loser is mapped to 409. No automatic retry.
         const transition = await tx.careTask.updateMany({
           where: { id: taskId, tenantId, status: CareTaskStatus.OPEN },
           data: {
@@ -273,6 +289,8 @@ export class CareTasksService {
           tx,
         );
         return withDerivedOverdue(updated);
+      }, {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
       });
     } catch (err) {
       this.throwIfConcurrencyConflict(err);
@@ -346,6 +364,10 @@ export class CareTasksService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
+        // R9 residual P1 (Contract §13 #17 / §7.4) — SERIALIZABLE so a
+        // concurrent Episode close that reads + writes this same CareTask row
+        // forms an SSI conflict: exactly one of {this transition, that close}
+        // commits, the loser is mapped to 409. No automatic retry.
         const lostAt = new Date();
         const transition = await tx.careTask.updateMany({
           where: { id: taskId, tenantId, status: CareTaskStatus.OPEN },
@@ -375,6 +397,8 @@ export class CareTasksService {
           tx,
         );
         return withDerivedOverdue(updated);
+      }, {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
       });
     } catch (err) {
       this.throwIfConcurrencyConflict(err);
