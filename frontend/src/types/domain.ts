@@ -26,12 +26,25 @@ export interface CreatePatientResult {
  */
 export type EncounterWorkflowKind = 'HEMORRHOID_INITIAL';
 
+/** DEC-021 NR-03 §5. NULL = legacy/unknown (never backfilled), NOT REGISTERED. */
+export type EncounterClinicalStatus =
+  | 'REGISTERED'
+  | 'IN_PROGRESS'
+  | 'COMPLETED';
+
 export interface Encounter {
   id: string;
   patientId: string;
   episodeId: string | null;
   workflowKind: EncounterWorkflowKind | null;
   treatmentPathwayId?: string | null;
+  /** DEC-021 NR-03 §5 — explicit clinical lifecycle. */
+  clinicalStatus?: EncounterClinicalStatus | null;
+  clinicalStartedAt?: string | null;
+  clinicalEndedAt?: string | null;
+  /** DEC-021 §3.3 — machine-checkable Structured Treatment Activation linkage. */
+  treatmentActivationSubmissionId?: string | null;
+  treatmentActivatedAt?: string | null;
   /**
    * The clinician clinically responsible for this Encounter — DEC-010 §A.
    * Distinct from provenance (who created the row); may change over time
@@ -111,7 +124,12 @@ export interface CarePlan {
   updatedAt: string;
 }
 
-export type CareTaskStatus = 'OPEN' | 'COMPLETED' | 'CANCELLED';
+export type CareTaskStatus =
+  | 'OPEN'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  /** DEC-021 NR-01 — terminal; set explicitly with a mandatory reason. */
+  | 'LOST_TO_FOLLOW_UP';
 
 export type FollowUpTimepoint = 'TWO_WEEK' | 'MONTH_1' | 'MONTH_3' | 'MONTH_6';
 
@@ -124,6 +142,9 @@ export interface CareTask {
   createdAt: string;
   completedAt: string | null;
   cancelledAt: string | null;
+  /** DEC-021 NR-01 — set only when status === 'LOST_TO_FOLLOW_UP'. */
+  lostToFollowUpAt?: string | null;
+  lostToFollowUpReason?: string | null;
   overdue: boolean;
   sourceEncounterId: string | null;
   timepointCode: FollowUpTimepoint | null;

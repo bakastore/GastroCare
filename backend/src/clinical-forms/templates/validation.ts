@@ -1,4 +1,5 @@
 import { validateTreatmentDecisionV2 } from './hemorrhoid-treatment-decision.v2';
+import { validateTreatmentDecisionV3 } from './hemorrhoid-treatment-decision.v3';
 import { BadRequestException } from '@nestjs/common';
 import { ClinicalFormResponses, ClinicalFormTemplate } from './types';
 
@@ -119,6 +120,11 @@ export function validateResponses(
     template.version === 2
   )
     validateTreatmentDecisionV2(responses, requireAll);
+  if (
+    template.templateKey === 'HEMORRHOID_TREATMENT_DECISION' &&
+    template.version === 3
+  )
+    validateTreatmentDecisionV3(responses, requireAll);
 
   const knownKeys = new Set(
     template.sections.flatMap((s) => s.fields.map((f) => f.key)),

@@ -61,7 +61,10 @@ export class ClinicalFormsService {
       dto.encounterId,
     );
 
-    const template = getLatestTemplate(dto.templateKey);
+    const template =
+      dto.templateVersion === undefined
+        ? getLatestTemplate(dto.templateKey)
+        : getTemplate(dto.templateKey, dto.templateVersion);
     if (!template) {
       throw new NotFoundException('Unknown clinical form template');
     }

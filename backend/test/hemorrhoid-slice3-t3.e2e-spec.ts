@@ -1,4 +1,5 @@
 import { decisionFixture } from './dec016-fixtures';
+import { activateHemorrhoidTreatment } from './dec021-activation-helper';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthRole } from '@prisma/client';
@@ -125,13 +126,11 @@ describe('Hemorrhoid Vertical Slice 3 — T3 two-branch CarePlan enforcement + c
       { diagnosisSummary: 'x' },
     );
     await completeSubmission(doctorToken, diagnosis.body.id);
-    const decision = await createSubmission(
-      doctorToken,
-      encounterId,
-      'HEMORRHOID_TREATMENT_DECISION',
-      { decisionSummary: 'x' },
-    );
-    await completeSubmission(doctorToken, decision.body.id);
+    // DEC-021 R9 finding 1 — the HEMORRHOID_TREATMENT episode is established
+    // by Structured Treatment Activation (v3 decision), not by the first
+    // Return. This also completes the HEMORRHOID_TREATMENT_DECISION the
+    // CarePlan prerequisite requires.
+    await activateHemorrhoidTreatment(app, doctorToken, encounterId);
 
     const carePlan = await request(app.getHttpServer())
       .post('/care-plans')

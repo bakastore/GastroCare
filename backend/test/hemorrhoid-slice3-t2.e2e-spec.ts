@@ -1,4 +1,5 @@
 import { decisionFixture } from './dec016-fixtures';
+import { activateHemorrhoidTreatment } from './dec021-activation-helper';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthRole, CareEpisodeStatus, CareTaskStatus } from '@prisma/client';
@@ -114,13 +115,10 @@ describe('Hemorrhoid Vertical Slice 3 — T2 atomic Return Encounter orchestrati
       { diagnosisSummary: 'x' },
     );
     await completeSubmission(doctorToken, diagnosis.body.id);
-    const decision = await createSubmission(
-      doctorToken,
-      encounterId,
-      'HEMORRHOID_TREATMENT_DECISION',
-      { decisionSummary: 'x' },
-    );
-    await completeSubmission(doctorToken, decision.body.id);
+    // DEC-021 R9 finding 1 — the HEMORRHOID_TREATMENT episode is established
+    // by Structured Treatment Activation (v3 decision), NOT by the first
+    // Return. The Initial Encounter now owns the ACTIVE episode.
+    await activateHemorrhoidTreatment(app, doctorToken, encounterId);
 
     const carePlan = await request(app.getHttpServer())
       .post('/care-plans')
@@ -204,30 +202,31 @@ describe('Hemorrhoid Vertical Slice 3 — T2 atomic Return Encounter orchestrati
     await app.close();
   });
 
-  it('DEC-020: the first Return Encounter creates exactly one ACTIVE HEMORRHOID_TREATMENT episode (Initial stays ungrouped), completes the CareTask, and records audit events', async () => {
+  it('DEC-021: the first Return Encounter REUSES the ACTIVE episode established by Structured Treatment Activation (never creates one), completes the CareTask, and records audit events', async () => {
     const careTaskId = await readyOpenFollowUpTask(patientId);
+    // readyOpenFollowUpTask now activates treatment, so exactly one ACTIVE
+    // HEMORRHOID_TREATMENT episode already exists, owned by the Initial
+    // Encounter (DEC-021 §5.6 Scenario B / D20-02 supersession).
+    const preExisting = await prisma.careEpisode.findFirstOrThrow({
+      where: { tenantId, patientId, episodeType: 'HEMORRHOID_TREATMENT' },
+    });
+    expect(preExisting.status).toBe(CareEpisodeStatus.ACTIVE);
 
     const res = await createReturn(doctorToken, careTaskId);
     expect(res.status).toBe(201);
     const encounter = res.body;
     expect(encounter.patientId).toBe(patientId);
-    expect(encounter.episodeId).toBeTruthy();
+    // DEC-021 R9 finding 1 — the Return reuses the pre-existing ACTIVE
+    // episode; it does not create a new one, and startedAt is unchanged.
+    expect(encounter.episodeId).toBe(preExisting.id);
 
     const episode = await prisma.careEpisode.findUniqueOrThrow({
       where: { id: encounter.episodeId },
     });
-    expect(episode.episodeType).toBe('HEMORRHOID_TREATMENT');
     expect(episode.status).toBe(CareEpisodeStatus.ACTIVE);
-    // DEC-020 D20-02: the episode begins at this Return; its startedAt is the
-    // Return's occurredAt, and the Initial Encounter is never in it.
     expect(episode.startedAt.toISOString()).toBe(
-      new Date(encounter.occurredAt).toISOString(),
+      preExisting.startedAt.toISOString(),
     );
-    expect(
-      await prisma.encounter.count({
-        where: { episodeId: episode.id, workflowKind: 'HEMORRHOID_INITIAL' },
-      }),
-    ).toBe(0);
     expect(
       await prisma.careEpisode.count({
         where: { patientId, episodeType: 'HEMORRHOID_TREATMENT' },
@@ -245,20 +244,14 @@ describe('Hemorrhoid Vertical Slice 3 — T2 atomic Return Encounter orchestrati
     });
     expect(history).toBeTruthy();
 
+    // The Return endpoint no longer emits CARE_EPISODE_STARTED (no episode
+    // create/reopen). It only records the Return Encounter + task completion.
     const events = await prisma.auditEvent.findMany({
-      where: { tenantId, entityId: { in: [episode.id, encounter.id, task.id] } },
+      where: { tenantId, entityId: { in: [encounter.id, task.id] } },
     });
     const actions = events.map((e) => e.action).sort();
-    // CARE_TASK_CREATED for this same task.id was already recorded when the
-    // CarePlan was signed in readyOpenFollowUpTask() — this endpoint only
-    // adds the three Return-orchestration events below.
     expect(actions).toEqual(
-      [
-        'CARE_EPISODE_STARTED',
-        'CARE_TASK_COMPLETED',
-        'CARE_TASK_CREATED',
-        'ENCOUNTER_CREATED',
-      ].sort(),
+      ['CARE_TASK_COMPLETED', 'CARE_TASK_CREATED', 'ENCOUNTER_CREATED'].sort(),
     );
   });
 

@@ -1,6 +1,16 @@
 # GastroCare — Roadmap và Acceptance Gates
 
 **Cập nhật:** 06/09/2026 — **DEC-021 — HEMORRHOID CLINICAL WORKFLOW SELECTIVE REBASELINE: OWNER LOCKED v0.3** + **DEC-021 Package R Implementation Contract v0.5 FINAL: OWNER LOCKED**. Canonical: [`DEC-021_HEMORRHOID_CLINICAL_WORKFLOW_SELECTIVE_REBASELINE.md`](DEC-021_HEMORRHOID_CLINICAL_WORKFLOW_SELECTIVE_REBASELINE.md), [`DEC-021_PACKAGE_R_SELECTIVE_REBASELINE_IMPLEMENTATION_CONTRACT.md`](DEC-021_PACKAGE_R_SELECTIVE_REBASELINE_IMPLEMENTATION_CONTRACT.md). DEC-021 selectively rebaselines `D20-02` (SUPERSEDE) and `D20-03` (PARTIAL SUPERSEDE + CLARIFY) plus clarifications and 7 new requirements. **Package R** (DEC-021 Selective Rebaseline Core Correction) is the current next execution package, ahead of Package B; **Package R application implementation (R0→R10) = NOT AUTHORIZED** (governance landing only). Package A remains OWNER CLOSED except the DEC-021 scoped reopen/direct impacts (D20-02 / D20-03). Package B old Contract = historical authority, **HOLD / T0 NOT OPEN** until Package R closes and the Package B Contract is reconciled. NURSE discovery/worklist API + UI = DEFERRED outside Package R. Updated dependency: `Package A OWNER CLOSED → Package R governance / implementation / closure → Package B Contract reconciliation → Package B T0 → Package B implementation / closure → Package C future`. `R_GOV_SHA` / `PACKAGE_R_BASE_SHA` = NOT YET ASSIGNED — assigned only after Owner merges the Package R governance PR and verifies local main == origin/main. Current gate = **DEC-021 Package R governance landing**; next gate = Owner opens compare URL → creates PR → manual GitHub diff review → Owner merge → record `R_GOV_SHA` / `PACKAGE_R_BASE_SHA` → separate Owner authorization for Package R implementation. No tests rerun, no Codex audit, no implementation started for this governance landing.
+**→ SUPERSEDED by [[DEC-022]] (2026-09-15, see docs/DECISION_LOG.md):** this
+2026-09-06 governance-landing paragraph predates Package R implementation
+authorization. Since then, R0→R9 were EXECUTED and R9 = **PASS — CLOSED**,
+independently verified by Codex and Claude Chat; `R_GOV_SHA` /
+`PACKAGE_R_BASE_SHA` = `66bf91664afaf3a8a0f6952dc93d511b6b7a68c6` (assigned,
+per docs/PROJECT_STATE.md §7). R10 Owner Synthetic Acceptance = **DEFERRED BY
+OWNER (not waived)** — this is a different state from "not authorized";
+condition: pending Package B/C completion + UI/UX rebuild. `DEC-020 Package B
+(reconciled under DEC-021/DEC-022)` = **UNBLOCKED** — no longer gated on
+Package R closure. Current live status: docs/PROJECT_STATE.md §7.
 
 **Prior (31/08/2026):** **DEC-019 Staff Profile & Credential Management v1: OWNER CLOSED** (Owner-directed governance closure 2026-08-31). Contract v0.1 remains OWNER LOCKED as historical authority; T0→T6 implementation preserved in working tree; T7 (Fresh Codex independent audit) = WAIVED BY OWNER — NOT EXECUTED; T8 (Owner Synthetic Acceptance) = WAIVED BY OWNER — NOT EXECUTED; no PASS / acceptance claim. Last closed work package = DEC-020 Package A. **DEC-020 — Hemorrhoid Clinical Workflow Reconciliation & Functional Clinical UX: OWNER LOCKED (2026-08-31)** at locked reference baseline `a2059ff6ea2796eee0a798d754b95e70221d2504`; external pre-lock review COMPLETED; documented baseline-review limitation EXPLICITLY ACCEPTED BY OWNER. **DEC-020 Package A — Workflow Semantic Reconciliation: OWNER CLOSED (2026-08-31).** Execution-START baseline `a03b1878dd42ca80956418c67da6f79d0b560572` (kept distinct, NOT `A_CLOSED_SHA`). Package A OWNER-CLOSED implementation checkpoint: **`A_CLOSED_SHA` = `0c865a26c4425a1c3fe429bb8e42238562025801`** (commit `0c865a2` `feat: checkpoint DEC-020 Package A owner-closed`) — implementation + T10/T11 corrections + closure governance are **COMMITTED**. `T0 → T9` COMPLETE; `T10` ChatGPT direct source review = PASS; `T11` initial fresh Codex independent audit = FAIL — CORRECTION REQUIRED (P0=0/P1=1/P2=2/P3=0) → correction batch COMPLETED → focused source recheck PASS → `T11` focused independent re-audit = PASS — NO P0/P1 (final P0=0/P1=0/P2=1/P3=0). Residual P2 (Unicode reason-length parity) = NON-BLOCKING, DEFERRED. Owner closure ≠ Product/production acceptance. Package B v0.2 = OWNER LOCKED; external pre-lock review COMPLETED — PASS; material blockers NONE; Package A prerequisite SATISFIED; T0→T12 OWNER AUTHORIZED, implementation NOT YET STARTED. Current gate = B-GOV only, awaiting governance diff review / separately authorized clean checkpoint; `B_GOV_SHA` NOT YET ASSIGNED. Package C = NOT ACTIVE / DISCOVERY-DEPENDENT / NOT IMPLEMENTATION-AUTHORIZED; C0 NOT OPENED. Next gate = ChatGPT direct review of corrected B-GOV diff → Owner decision → Owner separately authorizes one governance-only commit/push → actual resulting commit SHA becomes `B_GOV_SHA` → working tree/branch verified clean → Package B T0. Baseline = DEC-018 remote checkpoint `7d33e02`; durable pre-Package-A baseline `a2059ff6...`. Prior: **DEC-018 Admin Boundary / User Management v1 acceptance gate CLOSED — OWNER ACCEPTED** (T0→T8; T7 independent audit completed with 1 MEDIUM finding remediated + Owner-accepted; T8 Owner Synthetic Acceptance PASS incl. T8.9 Last Clinic Admin protection); DEC-017 SSOT reconciliation; DEC-016 independent audit gate CLOSED — PASS.
 
@@ -30,10 +40,10 @@ FOUNDATION
 | Longo Clinical Workflow v1.0 | OWNER LOCKED |
 | Real-world Clinical Core implementation | IN PROGRESS — Hemorrhoid Vertical Slice 1 TECHNICALLY ACCEPTED; Vertical Slice 2 technical execution complete (historical); Vertical Slice 3 technical execution complete và đã MERGED vào `main`; **DEC-020 Package A — Workflow Semantic Reconciliation = OWNER CLOSED (2026-08-31)**, committed at `A_CLOSED_SHA` `0c865a26c4425a1c3fe429bb8e42238562025801` (execution-START baseline `a03b1878…` kept distinct) |
 | DEC-021 v0.3 | OWNER LOCKED (2026-09-06) — Hemorrhoid Clinical Workflow Selective Rebaseline; `D20-02` SUPERSEDE, `D20-03` PARTIAL SUPERSEDE + CLARIFY; 7 new requirements with NOW/DEFERRED disposition. DEC-020 remains historical authority for all PRESERVE parts |
-| DEC-021 Package R Contract v0.5 FINAL | OWNER LOCKED (2026-09-06) — Selective Rebaseline Core Correction (D20-02, D20-03, NR-01, NR-03, NR-04, NR-07 + minimal Treatment Decision v3). Application implementation **R0→R10 = NOT AUTHORIZED**. Mandatory fresh Codex focused audit on implementation. NURSE discovery/worklist API + UI = DEFERRED outside Package R. `R_GOV_SHA` / `PACKAGE_R_BASE_SHA` NOT YET ASSIGNED |
+| DEC-021 Package R Contract v0.5 FINAL | OWNER LOCKED (2026-09-06) — Selective Rebaseline Core Correction (D20-02, D20-03, NR-01, NR-03, NR-04, NR-07 + minimal Treatment Decision v3). Application implementation **R0→R10 = NOT AUTHORIZED**. Mandatory fresh Codex focused audit on implementation. NURSE discovery/worklist API + UI = DEFERRED outside Package R. `R_GOV_SHA` / `PACKAGE_R_BASE_SHA` NOT YET ASSIGNED. **→ SUPERSEDED BY [[DEC-022]] (2026-09-15, see docs/DECISION_LOG.md): R0→R9 have since been EXECUTED and R9 = PASS — CLOSED, independently verified by Codex and Claude Chat (R9 correction checkpoint `89438706e9411646e7f58530b824eb6b3d6b2adb`, per docs/PROJECT_STATE.md §7). `R_GOV_SHA` / `PACKAGE_R_BASE_SHA` were subsequently assigned = `66bf91664afaf3a8a0f6952dc93d511b6b7a68c6` (per docs/PROJECT_STATE.md §7) — this row's "NOT YET ASSIGNED" is a preserved historical placeholder, not backfilled here to avoid rewriting the dated record. R10 Owner Synthetic Acceptance = DEFERRED BY OWNER (not waived) — distinct from "not authorized"; condition: pending Package B/C completion + UI/UX rebuild. `DEC-020 Package B (reconciled under DEC-021/DEC-022)` = UNBLOCKED.** |
 | DEC-020 v0.2 | OWNER LOCKED (2026-08-31) — Hemorrhoid Clinical Workflow Reconciliation & Functional Clinical UX; D20-01…D20-13 + selective supersession map AUTHORITATIVE, except `D20-02` / `D20-03` selectively rebaselined by DEC-021 (2026-09-06) |
 | DEC-020 Package A Contract v0.2 | OWNER LOCKED (2026-08-31); clinical/domain + implementation semantics unchanged. **Package A: OWNER CLOSED (2026-08-31), committed at `A_CLOSED_SHA` `0c865a26c4425a1c3fe429bb8e42238562025801`.** `T0 → T9` COMPLETE; `T10` PASS; `T11` initial FAIL — CORRECTION REQUIRED (P0=0/P1=1/P2=2/P3=0) → corrected → focused source recheck PASS → `T11` focused independent re-audit PASS — NO P0/P1 (final P0=0/P1=0/P2=1/P3=0); residual P2 (Unicode reason-length parity) NON-BLOCKING/DEFERRED; implementation COMMITTED; no schema/migration change; SYNTHETIC DATA ONLY. Owner closure ≠ Product/production acceptance |
-| DEC-020 Package B | **v0.2 OWNER LOCKED** (2026-08-31); old Contract retained as **HISTORICAL AUTHORITY**. **HOLD / T0 NOT OPEN** until Package R closes and the Package B Contract is reconciled (must consume Treatment Decision v3, Encounter explicit lifecycle, new Episode linkage, `LOST_TO_FOLLOW_UP`, D20-03 terminal semantics; NR-06 lightweight surgery-team note lands in Package B reconciled scope). External pre-lock review historically valid; `B_GOV_SHA` NOT YET ASSIGNED; implementation NOT YET STARTED |
+| DEC-020 Package B | **v0.2 OWNER LOCKED** (2026-08-31); old Contract retained as **HISTORICAL AUTHORITY**. **UNBLOCKED as of [[DEC-022]] (2026-09-15, docs/DECISION_LOG.md)** — Package R core (R9) PASS — CLOSED (independently verified by Codex and Claude Chat) is sufficient; no longer gated on Package R Owner Closure / R10 (R10 = DEFERRED BY OWNER). Proceed to Package B Contract reconciliation → T0 (must consume Treatment Decision v3, Encounter explicit lifecycle, new Episode linkage, `LOST_TO_FOLLOW_UP`, D20-03 terminal semantics; NR-06 lightweight surgery-team note lands in Package B reconciled scope). External pre-lock review historically valid; `B_GOV_SHA` NOT YET ASSIGNED; implementation NOT YET STARTED |
 | DEC-020 Package C | NOT ACTIVE implementation — DISCOVERY-DEPENDENT, NOT AUTHORIZED; now sequenced after Package R + Package B closure |
 | Hemorrhoid Vertical Slice 1 | CLOSED — TECHNICAL ACCEPTANCE at `2ea529ee200a0a37a77cebb9a750f70adde57618` (historical) |
 | Hemorrhoid Vertical Slice 2 | TECHNICAL EXECUTION COMPLETE (historical completed work package) — DEC-012 + Contract v0.1 OWNER LOCKED; Owner product acceptance NOT CLAIMED |
@@ -320,6 +330,13 @@ GitHub diff review → Owner merge → record `R_GOV_SHA` / `PACKAGE_R_BASE_SHA`
 Package B Contract reconciliation → Package B T0 → Package B T1→T12 → ChatGPT
 direct source review → Owner + BS Thái browser/workflow acceptance → Owner
 Package B closure decision → separately authorized clean `B_CLOSED_SHA`.
+**[SUPERSEDED BY [[DEC-022]] (2026-09-15, see docs/DECISION_LOG.md): Package B
+= UNBLOCKED — Package R core (R9) PASS — CLOSED (independently verified by
+Codex and Claude Chat) is sufficient; the sequence no longer waits on "Package
+R closure" as its first step; proceed directly to Package B Contract
+reconciliation → T0. R10 Owner Synthetic Acceptance is DEFERRED BY OWNER, not
+a precondition. This line is preserved as its original record and is not
+rewritten. Current live status: see PROJECT_STATE.md §7.]**
 
 Codex focused independent audit is **NOT a default Package B gate**. It becomes
 relevant only if Package B unexpectedly introduces Prisma/schema migration,
@@ -365,6 +382,14 @@ disposition.
 - **Application implementation `R0 → R10` = NOT AUTHORIZED.** No implementation
   begins until: Contract Owner Locked (done) → exact write set approved →
   execution baseline verified clean → Owner explicitly authorizes implementation.
+  **[SUPERSEDED IN PART BY [[DEC-022]] (2026-09-15, see docs/DECISION_LOG.md):
+  implementation authorization was subsequently granted and `R0→R9` were
+  EXECUTED; R9 = PASS — CLOSED, independently verified by Codex and Claude
+  Chat. `R10` is a separate, distinct status: **DEFERRED BY OWNER (not
+  waived)** — not "not authorized" — condition: pending Package B/C
+  completion + UI/UX rebuild. This bullet is preserved as the 2026-09-06
+  governance-landing record and is not rewritten. Current live status: see
+  docs/PROJECT_STATE.md §7.]**
 - Mandatory fresh Codex focused audit on Package R implementation (migration
   safety, partial unique index, D20-02 activation/domain linkage, single-active
   invariant, transaction isolation, idempotency, Close ↔ Initial activation,
@@ -380,6 +405,13 @@ disposition.
   reopens for the affected delta.
 - Package B old Contract stays HISTORICAL AUTHORITY, **HOLD / T0 NOT OPEN**;
   reconciled only after Package R closes.
+  **[SUPERSEDED BY [[DEC-022]] (2026-09-15, see docs/DECISION_LOG.md): Package B
+  = UNBLOCKED — Package R core (R9) PASS — CLOSED (independently verified by
+  Codex and Claude Chat) is sufficient; Package B Contract reconciliation → T0
+  no longer waits on Package R Owner Closure / R10. R10 Owner Synthetic
+  Acceptance is DEFERRED BY OWNER, not a precondition. This line is preserved
+  as the 2026-09-06 governance-landing record and is not rewritten. Current
+  live status: see PROJECT_STATE.md §7.]**
 
 **Baseline naming (pre-merge):** `R_GOV_SHA` and `PACKAGE_R_BASE_SHA` =
 **NOT YET ASSIGNED — assign only after Owner merges the Package R governance PR
@@ -393,6 +425,15 @@ origin/main → record `R_GOV_SHA` / `PACKAGE_R_BASE_SHA` → separate Owner
 authorization of Package R implementation (NOT granted) → R0→R10 → ChatGPT direct
 source review → mandatory fresh Codex focused audit → Owner Package R synthetic
 acceptance / closure.
+**[SUPERSEDED IN PART BY [[DEC-022]] (2026-09-15, see docs/DECISION_LOG.md):**
+implementation authorization was subsequently granted; the sequence through
+`R0→R9` + ChatGPT direct review + mandatory fresh Codex focused audit has
+COMPLETED, with R9 = **PASS — CLOSED**, independently verified by Codex and
+Claude Chat. Only the final step — "Owner Package R synthetic acceptance /
+closure" (= R10) — remains outstanding, and its status is **DEFERRED BY OWNER
+(not waived)**, distinct from "NOT granted" in the sentence above. This
+paragraph is preserved as the 2026-09-06 governance-landing record. Current
+live status: see docs/PROJECT_STATE.md §7.]
 
 `SYNTHETIC DATA ONLY`; real-patient runtime/data, production and AI clinical
 reasoning remain NOT AUTHORIZED. This governance landing reruns no tests, runs no

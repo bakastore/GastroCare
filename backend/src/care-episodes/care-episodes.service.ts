@@ -7,6 +7,7 @@ import {
 import {
   CareEpisode,
   CareEpisodeStatus,
+  CareTaskStatus,
   ClinicalFormStatus,
   Prisma,
 } from '@prisma/client';
@@ -160,6 +161,49 @@ export class CareEpisodesService {
           const episode = await tx.careEpisode.findUniqueOrThrow({
             where: { id },
           });
+
+          // DEC-021 D20-03 §7 — after the Doctor confirms Episode close, every
+          // authoritatively Episode-linked OPEN CareTask is deterministically
+          // CANCELLED with reason EPISODE_CLOSED. Machine-checkable linkage
+          // only (§7.2): generic CarePlan task via
+          // carePlan.encounter.episodeId, or Longo/source task via
+          // sourceEncounter.episodeId. COMPLETED / already-CANCELLED /
+          // LOST_TO_FOLLOW_UP / unlinked tasks are never touched (§7.1). No
+          // hard-delete.
+          const linkedOpenTasks = await tx.careTask.findMany({
+            where: {
+              tenantId,
+              status: CareTaskStatus.OPEN,
+              OR: [
+                { carePlan: { encounter: { episodeId: id } } },
+                { sourceEncounter: { episodeId: id } },
+              ],
+            },
+            select: { id: true },
+          });
+          const linkedIds = linkedOpenTasks.map((t) => t.id);
+          const cancelledAt = new Date();
+          if (linkedIds.length > 0) {
+            const disposed = await tx.careTask.updateMany({
+              where: {
+                id: { in: linkedIds },
+                tenantId,
+                status: CareTaskStatus.OPEN,
+              },
+              data: {
+                status: CareTaskStatus.CANCELLED,
+                cancelledAt,
+              },
+            });
+            if (disposed.count !== linkedIds.length) {
+              // A concurrent complete/reschedule/cancel changed one of these
+              // rows — this close is the loser (§7.4). No auto-retry.
+              throw new ConflictException(
+                'A linked CareTask changed concurrently during Episode close; reload and retry',
+              );
+            }
+          }
+
           await tx.auditEvent.create({
             data: {
               tenantId,
@@ -173,9 +217,31 @@ export class CareEpisodesService {
                 status: episode.status,
                 endedAt: endedAt.toISOString(),
                 followUpAssessmentPresent,
+                disposedTaskCount: linkedIds.length,
               },
             },
           });
+
+          // One disposition AuditEvent per changed task (§7 step 7): reason,
+          // actor, timestamp via AuditEvent.
+          for (const taskId of linkedIds) {
+            await tx.auditEvent.create({
+              data: {
+                tenantId,
+                actorId,
+                action: 'CARE_TASK_DISPOSED_ON_EPISODE_CLOSE',
+                entityType: 'CareTask',
+                entityId: taskId,
+                metadata: {
+                  reason: 'EPISODE_CLOSED',
+                  episodeId: id,
+                  previousStatus: CareTaskStatus.OPEN,
+                  status: CareTaskStatus.CANCELLED,
+                  cancelledAt: cancelledAt.toISOString(),
+                },
+              },
+            });
+          }
 
           return episode;
         },

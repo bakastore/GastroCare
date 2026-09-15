@@ -431,23 +431,34 @@ describe('DEC-016 Case/Pathway/Investigation synthetic acceptance', () => {
       task = await plan(r.body.id);
     }
     await post(`/care-episodes/${c.caseId}/close`, {}).expect(201);
+    // DEC-021 D20-03 §7 — the linked OPEN follow-up task off the last Return
+    // Encounter is now deterministically CANCELLED on Episode close.
+    expect(
+      (await prisma.careTask.findUniqueOrThrow({ where: { id: task.id } }))
+        .status,
+    ).toBe('CANCELLED');
     await post('/encounters/hemorrhoid-return', {
       careTaskId: task.id,
       occurredAt: at,
       reasonForVisit: 'synthetic return',
     }).expect(409);
     expect(
-      (await prisma.careTask.findUniqueOrThrow({ where: { id: task.id } }))
-        .status,
-    ).toBe('OPEN');
-    expect(
       await prisma.careEpisode.count({ where: { patientId: c.patientId } }),
     ).toBe(1);
     await post(`/care-episodes/${c.caseId}/reopen`, {
       reason: 'synthetic reopen',
     }).expect(201);
+    // A fresh ungrouped Initial follow-up task (same patient) drives the
+    // post-reopen Return.
+    const freshInitial = await post('/encounters', {
+      patientId: c.patientId,
+      occurredAt: at,
+      reasonForVisit: 'synthetic',
+      workflowKind: 'HEMORRHOID_INITIAL',
+    }).expect(201);
+    const freshTask = await initialTask({ encounterId: freshInitial.body.id });
     await post('/encounters/hemorrhoid-return', {
-      careTaskId: task.id,
+      careTaskId: freshTask.id,
       occurredAt: at,
       reasonForVisit: 'synthetic return',
     }).expect(201);

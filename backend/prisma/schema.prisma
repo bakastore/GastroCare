@@ -47,21 +47,22 @@ model Tenant {
   carePlans                  CarePlan[]
   carePlanVersions           CarePlanVersion[]
   careTasks                  CareTask[]
+  careTaskContactAttempts    CareTaskContactAttempt[]
   auditEvents                AuditEvent[]
   clinicalFormSubmissions    ClinicalFormSubmission[]
   facilities                 Facility[]
   rooms                      Room[]
   clinicianAssignmentHistory ClinicianAssignmentHistory[]
 
-  treatmentPathways TreatmentPathway[]
-  investigations Investigation[]
-  investigationOrders InvestigationOrder[]
+  treatmentPathways    TreatmentPathway[]
+  investigations       Investigation[]
+  investigationOrders  InvestigationOrder[]
   investigationResults InvestigationResult[]
 
   // DEC-019 — Staff Profile & Credential Management v1.
-  staffProfiles StaffProfile[]
-  staffCredentials StaffCredential[]
-  employmentHistory EmploymentHistory[]
+  staffProfiles            StaffProfile[]
+  staffCredentials         StaffCredential[]
+  employmentHistory        EmploymentHistory[]
   staffFacilityAssignments StaffFacilityAssignment[]
 
   @@map("tenants")
@@ -165,14 +166,13 @@ model Patient {
   carePlans               CarePlan[]
   careTasks               CareTask[]
   clinicalFormSubmissions ClinicalFormSubmission[]
+  treatmentPathways       TreatmentPathway[]
+  investigations          Investigation[]
 
+  @@unique([id, tenantId])
   @@index([tenantId])
   @@index([tenantId, normalizedFullName])
   @@index([tenantId, normalizedPhone])
-  treatmentPathways TreatmentPathway[]
-  investigations Investigation[]
-
-  @@unique([id, tenantId])
   @@map("patients")
 }
 
@@ -186,6 +186,19 @@ model Patient {
 /// task existence / frontend state. Existing rows remain NULL (no backfill).
 enum EncounterWorkflowKind {
   HEMORRHOID_INITIAL
+}
+
+/// DEC-021 NR-03 — explicit clinical lifecycle for an Encounter. Nullable on
+/// the model: historical rows stay NULL (legacy/unknown, NOT REGISTERED) — no
+/// backfill. New Encounter Contexts are created as REGISTERED by application
+/// code. `POST /encounters/:id/start` moves REGISTERED -> IN_PROGRESS and
+/// `POST /encounters/:id/end` moves IN_PROGRESS -> COMPLETED, both DOCTOR-only
+/// and audited. This is distinct from `occurredAt` (encounter occurrence/timing)
+/// which is NOT redefined as the clinical start time.
+enum EncounterClinicalStatus {
+  REGISTERED
+  IN_PROGRESS
+  COMPLETED
 }
 
 /// Encounter — one manual clinical visit. ClinicalNote in CORE-01 is content
@@ -239,20 +252,40 @@ model Encounter {
   occurredAt     DateTime
   createdAt      DateTime               @default(now())
 
+  /// DEC-021 NR-03 — explicit clinical lifecycle. NULL for historical rows
+  /// (no backfill); set to REGISTERED by application code at creation for
+  /// new Encounters. See EncounterClinicalStatus.
+  clinicalStatus    EncounterClinicalStatus?
+  clinicalStartedAt DateTime?
+  clinicalEndedAt   DateTime?
+
+  /// DEC-021 §3.3 — machine-checkable Structured Treatment Activation linkage.
+  /// Points at the exact completed HEMORRHOID_TREATMENT_DECISION v3
+  /// ClinicalFormSubmission that activated the treatment episode for this
+  /// Encounter. @unique: one submission can activate at most one Encounter.
+  treatmentActivationSubmissionId String?                 @unique
+  treatmentActivatedAt            DateTime?
+  // onDelete: SetNull — a ClinicalFormSubmission is append-only and has no
+  // delete route in the application boundary, so in production this pointer
+  // is never actually nulled; SetNull only keeps disposable-test-DB teardown
+  // tractable given the (submission -> encounter) and (encounter -> submission)
+  // FK pair. Activation history itself lives in the HEMORRHOID_TREATMENT_
+  // ACTIVATED AuditEvent, which is never deleted.
+  treatmentActivationSubmission   ClinicalFormSubmission? @relation("EncounterTreatmentActivation", fields: [treatmentActivationSubmissionId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
   carePlan                   CarePlan?
   clinicalFormSubmissions    ClinicalFormSubmission[]
   sourceForFollowUpTasks     CareTask[]                   @relation("CareTaskSourceEncounter")
   completedForFollowUpTasks  CareTask[]                   @relation("CareTaskCompletedByEncounter")
   clinicianAssignmentHistory ClinicianAssignmentHistory[]
+  treatmentPathwayId         String?
+  treatmentPathway           TreatmentPathway?            @relation(fields: [treatmentPathwayId, tenantId, episodeId, patientId], references: [id, tenantId, caseId, patientId], onDelete: Restrict, onUpdate: Restrict)
 
   @@index([tenantId])
   @@index([tenantId, patientId])
   @@index([tenantId, episodeId])
   @@index([tenantId, roomId])
   @@index([tenantId, responsibleClinicianId])
-  treatmentPathwayId String?
-  treatmentPathway TreatmentPathway? @relation(fields: [treatmentPathwayId, tenantId, episodeId, patientId], references: [id, tenantId, caseId, patientId], onDelete: Restrict, onUpdate: Restrict)
-
   @@index([tenantId, treatmentPathwayId])
   @@map("encounters")
 }
@@ -345,15 +378,14 @@ model CareEpisode {
   endedAt     DateTime?
   createdAt   DateTime          @default(now())
 
-  encounters Encounter[]
-
-  @@index([tenantId])
-  @@index([tenantId, patientId])
-  treatmentPathways TreatmentPathway[] @relation("CasePathways")
-  legacyTreatmentPathway TreatmentPathway? @relation("LegacyEpisode")
-  investigations Investigation[]
+  encounters             Encounter[]
+  treatmentPathways      TreatmentPathway[] @relation("CasePathways")
+  legacyTreatmentPathway TreatmentPathway?  @relation("LegacyEpisode")
+  investigations         Investigation[]
 
   @@unique([id, tenantId, patientId])
+  @@index([tenantId])
+  @@index([tenantId, patientId])
   @@map("care_episodes")
 }
 
@@ -461,6 +493,12 @@ model CareTask {
   completedByEncounter   Encounter? @relation("CareTaskCompletedByEncounter", fields: [completedByEncounterId], references: [id])
   scheduleReviewRequired Boolean    @default(false)
 
+  /// DEC-021 NR-01 — Lost to Follow-up. Both NULL unless status ==
+  /// LOST_TO_FOLLOW_UP. Reason is mandatory + trimmed at the endpoint.
+  lostToFollowUpAt     DateTime?
+  lostToFollowUpReason String?
+  contactAttempts      CareTaskContactAttempt[]
+
   @@unique([sourceEncounterId, timepointCode])
   @@index([tenantId])
   @@index([tenantId, status, dueDate])
@@ -472,6 +510,30 @@ enum CareTaskStatus {
   OPEN
   COMPLETED
   CANCELLED
+  /// DEC-021 NR-01 — terminal state set by an authorized DOCTOR or NURSE via
+  /// `POST /care-tasks/:id/lost-to-follow-up` with a mandatory reason. Never
+  /// auto-assigned (overdue alone never triggers it). Terminal for Package R:
+  /// a later Episode close does NOT auto-cancel a LOST_TO_FOLLOW_UP task.
+  LOST_TO_FOLLOW_UP
+}
+
+/// DEC-021 NR-01 — append-only record of an attempt to contact a patient for
+/// a follow-up CareTask. No contact-channel taxonomy in v1: free-text `note`
+/// only. Rows are never updated or deleted.
+model CareTaskContactAttempt {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  careTaskId  String
+  careTask    CareTask @relation(fields: [careTaskId], references: [id])
+  actorId     String
+  attemptedAt DateTime @default(now())
+  note        String?
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, careTaskId])
+  @@map("care_task_contact_attempts")
 }
 
 /// AuditEvent — append-only Core audit mechanism. Application boundary never
@@ -555,6 +617,11 @@ model ClinicalFormSubmission {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /// DEC-021 §3.3 — set when this submission is the machine-checkable source
+  /// of a Structured Treatment Activation for an Encounter (inverse of
+  /// Encounter.treatmentActivationSubmissionId).
+  activatedEncounter Encounter? @relation("EncounterTreatmentActivation")
+
   @@unique([logicalGroupId, revisionNumber])
   @@index([tenantId])
   @@index([tenantId, patientId])
@@ -576,22 +643,22 @@ enum InvestigationOrigin {
 }
 
 model TreatmentPathway {
-  id String @id @default(uuid())
-  tenantId String
-  tenant Tenant @relation(fields: [tenantId], references: [id])
-  caseId String
-  patientId String
-  patient Patient @relation(fields: [patientId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
-  careCase CareEpisode @relation("CasePathways", fields: [caseId, tenantId, patientId], references: [id, tenantId, patientId], onDelete: Restrict, onUpdate: Restrict)
-  modality TreatmentModality
-  methodCode String?
-  startedAt DateTime
-  endedAt DateTime?
-  createdAt DateTime @default(now())
+  id              String            @id @default(uuid())
+  tenantId        String
+  tenant          Tenant            @relation(fields: [tenantId], references: [id])
+  caseId          String
+  patientId       String
+  patient         Patient           @relation(fields: [patientId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+  careCase        CareEpisode       @relation("CasePathways", fields: [caseId, tenantId, patientId], references: [id, tenantId, patientId], onDelete: Restrict, onUpdate: Restrict)
+  modality        TreatmentModality
+  methodCode      String?
+  startedAt       DateTime
+  endedAt         DateTime?
+  createdAt       DateTime          @default(now())
   createdByUserId String
-  legacyEpisodeId String? @unique
-  legacyEpisode CareEpisode? @relation("LegacyEpisode", fields: [legacyEpisodeId], references: [id], onDelete: Restrict)
-  encounters Encounter[]
+  legacyEpisodeId String?           @unique
+  legacyEpisode   CareEpisode?      @relation("LegacyEpisode", fields: [legacyEpisodeId], references: [id], onDelete: Restrict)
+  encounters      Encounter[]
 
   @@unique([id, tenantId, caseId, patientId])
   @@index([tenantId, caseId])
@@ -599,22 +666,22 @@ model TreatmentPathway {
 }
 
 model Investigation {
-  id String @id @default(uuid())
-  tenantId String
-  tenant Tenant @relation(fields: [tenantId], references: [id])
-  caseId String
-  patientId String
-  patient Patient @relation(fields: [patientId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
-  careCase CareEpisode @relation(fields: [caseId, tenantId, patientId], references: [id, tenantId, patientId], onDelete: Restrict, onUpdate: Restrict)
-  origin InvestigationOrigin
-  label String
+  id                    String                @id @default(uuid())
+  tenantId              String
+  tenant                Tenant                @relation(fields: [tenantId], references: [id])
+  caseId                String
+  patientId             String
+  patient               Patient               @relation(fields: [patientId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+  careCase              CareEpisode           @relation(fields: [caseId, tenantId, patientId], references: [id, tenantId, patientId], onDelete: Restrict, onUpdate: Restrict)
+  origin                InvestigationOrigin
+  label                 String
   parentInvestigationId String?
-  parent Investigation? @relation("InvestigationParent", fields: [parentInvestigationId, tenantId, caseId, patientId], references: [id, tenantId, caseId, patientId], onDelete: Restrict, onUpdate: Restrict)
-  children Investigation[] @relation("InvestigationParent")
-  createdByUserId String
-  createdAt DateTime @default(now())
-  orders InvestigationOrder[]
-  results InvestigationResult[]
+  parent                Investigation?        @relation("InvestigationParent", fields: [parentInvestigationId, tenantId, caseId, patientId], references: [id, tenantId, caseId, patientId], onDelete: Restrict, onUpdate: Restrict)
+  children              Investigation[]       @relation("InvestigationParent")
+  createdByUserId       String
+  createdAt             DateTime              @default(now())
+  orders                InvestigationOrder[]
+  results               InvestigationResult[]
 
   @@unique([id, tenantId])
   @@unique([id, tenantId, caseId, patientId])
@@ -623,17 +690,17 @@ model Investigation {
 }
 
 model InvestigationOrder {
-  id String @id @default(uuid())
-  tenantId String
-  tenant Tenant @relation(fields: [tenantId], references: [id])
-  investigationId String
-  investigation Investigation @relation(fields: [investigationId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
-  orderedByUserId String
+  id               String                @id @default(uuid())
+  tenantId         String
+  tenant           Tenant                @relation(fields: [tenantId], references: [id])
+  investigationId  String
+  investigation    Investigation         @relation(fields: [investigationId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+  orderedByUserId  String
   assignedToUserId String?
-  requestedAt DateTime
-  requestText String
-  createdAt DateTime @default(now())
-  results InvestigationResult[]
+  requestedAt      DateTime
+  requestText      String
+  createdAt        DateTime              @default(now())
+  results          InvestigationResult[]
 
   @@unique([id, tenantId, investigationId])
   @@index([tenantId, assignedToUserId])
@@ -642,17 +709,17 @@ model InvestigationOrder {
 
 // Raw evidence, not a Diagnosis or interpretation. No attachment storage.
 model InvestigationResult {
-  id String @id @default(uuid())
-  tenantId String
-  tenant Tenant @relation(fields: [tenantId], references: [id])
-  investigationId String
-  investigation Investigation @relation(fields: [investigationId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
-  orderId String?
-  order InvestigationOrder? @relation(fields: [orderId, tenantId, investigationId], references: [id, tenantId, investigationId], onDelete: Restrict, onUpdate: Restrict)
-  rawText String
-  observedAt DateTime
+  id               String              @id @default(uuid())
+  tenantId         String
+  tenant           Tenant              @relation(fields: [tenantId], references: [id])
+  investigationId  String
+  investigation    Investigation       @relation(fields: [investigationId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+  orderId          String?
+  order            InvestigationOrder? @relation(fields: [orderId, tenantId, investigationId], references: [id, tenantId, investigationId], onDelete: Restrict, onUpdate: Restrict)
+  rawText          String
+  observedAt       DateTime
   recordedByUserId String
-  createdAt DateTime @default(now())
+  createdAt        DateTime            @default(now())
 
   @@index([tenantId, investigationId])
   @@map("investigation_results")
@@ -703,23 +770,23 @@ enum EmploymentType {
 }
 
 model StaffProfile {
-  id String @id @default(uuid())
-  tenantId String
-  tenant Tenant @relation(fields: [tenantId], references: [id])
-  authUserId String @unique
-  authUser AuthUser @relation(fields: [authUserId], references: [id])
-  fullName String
-  professionalTitle String?
-  workPhone String?
-  primarySpecialty StaffSpecialty?
+  id                   String                    @id @default(uuid())
+  tenantId             String
+  tenant               Tenant                    @relation(fields: [tenantId], references: [id])
+  authUserId           String                    @unique
+  authUser             AuthUser                  @relation(fields: [authUserId], references: [id])
+  fullName             String
+  professionalTitle    String?
+  workPhone            String?
+  primarySpecialty     StaffSpecialty?
   secondarySpecialties StaffSpecialty[]
-  specialtyOtherLabel String?
-  biography String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  credentials StaffCredential[]
-  employmentHistory EmploymentHistory[]
-  facilityAssignments StaffFacilityAssignment[]
+  specialtyOtherLabel  String?
+  biography            String?
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+  credentials          StaffCredential[]
+  employmentHistory    EmploymentHistory[]
+  facilityAssignments  StaffFacilityAssignment[]
 
   @@index([tenantId])
   @@map("staff_profiles")
@@ -728,21 +795,21 @@ model StaffProfile {
 // issueDate/expiryDate are date-only. credentialNumber is NOT globally unique.
 // Hard delete allowed for data-entry correction; mutation + audit atomic.
 model StaffCredential {
-  id String @id @default(uuid())
-  tenantId String
-  tenant Tenant @relation(fields: [tenantId], references: [id])
-  staffProfileId String
-  staffProfile StaffProfile @relation(fields: [staffProfileId], references: [id])
-  credentialType StaffCredentialType
-  name String
-  credentialNumber String?
+  id                  String                @id @default(uuid())
+  tenantId            String
+  tenant              Tenant                @relation(fields: [tenantId], references: [id])
+  staffProfileId      String
+  staffProfile        StaffProfile          @relation(fields: [staffProfileId], references: [id])
+  credentialType      StaffCredentialType
+  name                String
+  credentialNumber    String?
   issuingOrganization String?
-  issueDate DateTime? @db.Date
-  expiryDate DateTime? @db.Date
-  status StaffCredentialStatus @default(ACTIVE)
-  note String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  issueDate           DateTime?             @db.Date
+  expiryDate          DateTime?             @db.Date
+  status              StaffCredentialStatus @default(ACTIVE)
+  note                String?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
 
   @@index([tenantId])
   @@index([tenantId, staffProfileId])
@@ -752,20 +819,20 @@ model StaffCredential {
 // Overlapping records are explicitly allowed (no exclusion constraint).
 // Hard delete allowed; mutation + audit atomic.
 model EmploymentHistory {
-  id String @id @default(uuid())
-  tenantId String
-  tenant Tenant @relation(fields: [tenantId], references: [id])
-  staffProfileId String
-  staffProfile StaffProfile @relation(fields: [staffProfileId], references: [id])
+  id               String          @id @default(uuid())
+  tenantId         String
+  tenant           Tenant          @relation(fields: [tenantId], references: [id])
+  staffProfileId   String
+  staffProfile     StaffProfile    @relation(fields: [staffProfileId], references: [id])
   organizationName String
-  department String?
-  positionTitle String?
-  startDate DateTime @db.Date
-  endDate DateTime? @db.Date
-  employmentType EmploymentType?
-  note String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  department       String?
+  positionTitle    String?
+  startDate        DateTime        @db.Date
+  endDate          DateTime?       @db.Date
+  employmentType   EmploymentType?
+  note             String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 
   @@index([tenantId])
   @@index([tenantId, staffProfileId])
@@ -776,18 +843,18 @@ model EmploymentHistory {
 // staffProfileId are immutable after creation. Does not grant/revoke clinical
 // access and does not change AuthRole.
 model StaffFacilityAssignment {
-  id String @id @default(uuid())
-  tenantId String
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  id             String       @id @default(uuid())
+  tenantId       String
+  tenant         Tenant       @relation(fields: [tenantId], references: [id])
   staffProfileId String
-  staffProfile StaffProfile @relation(fields: [staffProfileId], references: [id])
-  facilityId String
-  facility Facility @relation(fields: [facilityId], references: [id])
-  isPrimary Boolean @default(false)
-  startDate DateTime @db.Date
-  endDate DateTime? @db.Date
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  staffProfile   StaffProfile @relation(fields: [staffProfileId], references: [id])
+  facilityId     String
+  facility       Facility     @relation(fields: [facilityId], references: [id])
+  isPrimary      Boolean      @default(false)
+  startDate      DateTime     @db.Date
+  endDate        DateTime?    @db.Date
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   @@index([tenantId])
   @@index([tenantId, staffProfileId])

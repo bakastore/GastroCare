@@ -240,4 +240,120 @@ describe('LongoClinicalFormPage reused for Hemorrhoid Diagnosis / Treatment Deci
     expect(clinicalFormsApi.getTemplate).toHaveBeenCalledWith(key, 1);
     expect(screen.queryByText('Phương thức v2')).not.toBeInTheDocument();
   });
+
+  // DEC-021 §3.2 — explicit `?version=3` Treatment Decision v3 flow.
+  function renderV3() {
+    return render(
+      <MemoryRouter
+        initialEntries={[
+          '/patients/patient-1/encounters/enc-1/longo-forms/HEMORRHOID_TREATMENT_DECISION?version=3',
+        ]}
+      >
+        <Routes>
+          <Route
+            path="/patients/:patientId/encounters/:encounterId/longo-forms/:templateKey"
+            element={<LongoClinicalFormPage />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+  }
+
+  it('?version=3 fetches Treatment Decision v3 and creates with templateVersion: 3', async () => {
+    vi.mocked(clinicalFormsApi.listByPatient).mockResolvedValue([]);
+    vi.mocked(clinicalFormsApi.getTemplate).mockResolvedValue({
+      templateKey: 'HEMORRHOID_TREATMENT_DECISION',
+      version: 3,
+      displayName: 'Quyết định điều trị',
+      sections: [
+        {
+          key: 'treatmentDecision',
+          label: 'Quyết định điều trị',
+          fields: [
+            {
+              type: 'single_choice',
+              key: 'patientDecision',
+              label: 'Quyết định của bệnh nhân',
+              required: true,
+              options: [{ value: 'ACCEPTED', label: 'Đồng ý điều trị' }],
+            },
+          ],
+        },
+      ],
+      scoreInstruments: [],
+    } as never);
+    vi.mocked(clinicalFormsApi.create).mockResolvedValue({
+      id: 'v3-1',
+      templateKey: 'HEMORRHOID_TREATMENT_DECISION',
+      templateVersion: 3,
+      status: 'DRAFT',
+      responses: {},
+      revisionNumber: 1,
+    } as never);
+
+    renderV3();
+    const user = userEvent.setup();
+    expect(
+      await screen.findByRole('heading', { name: 'Quyết định điều trị' }),
+    ).toBeInTheDocument();
+    expect(clinicalFormsApi.getTemplate).toHaveBeenCalledWith(
+      'HEMORRHOID_TREATMENT_DECISION',
+      3,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Bắt đầu biểu mẫu' }));
+    await waitFor(() => {
+      expect(clinicalFormsApi.create).toHaveBeenCalledWith({
+        encounterId: 'enc-1',
+        templateKey: 'HEMORRHOID_TREATMENT_DECISION',
+        responses: {},
+        templateVersion: 3,
+      });
+    });
+  });
+
+  it('version-aware lookup: a same-key v2 completed submission does not shadow the v3 start flow', async () => {
+    vi.mocked(clinicalFormsApi.listByPatient).mockResolvedValue([
+      {
+        id: 'v2-existing',
+        encounterId: 'enc-1',
+        templateKey: 'HEMORRHOID_TREATMENT_DECISION',
+        templateVersion: 2,
+        status: 'COMPLETED',
+        responses: {},
+        revisionNumber: 1,
+      } as never,
+    ]);
+    vi.mocked(clinicalFormsApi.getTemplate).mockResolvedValue({
+      templateKey: 'HEMORRHOID_TREATMENT_DECISION',
+      version: 3,
+      displayName: 'Quyết định điều trị',
+      sections: [
+        {
+          key: 'treatmentDecision',
+          label: 'Quyết định điều trị',
+          fields: [
+            {
+              type: 'textarea',
+              key: 'decisionSummary',
+              label: 'Diễn giải',
+              required: true,
+            },
+          ],
+        },
+      ],
+      scoreInstruments: [],
+    } as never);
+
+    renderV3();
+    // The v3 chain is empty (the v2 submission is filtered out), so the
+    // "start form" button is shown rather than the v2 editor.
+    expect(
+      await screen.findByRole('button', { name: 'Bắt đầu biểu mẫu' }),
+    ).toBeInTheDocument();
+    expect(clinicalFormsApi.getTemplate).toHaveBeenCalledWith(
+      'HEMORRHOID_TREATMENT_DECISION',
+      3,
+    );
+  });
 });

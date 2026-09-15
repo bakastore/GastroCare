@@ -1,4 +1,5 @@
 import { decisionFixture } from './dec016-fixtures';
+import { activateHemorrhoidTreatment } from './dec021-activation-helper';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthRole, CareEpisodeStatus, CareTaskStatus } from '@prisma/client';
@@ -196,14 +197,15 @@ describe('Hemorrhoid Vertical Slice 3 — T7 targeted synthetic acceptance (e2e)
     const diagnosisId = diagnosis.body.id as string;
     await completeSubmission(doctorToken, diagnosisId);
 
-    const decision1 = await createSubmission(
+    // DEC-021 R9 finding 1 — the HEMORRHOID_TREATMENT episode is established
+    // by Structured Treatment Activation from a completed Treatment Decision
+    // v3 (ACCEPTED + effectiveModalities), NOT by the first Return. The
+    // Initial Encounter now owns the ACTIVE episode.
+    const { episodeId: activatedEpisodeId } = await activateHemorrhoidTreatment(
+      app,
       doctorToken,
       initialEncounterId,
-      'HEMORRHOID_TREATMENT_DECISION',
-      { decisionSummary: 'Điều trị nội khoa, theo dõi (T7 golden path, synthetic)' },
     );
-    expect(decision1.status).toBe(201);
-    await completeSubmission(doctorToken, decision1.body.id);
 
     // 3. CarePlan #1 -> sign -> OPEN follow-up task.
     const carePlan1 = await request(app.getHttpServer())
@@ -221,12 +223,12 @@ describe('Hemorrhoid Vertical Slice 3 — T7 targeted synthetic acceptance (e2e)
     expect(signed1.status).toBe(201);
     const task1Id = signed1.body.careTask.id as string;
 
-    // 4. First Return Encounter -> exactly one ACTIVE HEMORRHOID_TREATMENT
-    // episode -> initial Encounter still ungrouped -> task1 COMPLETED +
-    // linked.
+    // 4. First Return Encounter -> reuses the already-ACTIVE episode from
+    // activation -> task1 COMPLETED + linked.
     const return1 = await createReturn(doctorToken, task1Id);
     expect(return1.status).toBe(201);
     const episodeId = return1.body.episodeId as string;
+    expect(episodeId).toBe(activatedEpisodeId);
 
     const activeEpisodes = await prisma.careEpisode.findMany({
       where: {
@@ -242,8 +244,9 @@ describe('Hemorrhoid Vertical Slice 3 — T7 targeted synthetic acceptance (e2e)
     const initialEncounterAfter = await prisma.encounter.findUniqueOrThrow({
       where: { id: initialEncounterId },
     });
-    // DEC-020 D20-02: never retrospectively re-parented into the episode.
-    expect(initialEncounterAfter.episodeId).toBeNull();
+    // DEC-021 §5.6 Scenario B — the Initial Encounter that activated
+    // treatment now OWNS the ACTIVE episode (D20-02 supersession).
+    expect(initialEncounterAfter.episodeId).toBe(episodeId);
 
     const task1After = await prisma.careTask.findUniqueOrThrow({
       where: { id: task1Id },
@@ -340,16 +343,22 @@ describe('Hemorrhoid Vertical Slice 3 — T7 targeted synthetic acceptance (e2e)
       type: string;
       data: Record<string, unknown>;
     }[];
-    // DEC-020 D20-02: the Initial Encounter stays in ungroupedEncounters.
+    // DEC-021 §5.6 Scenario B — the Initial Encounter activated treatment, so
+    // it is now grouped under the Hemorrhoid episode, not ungrouped.
     expect(
       ungrouped.some((e) => e.type === 'ENCOUNTER' && e.data.id === initialEncounterId),
-    ).toBe(true);
+    ).toBe(false);
 
     const episodeGroup = timelineRes.body.episodes.find(
       (g: { episode: { id: string } }) => g.episode.id === episodeId,
     );
     expect(episodeGroup).toBeTruthy();
     expect(episodeGroup.episode.episodeType).toBe('HEMORRHOID_TREATMENT');
+    expect(
+      (episodeGroup.events as { type: string; data: Record<string, unknown> }[]).some(
+        (e) => e.type === 'ENCOUNTER' && e.data.id === initialEncounterId,
+      ),
+    ).toBe(true);
     expect(episodeGroup.episode.status).toBe(CareEpisodeStatus.CLOSED);
     const episodeEvents = episodeGroup.events as {
       type: string;
