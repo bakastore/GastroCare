@@ -1,6 +1,6 @@
 # GastroCare — Decision Log
 
-Cập nhật: 2026-09-06
+Cập nhật: 2026-09-15
 
 Đây là Decision Log hiện hành và là nguồn chuẩn cho Owner Decisions
 và Working Assumptions của GastroCare.
@@ -1003,6 +1003,9 @@ Owner quyết định (2026-09-06):
 6. Package B theo Contract cũ tiếp tục **HOLD / T0 NOT OPEN** cho tới khi
    Package R đóng và Package B Contract được reconcile. Không rewrite old
    Package B Contract trong lần landing này.
+   **[SUPERSEDED BY [[DEC-022]] (2026-09-15): Package B UNBLOCKED — không còn
+   gated theo Package R Owner Closure; xem DEC-022 bên dưới. Dòng gốc giữ
+   nguyên làm lịch sử governance landing 2026-09-06, không bị xóa.]**
 7. `NR-06` (external surgery team note) chuyển sang Package B reconciled scope.
    `NR-02`, `NR-05` = DEFERRED. NURSE discovery/worklist API + UI = **DEFERRED —
    ngoài phạm vi Package R**.
@@ -1050,6 +1053,10 @@ Authority: `DEC-021 v0.3 — OWNER LOCKED`. Baseline for analysis:
 5. Dependency: `Package A OWNER CLOSED → Package R governance / implementation /
    closure → Package B Contract reconciliation → Package B T0 → Package B
    implementation / closure → Package C future`.
+   **[SUPERSEDED BY [[DEC-022]] (2026-09-15): Package B Contract reconciliation
+   → T0 no longer depends on Package R OWNER Closure — Package R core (R9) PASS
+   is sufficient and Package B is UNBLOCKED; R10 Owner Synthetic Acceptance is
+   DEFERRED BY OWNER, not a precondition. Dòng gốc giữ nguyên làm lịch sử.]**
 6. Governance landing này: **không** claim tests đã rerun; **không** claim Codex
    audit đã chạy; **không** claim implementation đã bắt đầu; **không** invent
    implementation SHA hoặc test result. Không backend/frontend/schema/migration/
@@ -1064,6 +1071,53 @@ Implementation vẫn NOT AUTHORIZED cho tới khi có Owner authorization riêng
 
 **Căn cứ:** Owner Lock DEC-021 v0.3 + Owner Lock Package R Contract v0.5 FINAL;
 two Owner-supplied locked artifacts với SHA-256 ghi ở trên.
+
+---
+
+### DEC-022 — Package R R9 Gate Closed / R10 Deferred / Package B Unblocked
+
+**Ngày quyết định:** 2026-09-15.
+
+**Trạng thái:** `OWNER LOCKED` — Owner (Sol) xác nhận trực tiếp trong phiên làm
+việc hiện tại (không phải AI tự suy diễn hay tự nâng Working Assumption).
+
+**Nội dung:**
+
+1. `DEC-021 Package R` core (R0–R9) = **PASS — CLOSED**, independently verified
+   by Codex and Claude Chat. R9 correction implementation checkpoint
+   `89438706e9411646e7f58530b824eb6b3d6b2adb` là bằng chứng implementation cho
+   correction batch đã pass verification độc lập nói trên.
+2. `R10` (Owner Synthetic Acceptance) = **DEFERRED BY OWNER — not waived, not
+   PASS**. Điều kiện: chờ Package B + Package C hoàn tất và UI/UX được rebuild
+   để phản ánh đúng workflow bác sĩ thật trước khi Owner thực hiện R10.
+3. `DEC-021 Package B` (old Contract, `docs/DEC-020_PACKAGE_B_CLINICAL_FORM_FIDELITY_FUNCTIONAL_UX_IMPLEMENTATION_CONTRACT.md`)
+   = **UNBLOCKED** — không còn phụ thuộc vào Package R Owner Closure. Package R
+   frozen sau R9 là đủ điều kiện; Package B proceed to Contract reconciliation
+   → T0 trên branch `implementation/dec-021-package-b-v01`.
+4. Package R vẫn **không** phải OWNER CLOSED (R10 chưa thực hiện); việc này
+   không thay đổi. "Frozen after R9" và "OWNER CLOSED" là hai trạng thái khác
+   nhau — R10 vẫn cần thực hiện khi điều kiện deferral được thỏa mãn.
+5. Quyết định này **không** authorize real-patient data, production, hay bất kỳ
+   schema/migration change nào ngoài phạm vi Package B Contract (sẽ được khóa
+   riêng tại Package B Implementation Contract). `SYNTHETIC DATA ONLY` giữ
+   nguyên.
+6. Supersede phạm vi hẹp (xem tag inline tại vị trí gốc, không xóa lịch sử):
+   - `DEC-021 v0.3 OWNER LOCK` điểm 6 (Package B HOLD / T0 NOT OPEN cho tới khi
+     Package R đóng) — SUPERSEDED BY DEC-022.
+   - `DEC-021 PACKAGE R` governance landing điểm 5 (Dependency chain: Package R
+     closure → Package B Contract reconciliation) — SUPERSEDED BY DEC-022 phần
+     "Package R closure" là precondition; phần còn lại của dependency chain
+     (Package A CLOSED trước Package R, Package B trước Package C) không đổi.
+
+**Căn cứ:** Owner (Sol) xác nhận trực tiếp trong phiên làm việc 2026-09-15:
+R9 PASS/CLOSED đã independently verified bởi Codex và Claude Chat; R10 deferred
+theo điều kiện nêu trên; Package B unblocked không phụ thuộc Package R Owner
+Closure.
+
+**Next gate:** Package B Contract reconciliation → Package B T0 (theo
+`docs/07_ROADMAP_AND_GATES.md` §7 / PROJECT_STATE §7). R10 Owner Synthetic
+Acceptance vẫn chờ Owner thực hiện khi điều kiện deferral (Package B/C hoàn tất
++ UI/UX rebuild) được thỏa mãn.
 
 ---
 
@@ -1095,6 +1149,8 @@ Các mục trên không bị hủy; chúng chỉ không còn thuộc Decision Lo
 - DEC-020 `D20-02` (CareEpisode chỉ tạo/resolve tại First Return Encounter) — SUPERSEDED by [[DEC-021]] (2026-09-06): CareEpisode bắt đầu tại Encounter nơi treatment trigger hợp lệ, đúng treatment domain, thực sự xuất hiện. DEC-020 D20-02 giữ giá trị lịch sử.
 - DEC-020 `D20-03` (đóng Episode không cancel/dispose future CareTask) — PARTIAL SUPERSEDE by [[DEC-021]] (2026-09-06): sau một lần Doctor xác nhận, future Episode-linked CareTask nhận terminal disposition deterministic; các nguyên tắc D20-03 khác (Doctor authority, explicit closure, reopen/new Episode) giữ nguyên.
 - DEC-013 §2 và DEC-020 Package A "Initial Encounter permanently ungrouped / first Return creates CareEpisode" — reconciled by [[DEC-021]] Package R scope (D20-02 activation-trigger model). Package A historical closure không bị rewrite; nếu Package R implementation đổi T4 production code thì T4 independent gate mở lại cho affected delta.
+- DEC-021 v0.3 OWNER LOCK điểm 6 ("Package B theo Contract cũ tiếp tục HOLD / T0 NOT OPEN cho tới khi Package R đóng và Package B Contract được reconcile") — SUPERSEDED by [[DEC-022]] (2026-09-15): Package B UNBLOCKED, không còn gated theo Package R Owner Closure. Dòng gốc giữ nguyên làm lịch sử governance landing 2026-09-06.
+- DEC-021 PACKAGE R governance landing điểm 5 (Dependency: Package R governance/implementation/closure → Package B Contract reconciliation) — phần "Package R closure" là precondition cho Package B SUPERSEDED by [[DEC-022]] (2026-09-15): Package R core (R9) PASS là đủ, Package R OWNER Closure/R10 không còn là precondition cho Package B. Phần còn lại của dependency chain (Package A CLOSED trước Package R; Package B trước Package C) không đổi.
 
 ---
 
