@@ -440,6 +440,16 @@ Requirements:
 
 T0 determines whether RR/SpO2 belong to existing Encounter vitals or Examination responses. Do not duplicate authoritative truth across both without an explicit reuse strategy.
 
+**[ADDITIVE ANNOTATION — 2026-09-17 — SUPERSEDED BY [[DEC-023]]:** The deterministic
+vital copy-forward/prefill behavior locked immediately above (`previous completed
+eligible visit → deterministic prefill → Doctor may edit`) is superseded for
+future Encounters: current response entry MUST NOT auto-prefill, MUST NOT
+populate the current value, and MUST NOT expose an Apply/Copy action. Historical
+values MAY display read-only. Package B v0.3 T0 must inventory every caller/
+consumer of `getVitalsCopyForward()` before deciding remove / retire / repurpose
+read-only; no blind deletion. This annotation does not rewrite the historical
+text above, which remains the record of the original v0.2 rule.]**
+
 ---
 
 # 9. T4 — Examination UX
@@ -489,6 +499,17 @@ Rules:
 - no automatic diagnosis from Goligher or Examination.
 
 Package B should make the Diagnosis state obvious on Dashboard/Clinical View without changing the underlying clinical authority.
+
+**[ADDITIVE ANNOTATION — 2026-09-17 — SUPERSEDED BY [[DEC-023]]:** The single
+logical `diagnosisSummary` textarea / one-field-only invariant locked immediately
+above applies to `HEMORRHOID_DIAGNOSIS v1` and remains unchanged for historical
+v1 submissions; `diagnosisSummary` of v1 is not modified in place. For new
+submissions, `HEMORRHOID_DIAGNOSIS v2` introduces an ordered list of free-text
+diagnosis lines (line 1 = chẩn đoán chính, bắt buộc; line 2+ = chẩn đoán kèm,
+tùy chọn) added via explicit UI action `"Thêm dòng"`. This annotation locks
+behavior only; it does not lock the form-framework implementation shape — see
+Package B v0.3 §10.2 and its required T0. This annotation does not rewrite the
+historical text above, which remains the record of the original v0.2 rule.]**
 
 ---
 

@@ -1121,6 +1121,107 @@ Acceptance vẫn chờ Owner thực hiện khi điều kiện deferral (Package 
 
 ---
 
+### DEC-023 — Longo Sequential Weekly Follow-up / Multi-line Diagnosis v2 / LTFU Auto-detect + Human Confirm / LTFU Confirmation RBAC
+
+**Ngày quyết định:** 2026-09-17.
+
+**Trạng thái:** `OWNER LOCKED` — Owner Decisions ghi nguyên văn trong phiên làm
+việc hiện tại ("RECORD OWNER DECISIONS + DRAFT PACKAGE B CONTRACT v0.3"), không
+phải AI tự suy diễn hay tự nâng Working Assumption.
+
+**Nguồn chuẩn:** Owner Decisions ghi nguyên văn trong task hiện tại, kết hợp
+Codex-confirmed source findings (§4 của task) đối chiếu baseline
+`main @ c2a30e4dd5e73730a2f6932def107d3e936fafe8`. Reconciliation Contract:
+[`DEC-020_PACKAGE_B_CLINICAL_FORM_FIDELITY_FUNCTIONAL_UX_IMPLEMENTATION_CONTRACT_v0.3.md`](DEC-020_PACKAGE_B_CLINICAL_FORM_FIDELITY_FUNCTIONAL_UX_IMPLEMENTATION_CONTRACT_v0.3.md).
+
+**Nội dung:**
+
+1. **Longo Sequential Weekly Follow-up.** Mỗi lần follow-up Longo là một lần
+   bác sĩ đánh giá trực tiếp. Nếu còn vấn đề cần tiếp tục theo dõi: bác sĩ chủ
+   động quyết định hẹn lần tiếp theo; khoảng hẹn mặc định theo clinical decision
+   đã chốt trước đó là khoảng 1 tuần; từ quyết định hiện tại chỉ tạo tối đa 01
+   CareTask kế tiếp; không tạo trước chuỗi lịch tương lai; không có số tuần tối
+   đa cố định. Nếu không còn vấn đề cần tiếp tục theo dõi: không tạo CareTask
+   tiếp; bác sĩ chủ động thực hiện explicit Episode Close theo lifecycle hiện
+   hành. Quyết định này **supersedes** fixed automatic Longo scheduling
+   (`14 ngày / 1 tháng / 3 tháng / 6 tháng`) đối với **future scheduling
+   behavior** kể từ nay. Không rewrite/delete historical CareTasks, historical
+   timepoint codes (`TWO_WEEK` / `MONTH_1` / `MONTH_3` / `MONTH_6`), historical
+   ClinicalForm submissions, hoặc historical templates/data. Không tự tạo
+   enum/state code mới (ví dụ `FOLLOW_UP_REQUIRED`, `NO_FURTHER_FOLLOW_UP`) nếu
+   chưa có authority trong SSOT — việc này chờ T0 + Owner review implementation
+   shape.
+2. **Multi-line Diagnosis.** `HEMORRHOID_DIAGNOSIS v1` giữ nguyên cho historical
+   submissions; `diagnosisSummary` của v1 KHÔNG bị sửa tại chỗ. Tạo successor
+   `HEMORRHOID_DIAGNOSIS v2`: ordered list of free-text diagnosis lines; line 1
+   = chẩn đoán chính — bắt buộc; line 2+ = chẩn đoán kèm — tùy chọn; Doctor chủ
+   động thêm dòng bằng UI action `"Thêm dòng"`. Quyết định này supersedes
+   single-field diagnosis invariant cho **new submissions** kể từ nay. Quyết
+   định khóa **behavior**, không khóa implementation shape của form framework
+   (`repeatable_text` generic, text-array generic, hay diagnosis-specific
+   renderer đều chưa bị loại trừ trước T0).
+3. **LTFU Auto-detect + Human Confirm.** Reuse/extend existing
+   `CareTaskContactAttempt` (relation `CareTask.contactAttempts`,
+   `CareTasksService.contactAttempt()`) — KHÔNG tạo ContactAttempt entity thứ
+   hai. Hệ thống phải có machine-checkable representation để xác định contact
+   attempt nào là failed attempt. Khi đạt `3 qualifying failed contact attempts
+   trong 1 tháng`: hệ thống phát cảnh báo; KHÔNG tự chuyển LTFU; KHÔNG tự đóng
+   Episode. Sau authorized human confirmation, đúng một atomic transaction thực
+   hiện theo thứ tự: (1) backend verify threshold; (2) target CareTask →
+   `LOST_TO_FOLLOW_UP`; (3) exact authoritatively-linked ACTIVE CareEpisode →
+   `CLOSED`; (4) remaining authoritatively-linked OPEN CareTasks được disposition
+   theo Episode-close semantics; (5) append required audits; (6) commit toàn bộ
+   trong một atomic transaction. Fail bất kỳ bước nào → `ROLLBACK ALL`; không
+   được để partial state (ví dụ CareTask = `LOST_TO_FOLLOW_UP` trong khi
+   CareEpisode vẫn `ACTIVE`).
+4. **LTFU RBAC — supersession phạm vi hẹp của DEC-021 NR-01.** Record contact
+   attempt: giữ nguyên `DOCTOR + NURSE` (không thêm `RECEPTIONIST`) — không đổi
+   so với DEC-021 v0.3 §NR-01. Confirm LTFU (final confirmation action): authority
+   mới = `DOCTOR + NURSE + RECEPTIONIST` — DOCTOR và NURSE giữ quyền, `RECEPTIONIST`
+   được bổ sung. Đây là **explicit, narrow supersession** của DEC-021 v0.3 NR-01
+   chỉ đối với final LTFU confirmation authority; không suy diễn quyền này sang
+   action khác (không mở rộng RECEPTIONIST sang contact-attempt hay bất kỳ mutation
+   nào khác).
+5. **Episode closure semantics.** Normal Episode Close vẫn là DOCTOR explicit
+   action (không đổi). Bổ sung path mới: authorized human-confirmed LTFU →
+   system consequence → Episode Close. Không auto-close chỉ vì threshold reached;
+   Episode chỉ close sau valid human confirmation.
+6. **OWNER DECISION REQUIRED — chưa resolve trong quyết định này.** Cụm `3
+   failed attempts trong 1 tháng` chưa có machine-checkable definition. Không tự
+   chọn rolling 30 days / calendar month / rolling calendar month / arithmetic
+   rule khác. Implementation threshold calculation **BLOCKED** tới khi Owner
+   quyết định định nghĩa chính xác. T0 có thể mô tả technical consequences của
+   các lựa chọn, không được tự chọn.
+7. Quyết định này KHÔNG authorize application code, schema/migration,
+   commit/push, hoặc implementation. `SYNTHETIC DATA ONLY`; real-patient runtime
+   và production vẫn `NOT AUTHORIZED`. Diagnosis đa dòng ảnh hưởng form
+   framework/rendering (không có `text-array`/`repeatable-text` type trong
+   `FieldType` hiện tại: `number` / `text` / `textarea` / `single_choice` /
+   `boolean` / `multi_select`; validator hiện yêu cầu `text`/`textarea` = string;
+   array chỉ có ở `multi_select`) — T0 phải xác định phương án tối thiểu phù hợp
+   current architecture trước implementation.
+
+**Căn cứ:** Owner Decisions ghi nguyên văn 2026-09-17 trong task "RECORD OWNER
+DECISIONS + DRAFT PACKAGE B CONTRACT v0.3"; Codex-confirmed source findings
+(`CareTaskContactAttempt` đã tồn tại, `FieldType` chưa hỗ trợ repeatable text,
+LTFU RBAC hiện tại `DOCTOR + NURSE`, generic CarePlan follow-up mechanism đã
+tồn tại) đối chiếu baseline `main @ c2a30e4dd5e73730a2f6932def107d3e936fafe8`;
+DEC-021 v0.3 OWNER LOCKED (NR-01); DEC-022 OWNER LOCKED (Package B UNBLOCKED).
+
+**Next gate:** Package B Contract v0.3 hiện vẫn `DRAFT — PENDING OWNER REVIEW`.
+Sequence: Package B Contract v0.3 Owner review / Owner lock → T0 source
+verification (Vitals / Diagnosis / Longo / LTFU) → Owner review of T0 →
+separate Owner implementation authorization. Không implementation, không
+schema/migration cho tới khi toàn bộ sequence này hoàn tất. "1 tháng" definition
+vẫn OWNER DECISION REQUIRED — chặn LTFU threshold implementation.
+
+**→ SUPERSEDED by "DEC-023 — PACKAGE B CONTRACT v0.3 OWNER LOCK"
+(2026-09-17): Contract v0.3 is now `OWNER LOCKED`; Package B v0.3 T0 source
+verification is authorized. Historical wording immediately above is preserved
+as the pre-lock state.**
+
+---
+
 ## WORKING ASSUMPTIONS
 
 | ID | Nội dung | Nguồn gốc | Trạng thái |
@@ -1159,3 +1260,27 @@ Nguyên tắc:
 - Không tự nâng Working Assumption thành Owner Decision.
 - Technical/domain invariants phải nằm tại normative home tương ứng,
   không dùng Decision Log làm task tracker hoặc design specification.
+
+### DEC-023 — PACKAGE B CONTRACT v0.3 OWNER LOCK
+
+**Ngày:** 2026-09-17.
+
+**Owner Decision:** Package B Clinical Form Fidelity + Functional Clinical UX
+Implementation Contract v0.3 được `OWNER LOCKED`.
+
+Canonical Contract:
+`docs/DEC-020_PACKAGE_B_CLINICAL_FORM_FIDELITY_FUNCTIONAL_UX_IMPLEMENTATION_CONTRACT_v0.3.md`.
+
+Owner lock này:
+- authorize `Package B v0.3 T0 source verification`;
+- KHÔNG authorize application implementation;
+- KHÔNG authorize Prisma schema/migration;
+- KHÔNG authorize production hoặc real-patient runtime;
+- giữ nguyên `"1 month"` LTFU threshold definition = `OWNER DECISION REQUIRED`;
+- mọi implementation sau T0 cần separate Owner authorization.
+
+**Next gate:** Package B v0.3 T0 source verification → Owner review of T0 →
+Owner resolves exact `"1 month"` definition → separate Owner implementation
+authorization.
+
+---
