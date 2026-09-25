@@ -1284,3 +1284,154 @@ Owner resolves exact `"1 month"` definition → separate Owner implementation
 authorization.
 
 ---
+
+### DEC-023 POST-T0 OWNER DECISIONS + PACKAGE B v0.3 POST-T0 CONTRACT LOCK
+
+**Ngày:** 2026-09-18.
+
+**Trạng thái:** `OWNER LOCKED` — append mới dưới authority DEC-023, không rewrite
+historical DEC-023 entries phía trên (`DEC-023 — Longo Sequential Weekly
+Follow-up / Multi-line Diagnosis v2 / LTFU Auto-detect + Human Confirm / LTFU
+Confirmation RBAC` và `DEC-023 — PACKAGE B CONTRACT v0.3 OWNER LOCK`).
+
+**Owner Decision:**
+
+- Post-T0 Owner Decisions `OD-B01` → `OD-B05` (Vitals no-copy-forward,
+  Diagnosis v2 repeatable-text, Longo sequential doctor-driven follow-up,
+  legacy cutover, qualifying failed attempt data model): **APPROVED —
+  2026-09-17**.
+- Post-T0 Owner Decision `OD-B06` (LTFU timing semantics): **FINALIZED —
+  2026-09-18**.
+- `OD-B06` resolves/supersedes **ONLY** the historical unresolved item in
+  DEC-023 §6 (`"3 failed attempts trong 1 tháng" chưa có machine-checkable
+  definition` — OWNER DECISION REQUIRED). Mọi nội dung khác của DEC-023 gốc
+  giữ nguyên không đổi.
+- LTFU timing (`OD-B06`), chính xác:
+  - hard gate = `CareEpisode.startedAt + 2 calendar months`; trước mốc này hệ
+    thống không đếm threshold, không cảnh báo, không cho final confirm;
+  - contact attempts ghi nhận trước gate tồn tại trong lịch sử nhưng KHÔNG
+    được tính vào threshold, kể cả khi `qualifyingFailed = true`;
+  - sau gate, threshold = `>= 3 attempts` với `qualifyingFailed = true` trên
+    chính target CareTask, có `attemptedAt` rơi vào CÙNG một calendar month
+    (ranh giới tháng dương lịch), và `attemptedAt >= CareEpisode.startedAt + 2
+    calendar months`;
+  - đánh giá tiếp tục theo từng calendar month kế tiếp (tháng thứ 3, thứ 4,
+    ...) nếu Episode vẫn ACTIVE, không giới hạn số lần đánh giá;
+  - **KHÔNG** dùng rolling 30×24h, rolling N ngày, hay công thức
+    `referenceTime - N giây`;
+  - backend phải tự recount threshold trong final-confirmation transaction
+    theo calendar month tại thời điểm confirm, không tin giá trị đã tính
+    trước đó hay giá trị do client cung cấp.
+- Final-confirm LTFU RBAC tiếp tục kế thừa nguyên trạng từ DEC-023 gốc
+  (không phải Owner Decision mới trong entry này): `DOCTOR + NURSE +
+  RECEPTIONIST`. Record contact attempt giữ nguyên `DOCTOR + NURSE`.
+  RECEPTIONIST không được mở rộng sang contact-attempt hay mutation khác.
+
+Canonical Contract:
+[`DEC-020_PACKAGE_B_POST_T0_IMPLEMENTATION_CONTRACT_v0.3.md`](DEC-020_PACKAGE_B_POST_T0_IMPLEMENTATION_CONTRACT_v0.3.md)
+— `OWNER LOCKED — 2026-09-18`.
+
+Owner lock này:
+- authorize governance landing của Post-T0 Contract;
+- **KHÔNG** authorize application implementation (`NOT YET AUTHORIZED`);
+- **KHÔNG** authorize Prisma schema/migration ngoài phạm vi được Contract
+  authorize riêng (`CareTaskContactAttempt.qualifyingFailed` + index, vẫn chờ
+  separate implementation authorization để thực thi);
+- **KHÔNG** authorize production hoặc real-patient runtime
+  (`SYNTHETIC DATA ONLY`);
+- không claim Package B PASS, không claim Package B CLOSED, không claim
+  implementation đã hoàn tất.
+
+**Next gate:** docs commit/push/PR/merge → establish new `main` merge SHA làm
+`PACKAGE_B_IMPLEMENTATION_BASE_SHA` → separate explicit `OWNER LOCKED +
+PACKAGE B v0.3 IMPLEMENTATION AUTHORIZED` statement → implementation branch →
+Claude Code thực hiện một bounded Package B implementation package theo đúng
+Contract.
+
+**Căn cứ:** Owner Decisions ghi nguyên văn trong task "PACKAGE B v0.3
+POST-T0 GOVERNANCE LANDING" (2026-09-18), đối chiếu baseline `main @
+47a690c3a8eaf7f67f76f6d3adf0c5ed9676e013`; kế thừa DEC-023 OWNER LOCKED
+(RBAC, historical unresolved §6) và DEC-023 PACKAGE B CONTRACT v0.3 OWNER
+LOCK (T0 source verification authorization) phía trên.
+
+---
+
+### GATE 1 CORRECTION + LANDING — D1–D4 OWNER DECISIONS
+
+**Ngày:** 2026-09-26.
+
+**Trạng thái:** `OWNER LOCKED` — Owner Decisions ghi nguyên văn trong task
+"GASTROCARE — GATE 1 CORRECTION + LANDING" (2026-09-26), append mới dưới
+authority DEC-023 POST-T0, không rewrite historical DEC-023 entries phía
+trên.
+
+**Phạm vi:** 4 correction/clarification áp dụng lên
+`docs/DEC-020_PACKAGE_B_POST_T0_IMPLEMENTATION_CONTRACT_v0.3.md`
+(OWNER LOCKED 2026-09-18). Đây là governance correction + landing, KHÔNG
+authorize application implementation.
+
+**Owner Decision:**
+
+- **D1 — APPROVED.** T7 fail-condition wording `* 1 Episode;` là **erratum**,
+  KHÔNG phải clinical/domain redefinition. Đúng: valid state = exactly one
+  ACTIVE same-tenant Episode; `0 Episode / >1-or-ambiguous Episode / CLOSED
+  Episode / inconsistent linkage` → `409 CONFLICT`. Contract §9 (T7) đã sửa
+  literal `* 1 Episode;` → `* >1 Episode / ambiguous linkage;`.
+- **D2 — APPROVED — Option A.** Post-T0 Contract là bounded implementation
+  authority CHỈ cho 4 delta `OD-B01`→`OD-B06`. Package B preserved scope
+  khác (trong
+  `docs/DEC-020_PACKAGE_B_CLINICAL_FORM_FIDELITY_FUNCTIONAL_UX_IMPLEMENTATION_CONTRACT_v0.3.md`)
+  vẫn tồn tại nhưng nằm NGOÀI implementation package hiện tại và cần
+  authorization riêng. Hoàn thành bounded Post-T0 package KHÔNG đồng nghĩa
+  Package B CLOSED. Contract §"Relationship to prior v0.3" ghi rõ semantics
+  này.
+- **D3 — APPROVED.** `OD-B06` calendar-day/calendar-month boundary tính theo
+  `Asia/Ho_Chi_Minh` = UTC+07:00, không DST. Timestamp persistence không
+  đổi; không thêm timezone dependency mới (built-in `Intl` hoặc fixed
+  UTC+07:00 offset). Hard-gate calculation: (1) convert
+  `CareEpisode.startedAt` sang civil time Asia/Ho_Chi_Minh; (2) cộng 2
+  calendar months theo D4; (3) giữ nguyên time-of-day; (4) convert lại
+  thành instant; (5) so sánh authoritative `attemptedAt` với instant đó.
+  Calendar-month grouping của `attemptedAt` cũng tính theo Asia/Ho_Chi_Minh.
+- **D4 — APPROVED.** `+N calendar months` dùng end-of-month clamp:
+  `targetDay = min(sourceDay, daysInTargetMonth)`, giữ nguyên time-of-day.
+  Mandatory examples: `2026-01-31 + 1 month → 2026-02-28`;
+  `2028-01-31 + 1 month → 2028-02-29`; `2026-12-31 + 2 months →
+  2027-02-28`; `2026-08-30 + 2 months → 2026-10-30`.
+
+D1–D4 áp dụng lên đúng các delta đã OWNER LOCKED trước đó:
+`OD-B01` (Vitals no-copy-forward), `OD-B02` (Diagnosis v2 repeatable-text),
+`OD-B03` (Longo sequential doctor-driven follow-up), `OD-B04` (Legacy
+cutover), `OD-B05` (qualifying failed attempt data model), `OD-B06` (LTFU
+timing — nay bổ sung D3 timezone + D4 calendar-month arithmetic). Không
+Owner Decision nào trong D1–D4 mở rộng hoặc thay đổi `OD-B01`–`OD-B05` gốc.
+
+Owner lock này:
+
+- authorize Gate 1 governance correction + landing (docs-only: sửa Contract
+  + append DECISION_LOG + reconcile PROJECT_STATE) trên branch
+  `docs/dec-020-package-b-post-t0-v03`, base `main @
+  47a690c3a8eaf7f67f76f6d3adf0c5ed9676e013`;
+- authorize commit → push → mở PR vào `main`; **KHÔNG** authorize merge PR;
+- **KHÔNG** authorize application/backend/frontend implementation, schema,
+  migration, hay T1 execution;
+- **KHÔNG** authorize production hoặc real-patient runtime
+  (`SYNTHETIC DATA ONLY` giữ nguyên);
+- không claim Package B PASS, không claim Package B CLOSED, không claim Gate
+  1 CLOSED, không claim PR đã merge.
+
+**Next gate:** commit đúng 3 governance files → push branch
+`docs/dec-020-package-b-post-t0-v03` → open PR vào `main` → Owner review →
+Owner quyết định merge. Sau khi PR thực sự được merge, resulting `main` merge
+SHA mới được ghi nhận là `PACKAGE_B_IMPLEMENTATION_BASE_SHA` → separate explicit
+`OWNER LOCKED + PACKAGE B v0.3 IMPLEMENTATION AUTHORIZED` → implementation
+branch → một bounded Package B implementation package theo đúng Contract §19.
+
+**Căn cứ:** Owner Decisions D1–D4 ghi nguyên văn trong task "GASTROCARE —
+GATE 1 CORRECTION + LANDING" (2026-09-26), đối chiếu branch
+`docs/dec-020-package-b-post-t0-v03` base `main @
+47a690c3a8eaf7f67f76f6d3adf0c5ed9676e013`; kế thừa DEC-023 POST-T0 OWNER
+DECISIONS + PACKAGE B v0.3 POST-T0 CONTRACT LOCK (2026-09-18) phía trên,
+không rewrite nội dung đó.
+
+---
