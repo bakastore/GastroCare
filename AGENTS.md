@@ -222,3 +222,30 @@ STOP và báo Owner khi:
 Tiếng Việt là ngôn ngữ tài liệu/hướng dẫn mặc định.
 
 Technical terms có thể giữ English term (nghĩa tiếng Việt) khi hữu ích. Code identifiers giữ nguyên.
+
+## J. Lean Governance (Owner Decision [[DEC-024]], 2026-09-26)
+
+Mục tiêu: governance tối thiểu đủ an toàn, dồn công vào code + test.
+
+1. **`docs/PROJECT_STATE.md` = con trỏ hiện tại.** Thay thế tại chỗ, mục tiêu ≤ 100 dòng.
+   Không lưu lịch sử, không ghi chú `HISTORICAL/SUPERSEDED`, không chép số test.
+   Section `CURRENT EXECUTION CONTEXT` phải là section cuối và có dòng
+   `| Implementation Contract | <path> |` (hook `protect-schema` đọc dòng này).
+2. **Lịch sử chỉ append vào `docs/DECISION_LOG.md`.** Không chép cùng một nội dung sang
+   `PROJECT_STATE.md` hay `07_ROADMAP_AND_GATES.md`. Roadmap chỉ sửa khi đổi phase.
+3. **Chỉ cập nhật governance docs khi:** mở package, đóng package, có Owner Decision mới,
+   hoặc gặp blocker. Tiến độ từng Tn ghi ở commit message / PR description, không ghi vào docs.
+4. **Gộp gate:** Owner lock một Implementation Contract đồng thời là implementation
+   authorization, trừ khi Owner ghi rõ khác. Không tách một gate riêng chỉ để "landing" docs.
+   Implementation authorization bao gồm commit/push trên implementation branch trong phạm vi
+   Contract; merge vào `main` vẫn cần Owner.
+5. **Audit code, không audit câu chữ.** Mỗi package một independent audit, làm trên
+   code + test + diff khi package xong. Khi hai agent mâu thuẫn về nội dung một dòng,
+   đọc thẳng dòng đó (`sed -n 'Np' file`) thay vì mở thêm vòng audit.
+6. **Engineering detail không lên Owner Decision.** Chỉ ngữ nghĩa lâm sàng/sản phẩm mới cần
+   Owner (ví dụ "LTFU sau 2 tháng lịch" là ngữ nghĩa; cách tính ngày, timezone handling,
+   naming, cấu trúc test là engineering). Engineering detail được chốt bằng code + test.
+7. **Không viết Implementation Contract cho phạm vi còn câu hỏi lâm sàng mở.** Hỏi và chốt
+   câu hỏi lâm sàng với BS Thái/Owner trước, rồi mới viết contract.
+8. **Contract ngắn:** chỉ ghi scope, invariant, schema được phép, acceptance test.
+   Không chép lại SSOT lâm sàng; tham chiếu thay vì copy.

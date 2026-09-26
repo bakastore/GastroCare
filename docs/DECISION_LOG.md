@@ -1435,3 +1435,58 @@ DECISIONS + PACKAGE B v0.3 POST-T0 CONTRACT LOCK (2026-09-18) phía trên,
 không rewrite nội dung đó.
 
 ---
+
+### DEC-024 — LEAN GOVERNANCE + PACKAGE B v0.3 IMPLEMENTATION AUTHORIZED
+
+**Ngày:** 2026-09-26 (08:31 +07:00)
+**Trạng thái:** OWNER DECISION — nguồn là lệnh Owner nguyên văn bên dưới.
+
+**Lệnh Owner nguyên văn (Claude chat, 2026-09-26 08:31):**
+"Và làm ngay theo recommendation" — áp lên recommendation đã trình trong cùng
+phiên, gồm:
+
+1. Merge PR Gate 1 và ra lệnh cho phép triển khai OD-B01→B06.
+2. Cắt `PROJECT_STATE.md` về ~1 trang, chỉ giữ con trỏ hiện tại; lịch sử chỉ
+   append vào `DECISION_LOG.md`; bỏ các chú thích `SUPERSEDED` trong
+   `PROJECT_STATE.md`.
+3. Gộp gate: Owner lock contract = cho phép triển khai; chỉ cập nhật trạng thái
+   khi đóng package, không theo từng sub-step.
+4. Audit code và test, không audit câu chữ docs; mỗi package một independent
+   audit.
+5. Không viết contract cho phạm vi còn câu hỏi lâm sàng mở.
+
+**Phần A — Package B v0.3 implementation authorization**
+
+- PR #17 (`docs/dec-020-package-b-post-t0-v03`) đã MERGED vào `main`.
+- `PACKAGE_B_IMPLEMENTATION_BASE_SHA` =
+  `200667e1bbd4f6b0d2d2970a69605ca7fe5083eb` (merge commit PR #17).
+- Lệnh trên được ghi nhận là statement mà Contract §19 yêu cầu:
+  `OWNER LOCKED + PACKAGE B v0.3 IMPLEMENTATION AUTHORIZED`.
+- Phạm vi: đúng `docs/DEC-020_PACKAGE_B_POST_T0_IMPLEMENTATION_CONTRACT_v0.3.md`
+  (OD-B01→OD-B06, thứ tự Contract §19, schema change duy nhất theo Contract §16).
+- Implementation branch: `implementation/dec-020-package-b-v03`, tạo từ `main`
+  sau khi PR lean-governance này được merge (delta so với
+  `PACKAGE_B_IMPLEMENTATION_BASE_SHA` chỉ gồm `AGENTS.md`, `PROJECT_STATE.md`,
+  `DECISION_LOG.md`).
+- Không đổi: `SYNTHETIC DATA ONLY`; production / real-patient runtime
+  `NOT AUTHORIZED`; Package C chưa mở; R10 vẫn `DEFERRED BY OWNER`.
+
+**Phần B — Lean governance (áp dụng từ nay, chi tiết tại `AGENTS.md` §J)**
+
+- `PROJECT_STATE.md` chỉ là con trỏ hiện tại, thay thế tại chỗ, không lưu lịch
+  sử. Bản đầy đủ trước khi rút gọn: `git show 200667e:docs/PROJECT_STATE.md`.
+- Lịch sử/quyết định chỉ append vào `DECISION_LOG.md`.
+- Owner lock một Implementation Contract đồng thời là implementation
+  authorization, trừ khi Owner ghi rõ khác.
+- Governance docs chỉ cập nhật khi mở/đóng package, có Owner Decision mới, hoặc
+  có blocker.
+- Independent audit: một lần cho mỗi package, trên code + test + diff.
+- Engineering detail không nâng thành Owner Decision.
+- Không viết Implementation Contract cho phạm vi còn câu hỏi lâm sàng mở.
+
+**Căn cứ:** phân tích repo ngày 2026-09-26: từ 2026-09-09 đến 2026-09-26 có 5
+commit và cả 5 đều docs-only; `PROJECT_STATE.md` bị sửa 35 lần, `DECISION_LOG.md`
+24 lần, `07_ROADMAP_AND_GATES.md` 15 lần; markdown ~27k dòng so với source
+~27k dòng.
+
+---
